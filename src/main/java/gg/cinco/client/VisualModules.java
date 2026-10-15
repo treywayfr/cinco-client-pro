@@ -97,7 +97,7 @@ public final class VisualModules {
         else if (section < 2) { r = x; g = chroma; }
         else if (section < 3) { g = chroma; b = x; }
         else if (section < 4) { g = x; b = chroma; }
-        else if (section < 5) { r = x; b = 0; }
+        else if (section < 5) { r = x; b = chroma; }
         else { r = chroma; b = x; }
         double m = value - chroma;
         return new double[]{r + m, g + m, b + m};

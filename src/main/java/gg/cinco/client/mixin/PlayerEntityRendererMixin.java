@@ -21,19 +21,20 @@ public abstract class PlayerEntityRendererMixin {
             at = @At("HEAD"),
             cancellable = true
     )
-    private void cinco$renderGtaCharacter(AbstractClientPlayerEntity player, float bodyYaw, float tickDelta,
-                                          MatrixStack matrices, VertexConsumerProvider consumers, int light,
-                                          CallbackInfo ci) {
-        var module = CincoClient.findModule("GTA Skin Changer");
+    private void star$renderCustomCharacter(AbstractClientPlayerEntity player, float bodyYaw, float tickDelta,
+                                            MatrixStack matrices, VertexConsumerProvider consumers, int light,
+                                            CallbackInfo ci) {
+        var module = CincoClient.findModule("Player Changer");
         MinecraftClient client = MinecraftClient.getInstance();
         if (module != null && module.enabled && player == client.player) {
-            // Base silhouette is always present. Expensive micro-detail is only emitted while the
-            // camera is near the player; this matters a lot when Free Cam is far away.
             GtaCharacterRenderer.render(player, bodyYaw, tickDelta, matrices, consumers, light);
+
+            // Detail uses camera-distance LOD instead of a user toggle. That keeps the close-up
+            // characters rich while avoiding the old FPS hit when Free Cam is far away.
             double detailRangeSq = 18.0 * 18.0;
             boolean nearCamera = client.gameRenderer.getCamera() == null
                     || client.gameRenderer.getCamera().getPos().squaredDistanceTo(player.getPos()) <= detailRangeSq;
-            if (nearCamera && module.setting3 >= 0.5) {
+            if (nearCamera) {
                 CharacterDetailOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
                 CharacterPremiumOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
             }

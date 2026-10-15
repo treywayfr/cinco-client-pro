@@ -133,16 +133,13 @@ public final class CincoPatchClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((ctx, tickCounter) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             EnhancedEspHud.render(ctx, client);
+            StarExtraHud.render(ctx, client);
             StarSplash.render(ctx, client);
         });
         WorldRenderEvents.LAST.register(StorageEspWorldRenderer::render);
         WorldRenderEvents.LAST.register(CleanEspWorldRenderer::render);
     }
 
-    /**
-     * Older builds shipped an orange-ish default Color Wheel. Only migrate the untouched old
-     * defaults; anyone who already customized their palette keeps their own colors.
-     */
     private static void applyNebulaLuxeDefaults() {
         ClientModule wheel = CincoClient.findModule("Color Wheel");
         if (wheel == null) return;

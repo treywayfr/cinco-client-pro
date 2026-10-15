@@ -15,7 +15,8 @@
     "PlayerChangerAliasMixin",
     "ModuleSettingsMixin",
     "FreeCamMouseMixin",
-    "FreeCamMovementMixin"
+    "FreeCamMovementMixin",
+    "ChatHudEditorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

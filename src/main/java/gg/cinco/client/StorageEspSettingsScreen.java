@@ -7,9 +7,9 @@ import net.minecraft.text.Text;
 
 import java.util.Locale;
 
-/** Dedicated Storage ESP editor: range, per-block highlight, tracer and color. */
+/** Dedicated Storage ESP editor: range, per-block highlight, tracer style and color. */
 public final class StorageEspSettingsScreen extends Screen {
-    private static final int W = 600;
+    private static final int W = 700;
     private static final int H = 410;
     private static final int ROW_H = 32;
     private final ClientModule module;
@@ -34,7 +34,7 @@ public final class StorageEspSettingsScreen extends Screen {
         CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accentMuted(), 0xF20B0911);
 
         c.drawText(textRenderer, text("★  STORAGE ESP", true), l + 20, t + 16, 0xFFFFFFFF, false);
-        c.drawText(textRenderer, text("BLOCK OUTLINES  •  PLAYER TRACERS  •  PER-TYPE COLORS", false),
+        c.drawText(textRenderer, text("BLOCK OUTLINES  •  STRAIGHT OR SNAKE.IO-STYLE TRACERS  •  PER-TYPE COLORS", false),
                 l + 20, t + 32, 0xFF91899D, false);
 
         int sx = l + 20, sy = t + 61, sw = W - 40;
@@ -48,9 +48,10 @@ public final class StorageEspSettingsScreen extends Screen {
 
         int headerY = t + 83;
         c.drawText(textRenderer, text("TYPE", true), l + 20, headerY, 0xFF91899D, false);
-        c.drawText(textRenderer, text("HIGHLIGHT", true), l + 282, headerY, 0xFF91899D, false);
-        c.drawText(textRenderer, text("TRACER", true), l + 386, headerY, 0xFF91899D, false);
-        c.drawText(textRenderer, text("COLOR", true), l + 478, headerY, 0xFF91899D, false);
+        c.drawText(textRenderer, text("HIGHLIGHT", true), l + 278, headerY, 0xFF91899D, false);
+        c.drawText(textRenderer, text("TRACER", true), l + 382, headerY, 0xFF91899D, false);
+        c.drawText(textRenderer, text("SNAKE", true), l + 466, headerY, 0xFF91899D, false);
+        c.drawText(textRenderer, text("COLOR", true), l + 555, headerY, 0xFF91899D, false);
 
         int rowY = t + 100;
         StorageEspConfig.TypeKey[] types = StorageEspConfig.TypeKey.values();
@@ -66,22 +67,24 @@ public final class StorageEspSettingsScreen extends Screen {
             c.drawText(textRenderer, text(type.label.toUpperCase(Locale.ROOT), false),
                     l + 43, y + 9, 0xFFF8F4FF, false);
 
-            pill(c, l + 272, y + 5, 88, 17, setting.highlight ? "ON" : "OFF",
+            pill(c, l + 268, y + 5, 82, 17, setting.highlight ? "ON" : "OFF",
                     setting.highlight ? CincoTheme.enabled() : 0xFF332D39);
-            pill(c, l + 378, y + 5, 72, 17, setting.tracer ? "ON" : "OFF",
+            pill(c, l + 374, y + 5, 70, 17, setting.tracer ? "ON" : "OFF",
                     setting.tracer ? CincoTheme.enabled() : 0xFF332D39);
-            CincoDraw.bubble(c, l + 468, y + 5, l + 572, y + 22, 8,
+            pill(c, l + 458, y + 5, 72, 17, setting.snakeTracer ? "ON" : "OFF",
+                    setting.snakeTracer ? CincoTheme.enabled() : 0xFF332D39);
+            CincoDraw.bubble(c, l + 546, y + 5, l + 682, y + 22, 8,
                     setting.color, 0xD914111D);
-            CincoDraw.rounded(c, l + 476, y + 9, l + 488, y + 18, 4, setting.color);
-            c.drawText(textRenderer, text("CLICK TO CYCLE", false), l + 494, y + 9,
+            CincoDraw.rounded(c, l + 554, y + 9, l + 566, y + 18, 4, setting.color);
+            c.drawText(textRenderer, text("CLICK TO CYCLE", false), l + 572, y + 9,
                     0xFFF7F4FF, false);
         }
 
         int by = t + H - 35;
         button(c, l + 18, by, 118, 22, "RESET TYPES", mouseX, mouseY);
         button(c, l + W - 116, by, 98, 22, "BACK", mouseX, mouseY);
-        c.drawText(textRenderer, text("Left click color = next  •  Right click color = previous", false),
-                l + 156, by + 7, 0xFF91899D, false);
+        c.drawText(textRenderer, text("Snake ON automatically enables that type's tracer  •  Color click: L next / R previous", false),
+                l + 152, by + 7, 0xFF91899D, false);
     }
 
     private void pill(DrawContext c, int x, int y, int w, int h, String label, int color) {
@@ -114,17 +117,23 @@ public final class StorageEspSettingsScreen extends Screen {
             if (mouseY < y || mouseY > y + 27) continue;
             StorageEspConfig.TypeKey type = types[i];
             StorageEspConfig.Entry setting = StorageEspConfig.get(type);
-            if (mouseX >= l + 272 && mouseX <= l + 360 && button == 0) {
+            if (mouseX >= l + 268 && mouseX <= l + 350 && button == 0) {
                 setting.highlight = !setting.highlight;
                 StorageEspConfig.save();
                 return true;
             }
-            if (mouseX >= l + 378 && mouseX <= l + 450 && button == 0) {
+            if (mouseX >= l + 374 && mouseX <= l + 444 && button == 0) {
                 setting.tracer = !setting.tracer;
                 StorageEspConfig.save();
                 return true;
             }
-            if (mouseX >= l + 468 && mouseX <= l + 572 && (button == 0 || button == 1)) {
+            if (mouseX >= l + 458 && mouseX <= l + 530 && button == 0) {
+                setting.snakeTracer = !setting.snakeTracer;
+                if (setting.snakeTracer) setting.tracer = true;
+                StorageEspConfig.save();
+                return true;
+            }
+            if (mouseX >= l + 546 && mouseX <= l + 682 && (button == 0 || button == 1)) {
                 StorageEspConfig.cycleColor(type, button == 1 ? -1 : 1);
                 return true;
             }

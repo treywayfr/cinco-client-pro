@@ -98,7 +98,7 @@ public final class ModuleSettingsScreen extends Screen {
                             String name, double value, double min, double max, int mouseX, int mouseY) {
         int rowTop = t + 83 + which * 49;
         c.drawText(textRenderer, label(name), l + 18, rowTop, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label(format(value)), l + W - 68, rowTop, CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label(displaySetting(which, value)), l + W - 110, rowTop, CincoTheme.primaryText(), false);
         int x = l + 18, y = rowTop + 19, w = W - 36;
         c.fill(x, y, x + w, y + 5, CincoTheme.sliderTrack());
         if (mouseX >= x - 2 && mouseX <= x + w + 2 && mouseY >= y - 5 && mouseY <= y + 12)
@@ -107,6 +107,30 @@ public final class ModuleSettingsScreen extends Screen {
         int knob = x + (int)(Math.max(0, Math.min(1, fraction)) * w);
         c.fill(x, y, knob, y + 5, CincoTheme.accent());
         c.fill(knob - 3, y - 3, knob + 4, y + 8, 0xFFFFE3C1);
+    }
+
+    private String displaySetting(int which, double value) {
+        int selected = (int) Math.round(value);
+        if (which == 0 && module.name.equals("Sky Changer")) {
+            return switch (selected) {
+                case 1 -> "Sunset";
+                case 2 -> "Aurora";
+                case 3 -> "Cyberpunk";
+                case 4 -> "Cosmic";
+                default -> "Ember";
+            };
+        }
+        if (which == 0 && module.name.equals("Fortnite Style")) {
+            return switch (selected) {
+                case 1 -> "Vanguard";
+                case 2 -> "Crimson";
+                case 3 -> "Tidebreaker";
+                default -> "Void";
+            };
+        }
+        if (module.name.equals("Key Pearl") && which == 2) return selected == 1 ? "ON" : "OFF";
+        if (module.name.equals("Auto Eat") && which == 2) return selected == 1 ? "ON" : "OFF";
+        return format(value);
     }
 
     private String format(double value) {

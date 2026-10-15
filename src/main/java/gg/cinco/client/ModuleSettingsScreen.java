@@ -137,10 +137,7 @@ public final class ModuleSettingsScreen extends Screen {
         }
         if (mouseY >= t + H - 37 && mouseY <= t + H - 13) {
             if (mouseX >= l + 18 && mouseX <= l + 145) {
-                // Reset all values to their constructor defaults by selecting each slider's lower bound.
-                module.setting = module.min;
-                module.setting2 = module.min2;
-                module.setting3 = module.min3;
+                module.resetSettings();
                 ConfigStore.save();
                 return true;
             }

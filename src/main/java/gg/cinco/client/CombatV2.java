@@ -98,7 +98,6 @@ public final class CombatV2 {
             return;
         }
 
-        // Player raycast is block-only, so dropped items and XP orbs never steal this target.
         HitResult ray = client.player.raycast(5.0, 1.0F, false);
         if (!(ray instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) {
             notify(client, "Aim at a block, water/fire space, or an existing anchor.");
@@ -108,6 +107,13 @@ public final class CombatV2 {
         previousSlot = client.player.getInventory().selectedSlot;
         anchorRetries = 0;
         anchorWait = 0;
+
+        int hotbarTotem = findHotbar(client, Items.TOTEM_OF_UNDYING);
+        if (hotbarTotem < 0) {
+            restoreSlot(client);
+            notify(client, "Put a totem in your hotbar first. Offhand totems are intentionally ignored.");
+            return;
+        }
 
         BlockPos hitPos = hit.getBlockPos();
         BlockState hitState = client.world.getBlockState(hitPos);
@@ -127,11 +133,9 @@ public final class CombatV2 {
 
         int anchorSlot = findHotbar(client, Items.RESPAWN_ANCHOR);
         int glowSlot = findHotbar(client, Items.GLOWSTONE);
-        boolean hasTotem = client.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)
-                || findHotbar(client, Items.TOTEM_OF_UNDYING) >= 0;
-        if (anchorSlot < 0 || glowSlot < 0 || !hasTotem) {
+        if (anchorSlot < 0 || glowSlot < 0) {
             restoreSlot(client);
-            notify(client, "Need an anchor, glowstone, and a totem in hotbar/offhand.");
+            notify(client, "Need an anchor, glowstone, and totem in the hotbar.");
             return;
         }
 
@@ -147,9 +151,6 @@ public final class CombatV2 {
     private static Placement resolvePlacement(MinecraftClient client, BlockHitResult hit) {
         BlockPos hitPos = hit.getBlockPos();
         BlockState hitState = client.world.getBlockState(hitPos);
-
-        // When the ray lands on fire/replaceable material, walk downward through water/fire/grass
-        // and place into the first replaceable cell directly above solid support.
         if (canReplace(hitState)) {
             BlockPos cursor = hitPos;
             for (int depth = 0; depth < 8; depth++) {
@@ -169,9 +170,6 @@ public final class CombatV2 {
         BlockPos placePos = hitPos.offset(hit.getSide());
         BlockState placeState = client.world.getBlockState(placePos);
         if (!canReplace(placeState)) return null;
-
-        // Looking at the floor under water is the normal case. Explicitly use the support block's
-        // top face so vanilla placement replaces the water cell instead of interacting with fluid.
         if (hit.getSide() == Direction.UP && !placeState.getFluidState().isEmpty()) {
             BlockHitResult supportHit = new BlockHitResult(
                     new Vec3d(hitPos.getX() + 0.5, hitPos.getY() + 1.0, hitPos.getZ() + 0.5),
@@ -249,21 +247,15 @@ public final class CombatV2 {
         }
 
         if (anchorStage == 3) {
-            Hand hand;
-            if (client.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)) {
-                hand = Hand.OFF_HAND;
-            } else {
-                int totemSlot = findHotbar(client, Items.TOTEM_OF_UNDYING);
-                if (totemSlot < 0) {
-                    notify(client, "Totem is no longer available.");
-                    resetAnchor(client);
-                    return;
-                }
-                client.player.getInventory().selectedSlot = totemSlot;
-                hand = Hand.MAIN_HAND;
+            int totemSlot = findHotbar(client, Items.TOTEM_OF_UNDYING);
+            if (totemSlot < 0) {
+                notify(client, "Totem left the hotbar; macro stopped before detonation.");
+                resetAnchor(client);
+                return;
             }
-            client.interactionManager.interactBlock(client.player, hand, anchorHit(anchorPos));
-            client.player.swingHand(hand);
+            client.player.getInventory().selectedSlot = totemSlot;
+            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, anchorHit(anchorPos));
+            client.player.swingHand(Hand.MAIN_HAND);
             notify(client, "Anchor macro complete.");
             resetAnchor(client);
         }

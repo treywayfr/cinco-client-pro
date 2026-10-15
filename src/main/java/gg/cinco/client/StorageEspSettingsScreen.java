@@ -8,7 +8,7 @@ import net.minecraft.text.Text;
 import java.util.Locale;
 
 /** Dedicated Storage ESP editor: range, per-block highlight, tracer style and color. */
-public final class StorageEspSettingsScreen extends Screen {
+public final class StorageEspSettingsScreen extends StarLegacyScreen {
     private static final int W = 700;
     private static final int H = 410;
     private static final int ROW_H = 32;

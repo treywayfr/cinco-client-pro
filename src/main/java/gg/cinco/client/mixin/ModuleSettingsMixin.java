@@ -2,10 +2,8 @@ package gg.cinco.client.mixin;
 
 import gg.cinco.client.ClientModule;
 import gg.cinco.client.ModuleSettingsScreen;
-import gg.cinco.client.PvpFolderScreen;
 import gg.cinco.client.StarFonts;
 import gg.cinco.client.StarProfiles;
-import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -13,18 +11,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = ModuleSettingsScreen.class, remap = false)
 public abstract class ModuleSettingsMixin {
     @Shadow @Final private ClientModule module;
-
-    @Inject(method = "init", at = @At("TAIL"), remap = false)
-    private void star$openPvpFolder(CallbackInfo ci) {
-        if (module.name.equals("Crystal") || module.name.equals("Mace"))
-            MinecraftClient.getInstance().setScreen(new PvpFolderScreen(module.name));
-    }
 
     @ModifyConstant(method = "drawSlider", constant = @Constant(stringValue = "First-person hands"), remap = false)
     private String star$renameLegacyPlayerHandSetting(String original) { return "Model detail"; }

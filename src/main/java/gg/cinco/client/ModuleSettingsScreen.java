@@ -7,7 +7,9 @@ import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /** Compact Star Client per-module settings screen. */
 public final class ModuleSettingsScreen extends Screen {
@@ -16,6 +18,8 @@ public final class ModuleSettingsScreen extends Screen {
     private final ClientModule module;
     private boolean waitingForKey;
     private int dragging;
+    private final long openedAt = System.currentTimeMillis();
+    private final Map<String, StarAnimations.Track> hoverAnim = new HashMap<>();
 
     public ModuleSettingsScreen(ClientModule module) {
         super(Text.literal("Star Module Settings"));
@@ -31,12 +35,19 @@ public final class ModuleSettingsScreen extends Screen {
     @Override
     public void render(DrawContext c, int mouseX, int mouseY, float delta) {
         super.render(c, mouseX, mouseY, delta);
-        c.fill(0, 0, width, height, 0xF006050A);
-        int l = left(), t = top();
+        MinecraftClient client = MinecraftClient.getInstance();
+        long now = System.currentTimeMillis();
+        float open = StarAnimations.progress(now - openedAt,
+                StarAnimations.duration(client, StarAnimations.PANEL_MS, true),
+                StarAnimations.Curve.CUBIC_OUT);
 
-        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 52);
+        c.fill(0, 0, width, height, 0xF006050A);
+        int l = left(), t = top() + Math.round((1f - open) * 12f);
+
+        if (StarPerformance.allowMenuShadow(client))
+            CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), Math.round(52 * open));
         CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accentMuted(), 0xF20B0911);
-        CincoDraw.rounded(c, l + 15, t + 15, l + 19, t + 43, 2, CincoTheme.accentLight());
+        CincoDraw.rounded(c, l + 15, t + 15, l + 19, t + 43, 2, CincoTheme.cyan());
         c.drawText(textRenderer, label(module.name.toUpperCase(Locale.ROOT), true), l + 29, t + 16,
                 0xFFFFFFFF, false);
         c.drawText(textRenderer, label("★  MODULE SETTINGS", false), l + 29, t + 31,
@@ -44,20 +55,20 @@ public final class ModuleSettingsScreen extends Screen {
         c.drawText(textRenderer, label(trim(module.description, playerChanger() ? 52 : 74), false), l + 18, t + 54,
                 0xFF8D8598, false);
 
-        drawSlider(c, l, t, 0, module.settingLabel, module.setting, module.min, module.max, mouseX, mouseY);
-        drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2, mouseX, mouseY);
-        drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3, mouseX, mouseY);
+        drawSlider(c, l, t, 0, module.settingLabel, module.setting, module.min, module.max, mouseX, mouseY, now);
+        drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2, mouseX, mouseY, now);
+        drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3, mouseX, mouseY, now);
 
         if (playerChanger()) drawPlayerPreview(c, l, t);
 
         int colorY = t + 225;
         button(c, l + 18, colorY, W - 36, 24, "OPEN STAR COLOR WHEEL", mouseX, mouseY,
-                0xFF17121F, 0xFF24172E);
+                0xFF17121F, 0xFF24172E, now);
 
         int keyY = t + 257;
         c.drawText(textRenderer, label("KEYBIND", true), l + 18, keyY, 0xFF9B93A8, false);
         CincoDraw.bubble(c, l + 92, keyY - 6, l + W - 18, keyY + 18, 9,
-                waitingForKey ? CincoTheme.accent() : 0xFF30283A,
+                waitingForKey ? CincoTheme.cyan() : 0xFF30283A,
                 waitingForKey ? 0xFF21152A : 0xFF15111B);
         String binding = waitingForKey ? "PRESS A KEY  •  DELETE CLEARS  •  ESC CANCELS"
                 : "CURRENT: " + keyName(module.keyCode) + "  •  CLICK TO CHANGE";
@@ -65,9 +76,9 @@ public final class ModuleSettingsScreen extends Screen {
 
         int by = t + H - 36;
         button(c, l + 18, by, 126, 23, "RESET SETTINGS", mouseX, mouseY,
-                0xFF1B1322, 0xFF291A32);
+                0xFF1B1322, 0xFF291A32, now);
         button(c, l + W - 116, by, 98, 23, "BACK", mouseX, mouseY,
-                0xFF1B1322, 0xFF291A32);
+                0xFF1B1322, 0xFF291A32, now);
     }
 
     private void drawPlayerPreview(DrawContext c, int l, int t) {
@@ -78,8 +89,9 @@ public final class ModuleSettingsScreen extends Screen {
         int w = 114;
         int h = 133;
         CincoDraw.bubble(c, x, y, x + w, y + h, 12, 0xFF352742, 0xE8110D17);
-        c.drawCenteredTextWithShadow(textRenderer, label("★ PREVIEW", true), x + w / 2, y + 8, CincoTheme.accentLight());
-        float orbit = (float) Math.sin(System.currentTimeMillis() / 850.0) * 26.0f;
+        c.drawCenteredTextWithShadow(textRenderer, label("★ PREVIEW", true), x + w / 2, y + 8, CincoTheme.starGold());
+        float orbit = StarPerformance.animationTier(client) == 0 ? 0f
+                : (float) Math.sin(System.currentTimeMillis() / 850.0) * 26.0f;
         try {
             InventoryScreen.drawEntity(c, x + 8, y + 22, x + w - 8, y + h - 7,
                     43, 0.0f, x + w / 2.0f + orbit, y + 53.0f, client.player);
@@ -89,7 +101,8 @@ public final class ModuleSettingsScreen extends Screen {
     }
 
     private void drawSlider(DrawContext c, int l, int t, int which,
-                            String name, double value, double min, double max, int mouseX, int mouseY) {
+                            String name, double value, double min, double max,
+                            int mouseX, int mouseY, long now) {
         int rowTop = t + 82 + which * 45;
         String shownName = name;
         if (playerChanger() && which == 2) shownName = "First-person hands";
@@ -102,22 +115,41 @@ public final class ModuleSettingsScreen extends Screen {
                 CincoTheme.accentLight(), false);
 
         int y = rowTop + 19;
-        CincoDraw.rounded(c, x, y, x + w, y + 6, 3, 0xFF302A37);
+        boolean hover = mouseX >= x - 3 && mouseX <= x + w + 3 && mouseY >= y - 6 && mouseY <= y + 13;
+        float h = hover("slider:" + which, hover, now);
+        CincoDraw.rounded(c, x, y, x + w, y + 6, 3, mix(0xFF302A37, 0xFF3E3148, h));
         double fraction = (value - min) / Math.max(0.0001, max - min);
         int knob = x + (int) Math.round(Math.max(0, Math.min(1, fraction)) * w);
-        if (knob > x) CincoDraw.rounded(c, x, y, knob, y + 6, 3, CincoTheme.accent());
-        CincoDraw.rounded(c, knob - 4, y - 3, knob + 5, y + 10, 5, CincoTheme.accentLight());
-        if (mouseX >= x - 3 && mouseX <= x + w + 3 && mouseY >= y - 6 && mouseY <= y + 13)
-            CincoDraw.rounded(c, x, y - 1, x + w, y + 7, 4, 0x382E203A);
+        if (knob > x) CincoDraw.rounded(c, x, y, knob, y + 6, 3,
+                mix(CincoTheme.accent(), CincoTheme.magenta(), h * 0.45f));
+        CincoDraw.rounded(c, knob - 4, y - 3, knob + 5, y + 10, 5,
+                mix(CincoTheme.accentLight(), CincoTheme.cyan(), h));
     }
 
     private void button(DrawContext c, int x, int y, int w, int h, String text,
-                        int mx, int my, int normal, int hoverColor) {
+                        int mx, int my, int normal, int hoverColor, long now) {
         boolean hover = mx >= x && mx <= x + w && my >= y && my <= y + h;
-        CincoDraw.rounded(c, x, y, x + w, y + h, 10, hover ? hoverColor : normal);
+        float a = hover("button:" + text, hover, now);
+        int drawY = y - Math.round(a);
+        CincoDraw.rounded(c, x, drawY, x + w, drawY + h, 10, mix(normal, hoverColor, a));
         int tw = textRenderer.getWidth(text);
-        c.drawText(textRenderer, label(text, true), x + w / 2 - tw / 2, y + 8,
-                0xFFF8F4FF, false);
+        c.drawText(textRenderer, label(text, true), x + w / 2 - tw / 2, drawY + 8,
+                mix(0xFFF8F4FF, CincoTheme.cyan(), a * 0.45f), false);
+    }
+
+    private float hover(String key, boolean active, long now) {
+        StarAnimations.Track track = hoverAnim.computeIfAbsent(key, k -> new StarAnimations.Track(0f));
+        int duration = StarAnimations.duration(MinecraftClient.getInstance(),
+                active ? StarAnimations.HOVER_IN_MS : StarAnimations.HOVER_OUT_MS, false);
+        return track.to(active ? 1f : 0f, duration, StarAnimations.Curve.CUBIC_OUT, now);
+    }
+
+    private int mix(int a, int b, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int aa = (a >>> 24) & 255, ar = (a >>> 16) & 255, ag = (a >>> 8) & 255, ab = a & 255;
+        int ba = (b >>> 24) & 255, br = (b >>> 16) & 255, bg = (b >>> 8) & 255, bb = b & 255;
+        return ((int)(aa + (ba-aa)*t) << 24) | ((int)(ar + (br-ar)*t) << 16)
+                | ((int)(ag + (bg-ag)*t) << 8) | (int)(ab + (bb-ab)*t);
     }
 
     private String displaySetting(int which, double value) {

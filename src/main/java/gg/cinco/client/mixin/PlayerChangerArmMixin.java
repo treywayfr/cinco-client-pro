@@ -1,6 +1,7 @@
 package gg.cinco.client.mixin;
 
 import gg.cinco.client.CincoClient;
+import gg.cinco.client.CjReferenceHandRenderer;
 import gg.cinco.client.ClientModule;
 import gg.cinco.client.PlayerChangerHandRenderer;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -32,9 +33,13 @@ public abstract class PlayerChangerArmMixin {
         if (module == null) module = CincoClient.findModule("GTA Skin Changer");
         if (module == null || !module.enabled) return false;
 
+        if (Math.round(module.setting) == 5) {
+            return CjReferenceHandRenderer.render(right, matrices, consumers, light, player);
+        }
+
         // PlayerChangerHandRenderer historically used setting3 as its visibility gate. setting3 is
         // now Model Detail, while Show Hand lives in FOV Changer. Temporarily satisfy the old
-        // renderer gate so the custom arm follows the global FOV Show Hand control instead.
+        // renderer gate so all non-CJ custom arms follow the global FOV Show Hand control instead.
         double detail = module.setting3;
         try {
             module.setting3 = 1.0;

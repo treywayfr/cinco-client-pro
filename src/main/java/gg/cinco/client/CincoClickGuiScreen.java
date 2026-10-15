@@ -4,6 +4,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+import net.minecraft.text.Style;
+import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -17,9 +19,9 @@ public final class CincoClickGuiScreen extends Screen {
     private static final int SIDEBAR = 0xFF151020;
     private static final int CARD = 0xFF1A1424;
     private static final int CARD_HOVER = 0xFF2A1D3A;
-    private static final int PURPLE = 0xFFC49AFF;
-    private static final int TEXT = 0xFFF9F5FF;
-    private static final int MUTED = 0xFFC4B7D9;
+    private static final int PURPLE = 0xFFFF8C24;
+    private static final int TEXT = 0xFFFFC078;
+    private static final int MUTED = 0xFFE89745;
 
     private int scroll;
     private final long openedAt = System.currentTimeMillis();
@@ -38,7 +40,7 @@ public final class CincoClickGuiScreen extends Screen {
     }
 
     public CincoClickGuiScreen() {
-        super(Text.literal("Cinco Client"));
+        super(uiText("Cinco Client"));
         for (int i = 0; i < 150; i++) {
             stars.add(new Star(i * 73.37 % 1600, i * 47.19 % 1000, .15 + (i % 7) * .055, (i % 13) * .43));
         }
@@ -56,55 +58,56 @@ public final class CincoClickGuiScreen extends Screen {
         drawStars(c, now, delta);
 
         int l = left(), t = top();
-        double animation = Math.min(1.0, (now - openedAt) / 220.0);
+        ClientModule animationModule = CincoClient.findModule("GUI Animation");
+        double duration = animationModule == null || !animationModule.enabled ? 1.0 : animationModule.setting;
+        double animation = animationModule == null || !animationModule.enabled ? 1.0 : Math.min(1.0, (now - openedAt) / duration);
         int lift = (int) ((1.0 - animation) * 10);
         int panelY = t + lift;
 
         // Opaque surfaces deliberately prevent the world and stars showing through text and cards.
-        c.fill(l - 2, panelY - 2, l + W + 2, panelY + H + 2, 0xFF9E68FF);
-        c.fill(l, panelY, l + W, panelY + H, PANEL);
+        c.fill(l - 2, panelY - 2, l + W + 2, panelY + H + 2, 0xFFFF8C24);
+        c.fill(l, panelY, l + W, panelY + H, panelColor(PANEL));
         c.fill(l, panelY, l + W, panelY + 3, PURPLE);
-        c.fill(l, panelY + 3, l + SIDE, panelY + H, SIDEBAR);
-        c.fill(l + SIDE, panelY + 3, l + SIDE + 1, panelY + H, 0xFF3B2851);
+        c.fill(l, panelY + 3, l + SIDE, panelY + H, panelColor(SIDEBAR));
+        c.fill(l + SIDE, panelY + 3, l + SIDE + 1, panelY + H, 0xFF4B2B16);
 
         // Brand header
         c.fill(l + 12, panelY + 11, l + 15, panelY + 39, PURPLE);
-        c.drawText(textRenderer, Text.literal("CINCO CLIENT"), l + 23, panelY + 12, TEXT, false);
-        c.drawText(textRenderer, Text.literal("PURPLE NEBULA  /  v2.1"), l + 23, panelY + 27, PURPLE, false);
-        c.fill(l + W - 111, panelY + 13, l + W - 14, panelY + 34, 0xFF21172E);
-        drawCenteredTextSharp(c, Text.literal("SHARP UI  •  READY"), l + W - 62, panelY + 20, 0xFFE8DAFF);
+        c.drawText(textRenderer, uiText("CINCO CLIENT"), l + 23, panelY + 12, uiColor(TEXT), false);
+        c.drawText(textRenderer, uiText("PURPLE NEBULA  /  v2.1"), l + 23, panelY + 27, uiColor(PURPLE), false);
+        c.fill(l + W - 111, panelY + 13, l + W - 14, panelY + 34, 0xFF29180C);
+        drawCenteredTextSharp(c, uiText("SHARP UI  •  READY"), l + W - 62, panelY + 20, 0xFFFFD18C);
 
         int catY = panelY + 58;
         for (ClientModule.Category category : ClientModule.Category.values()) {
             int y = catY + category.ordinal() * 34;
             boolean selected = category == CincoClient.selectedCategory;
             if (selected) {
-                c.fill(l + 8, y - 5, l + SIDE - 8, y + 22, 0xFF3A2652);
+                c.fill(l + 8, y - 5, l + SIDE - 8, y + 22, 0xFF4A2A16);
                 c.fill(l + 8, y - 5, l + 11, y + 22, PURPLE);
             } else {
-                c.fill(l + 14, y + 7, l + 17, y + 10, 0xFF6D5C80);
+                c.fill(l + 14, y + 7, l + 17, y + 10, 0xFF8C5125);
             }
-            c.drawText(textRenderer, Text.literal(category.label), l + 24, y + 3,
-                    selected ? TEXT : MUTED, false);
+            c.drawText(textRenderer, uiText(category.label), l + 24, y + 3, uiColor(selected ? TEXT : MUTED), false);
         }
 
         int enabled = (int) CincoClient.MODULES.stream().filter(m -> m.enabled).count();
-        c.fill(l + 12, panelY + H - 58, l + SIDE - 12, panelY + H - 57, 0xFF4A365F);
-        c.drawText(textRenderer, Text.literal("CLIENT STATUS"), l + 15, panelY + H - 46, 0xFF9F8ABF, false);
-        c.drawText(textRenderer, Text.literal(enabled + " modules enabled"), l + 15, panelY + H - 31, TEXT, false);
-        c.drawText(textRenderer, Text.literal("RIGHT SHIFT  /  ESC"), l + 15, panelY + H - 17, 0xFF9F8ABF, false);
+        c.fill(l + 12, panelY + H - 58, l + SIDE - 12, panelY + H - 57, 0xFF663A1A);
+        c.drawText(textRenderer, uiText("CLIENT STATUS"), l + 15, panelY + H - 46, uiColor(0xFFE88736), false);
+        c.drawText(textRenderer, uiText(enabled + " modules enabled"), l + 15, panelY + H - 31, uiColor(TEXT), false);
+        c.drawText(textRenderer, uiText("RIGHT SHIFT  /  ESC"), l + 15, panelY + H - 17, uiColor(0xFF9F8ABF), false);
 
         int contentX = l + SIDE + 16;
-        c.drawText(textRenderer, Text.literal(CincoClient.selectedCategory.label + " MODULES"),
-                contentX, panelY + 13, TEXT, false);
-        c.drawText(textRenderer, Text.literal("Click card to toggle  •  drag slider to adjust"),
-                contentX, panelY + 28, MUTED, false);
+        c.drawText(textRenderer, uiText(CincoClient.selectedCategory.label + " MODULES"),
+                contentX, panelY + 13, uiColor(TEXT), false);
+        c.drawText(textRenderer, uiText("Click card to toggle  •  drag slider to adjust"),
+                contentX, panelY + 28, uiColor(MUTED), false);
 
         int searchX = l + W - 213, searchY = panelY + 10;
-        c.fill(searchX, searchY, searchX + 194, searchY + 23, searchFocused ? 0xFF3A2851 : 0xFF21182E);
-        c.fill(searchX, searchY, searchX + 2, searchY + 23, searchFocused ? PURPLE : 0xFF6B4A8D);
-        c.drawText(textRenderer, Text.literal((search.isEmpty() ? "SEARCH MODULES" : search.toUpperCase(Locale.ROOT))
-                + (searchFocused ? " _" : "")), searchX + 9, searchY + 7, TEXT, false);
+        c.fill(searchX, searchY, searchX + 194, searchY + 23, panelColor(searchFocused ? 0xFF573019 : 0xFF29180C));
+        c.fill(searchX, searchY, searchX + 2, searchY + 23, searchFocused ? PURPLE : 0xFF9C571C);
+        c.drawText(textRenderer, uiText((search.isEmpty() ? "SEARCH MODULES" : search.toUpperCase(Locale.ROOT))
+                + (searchFocused ? " _" : "")), searchX + 9, searchY + 7, uiColor(TEXT), false);
 
         List<ClientModule> list = filteredModules();
         int viewportTop = panelY + 47, viewportBottom = panelY + H - 15;
@@ -118,35 +121,34 @@ public final class CincoClickGuiScreen extends Screen {
             int y = viewportTop + i * ROW - scroll;
             if (y + ROW < viewportTop || y > viewportBottom) continue;
             boolean hovered = mx >= contentX && mx <= l + W - 13 && my >= y && my <= y + ROW - 5;
-            c.fill(contentX, y, l + W - 13, y + ROW - 5, hovered ? CARD_HOVER : CARD);
-            c.fill(contentX, y, contentX + 3, y + ROW - 5, module.enabled ? PURPLE : 0xFF584768);
-            c.drawText(textRenderer, Text.literal(module.name), contentX + 11, y + 6,
-                    module.enabled ? TEXT : 0xFFE0D8EB, false);
-            c.drawText(textRenderer, Text.literal(module.description), contentX + 11, y + 20, MUTED, false);
+            c.fill(contentX, y, l + W - 13, y + ROW - 5, panelColor(hovered ? CARD_HOVER : CARD));
+            c.fill(contentX, y, contentX + 3, y + ROW - 5, module.enabled ? PURPLE : 0xFF7A431B);
+            c.drawText(textRenderer, uiText(module.name), contentX + 11, y + 6, uiColor(module.enabled ? TEXT : 0xFFFFBC72), false);
+            c.drawText(textRenderer, uiText(module.description), contentX + 11, y + 20, uiColor(MUTED), false);
 
             int sliderX = l + W - 285, sliderWidth = 78, sliderY = y + 39;
-            c.fill(sliderX, sliderY, sliderX + sliderWidth, sliderY + 3, 0xFF51405F);
+            c.fill(sliderX, sliderY, sliderX + sliderWidth, sliderY + 3, 0xFF6D3C1B);
             double fraction = (module.setting - module.min) / Math.max(.0001, module.max - module.min);
             int knob = sliderX + (int) (Math.max(0, Math.min(1, fraction)) * sliderWidth);
             c.fill(sliderX, sliderY, knob, sliderY + 3, PURPLE);
             c.fill(knob - 2, sliderY - 2, knob + 3, sliderY + 5, 0xFFFFFFFF);
-            c.drawText(textRenderer, Text.literal(module.settingLabel + ": " + format(module.setting)),
-                    sliderX + sliderWidth + 8, y + 35, 0xFFE2CEFF, false);
+            c.drawText(textRenderer, uiText(module.settingLabel + ": " + format(module.setting)),
+                    sliderX + sliderWidth + 8, y + 35, uiColor(0xFFFFB86B), false);
 
             int toggleX = l + W - 79;
-            c.fill(toggleX, y + 9, toggleX + 57, y + 26, module.enabled ? 0xFF8550D8 : 0xFF41364E);
-            drawCenteredTextSharp(c, Text.literal(module.enabled ? "ON" : "OFF"), toggleX + 28, y + 14, TEXT);
+            c.fill(toggleX, y + 9, toggleX + 57, y + 26, module.enabled ? 0xFFB65B18 : 0xFF49301C);
+            drawCenteredTextSharp(c, uiText(module.enabled ? "ON" : "OFF"), toggleX + 28, y + 14, TEXT);
         }
         c.disableScissor();
 
         // Animated accent glint is kept to the border so it never crosses text.
-        int glintX = l + 8 + (int) ((now / 12L) % (W - 16));
+        int glintX = l + 8 + (int) ((now / (animationModule == null || !animationModule.enabled ? 12L : Math.max(2L, (long) animationModule.setting / 8L))) % (W - 16));
         c.fill(glintX, panelY, Math.min(l + W, glintX + 28), panelY + 3, 0xFFFFFFFF);
     }
 
 
     private void drawCenteredTextSharp(DrawContext context, Text value, int centerX, int y, int color) {
-        context.drawText(textRenderer, value, centerX - textRenderer.getWidth(value) / 2, y, color, false);
+        context.drawText(textRenderer, value, centerX - textRenderer.getWidth(value) / 2, y, uiColor(color), false);
     }
 
     private void drawStars(DrawContext c, long now, float delta) {

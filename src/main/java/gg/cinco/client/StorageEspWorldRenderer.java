@@ -15,7 +15,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
-/** Traditional through-wall storage ESP: one Minecraft-style wireframe around each storage block. */
+/** Thin Minecraft-style through-wall outlines for storage blocks, with per-type colors/tracers. */
 public final class StorageEspWorldRenderer {
     private StorageEspWorldRenderer() {}
 
@@ -27,7 +27,8 @@ public final class StorageEspWorldRenderer {
         if (matrices == null) return;
 
         Vec3d camera = context.camera().getPos();
-        double rangeSq = module.setting * module.setting;
+        double range = module.setting;
+        double rangeSq = range * range;
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -35,21 +36,23 @@ public final class StorageEspWorldRenderer {
         RenderSystem.depthMask(false);
         RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.lineWidth(2.0F);
+        RenderSystem.lineWidth(1.35F);
 
         BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-        // Findings are distance-sorted, so a hard cap preserves the nearest/useful ESP while
-        // preventing giant stashes from pushing thousands of line vertices every frame.
         int rendered = 0;
-        final int renderCap = 220;
+        final int renderCap = 180;
         for (BlockPos pos : EnhancedWorldScan.storage()) {
             if (rendered >= renderCap) break;
             double cx = pos.getX() + 0.5;
             double cy = pos.getY() + 0.5;
             double cz = pos.getZ() + 0.5;
-            if (client.player.squaredDistanceTo(cx, cy, cz) > rangeSq) continue;
+            double dx = cx - camera.x;
+            double dy = cy - camera.y;
+            double dz = cz - camera.z;
+            double distanceSq = dx * dx + dy * dy + dz * dz;
+            if (distanceSq > rangeSq) continue;
 
             BlockState state = client.world.getBlockState(pos);
             StorageEspConfig.TypeKey type = StorageEspConfig.typeOf(state);
@@ -57,19 +60,19 @@ public final class StorageEspWorldRenderer {
             StorageEspConfig.Entry setting = StorageEspConfig.get(type);
             if (!setting.highlight && !setting.tracer) continue;
 
-            float x0 = (float) (pos.getX() - camera.x - 0.003);
-            float y0 = (float) (pos.getY() - camera.y - 0.003);
-            float z0 = (float) (pos.getZ() - camera.z - 0.003);
-            float x1 = x0 + 1.006F;
-            float y1 = y0 + 1.006F;
-            float z1 = z0 + 1.006F;
+            float x0 = (float) (pos.getX() - camera.x - 0.0025);
+            float y0 = (float) (pos.getY() - camera.y - 0.0025);
+            float z0 = (float) (pos.getZ() - camera.z - 0.0025);
+            float x1 = x0 + 1.005F;
+            float y1 = y0 + 1.005F;
+            float z1 = z0 + 1.005F;
 
-            if (setting.highlight) emitBox(buffer, matrix, x0, y0, z0, x1, y1, z1, setting.color);
+            int outline = distanceFade(setting.color, Math.sqrt(distanceSq), range, 105, 238);
+            if (setting.highlight) emitBox(buffer, matrix, x0, y0, z0, x1, y1, z1, outline);
             if (setting.tracer) {
-                float tx = (float) (cx - camera.x);
-                float ty = (float) (cy - camera.y);
-                float tz = (float) (cz - camera.z);
-                emitLine(buffer, matrix, 0.0F, -0.08F, 0.0F, tx, ty, tz, setting.color);
+                int tracer = withAlpha(setting.color, Math.min(150, (outline >>> 24) & 0xFF));
+                emitLine(buffer, matrix, 0.0F, -0.10F, 0.0F,
+                        (float) dx, (float) dy, (float) dz, tracer);
             }
             rendered++;
         }
@@ -77,7 +80,7 @@ public final class StorageEspWorldRenderer {
         try {
             BufferRenderer.drawWithGlobalProgram(buffer.end());
         } catch (IllegalStateException ignored) {
-            // Empty buffers can occur for one frame while chunks unload.
+            // Empty buffers are normal for a frame while chunks unload or filters exclude all blocks.
         }
 
         RenderSystem.lineWidth(1.0F);
@@ -85,6 +88,16 @@ public final class StorageEspWorldRenderer {
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
+    }
+
+    private static int distanceFade(int color, double distance, double range, int farAlpha, int nearAlpha) {
+        double t = range <= 0.001 ? 0.0 : Math.max(0.0, Math.min(1.0, distance / range));
+        int alpha = (int) Math.round(nearAlpha + (farAlpha - nearAlpha) * t);
+        return withAlpha(color, alpha);
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0x00FFFFFF);
     }
 
     private static void emitBox(BufferBuilder b, Matrix4f m,

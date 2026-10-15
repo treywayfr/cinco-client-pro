@@ -5,6 +5,8 @@ import net.minecraft.util.math.Vec3d;
 
 /** Client-only render options which can be safely toggled from the GUI. */
 public final class VisualModules {
+    private static boolean gammaCaptured;
+    private static double originalGamma = 0.5;
     private static boolean fovCaptured;
     private static int originalFov = 70;
     private static double currentFov = 70.0;
@@ -13,6 +15,19 @@ public final class VisualModules {
 
     public static void tick(MinecraftClient client) {
         if (client == null || client.options == null) return;
+        ClientModule bright = CincoClient.findModule("Fullbright");
+        if (bright != null && bright.enabled) {
+            if (!gammaCaptured) {
+                originalGamma = client.options.getGamma().getValue();
+                gammaCaptured = true;
+            }
+            double gamma = Math.max(1.0, bright.setting);
+            if (Math.abs(client.options.getGamma().getValue() - gamma) > 0.001)
+                client.options.getGamma().setValue(gamma);
+        } else if (gammaCaptured) {
+            client.options.getGamma().setValue(originalGamma);
+            gammaCaptured = false;
+        }
         ClientModule fov = CincoClient.findModule("FOV Changer");
         boolean enabled = fov != null && fov.enabled;
 

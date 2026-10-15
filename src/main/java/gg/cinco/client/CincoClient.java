@@ -31,6 +31,7 @@ public final class CincoClient implements ClientModInitializer {
             pollModuleKeybinds(client);
 
             if (sprintAssistEnabled && client.player != null && client.options.forwardKey.isPressed()) client.player.setSprinting(true);
+            tickFlight(client);
             ClickRateTracker.tick(client);
             CombatModules.tick(client);
             VisualModules.tick(client);
@@ -40,6 +41,26 @@ public final class CincoClient implements ClientModInitializer {
             }
         });
         HudRenderCallback.EVENT.register((ctx, tickCounter) -> CincoHud.render(ctx, MinecraftClient.getInstance()));
+    }
+
+    private void tickFlight(MinecraftClient client) {
+        ClientModule flight = findModule("Flight");
+        if (flight == null || !flight.enabled || client.player == null || client.world == null
+                || client.currentScreen != null || client.player.isSpectator()) return;
+        // Client-side movement. Servers may reject this without flight permissions.
+        double vertical = client.options.jumpKey.isPressed() ? flight.setting3
+                : client.options.sneakKey.isPressed() ? -flight.setting3 : 0.0;
+        double forward = (client.options.forwardKey.isPressed() ? 1 : 0)
+                - (client.options.backKey.isPressed() ? 1 : 0);
+        double strafe = (client.options.leftKey.isPressed() ? 1 : 0)
+                - (client.options.rightKey.isPressed() ? 1 : 0);
+        double yaw = Math.toRadians(client.player.getYaw());
+        double dx = -Math.sin(yaw) * forward - Math.cos(yaw) * strafe;
+        double dz = Math.cos(yaw) * forward - Math.sin(yaw) * strafe;
+        double length = Math.hypot(dx, dz);
+        if (length > 0.0) { dx /= length; dz /= length; }
+        client.player.setVelocity(dx * flight.setting2, vertical, dz * flight.setting2);
+        client.player.fallDistance = 0;
     }
 
     private void pollModuleKeybinds(MinecraftClient client) {
@@ -149,13 +170,7 @@ public final class CincoClient implements ClientModInitializer {
         add("Hover Glow", "Subtle animated glow around hovered module cards and settings", ClientModule.Category.RENDER, true, "Intensity", 0.8, 0.2, 1.0, 0.2);
         add("Player ESP", "Screen-space player outlines, names and distances", ClientModule.Category.RENDER, false, "Range", 64, 16, 128, 16);
         add("Tracers", "Draw clean screen-space tracer lines to nearby players", ClientModule.Category.RENDER, false, "Range", 64, 16, 128, 16);
-        add("Storage ESP", "On-screen markers for selected nearby storage blocks", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
-        add("ESP Chests", "Show chest storage markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
-        add("ESP Trapped Chests", "Show trapped chest markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
-        add("ESP Barrels", "Show barrel markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
-        add("ESP Ender Chests", "Show ender chest markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
-        add("ESP Shulkers", "Show shulker box markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
-        add("ESP Spawners", "Show spawner markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
+        add("Storage ESP", "Combined storage and spawner detection; configure filters in settings", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
         add("Fullbright", "Increase the local gamma for easier visibility", ClientModule.Category.RENDER, false, "Gamma", 1.0, 0.5, 5.0, 0.5);
         add("FOV Changer", "Set a custom field of view while enabled", ClientModule.Category.RENDER, false, "FOV", 100, 70, 110, 1);
         add("Sky Changer", "Change sky and cloud colors with animated presets", ClientModule.Category.RENDER, false, "Style", 1, 1, 5, 1);

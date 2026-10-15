@@ -34,7 +34,7 @@ public final class CincoHud {
 
         int screenWidth = client.getWindow().getScaledWidth();
         List<Stat> stats = buildStats(client);
-        int brandWidth = 146;
+        int brandWidth = 153;
         int availableWidth = Math.max(120, screenWidth - 16);
         while (stats.size() > 1 && getBarWidth(client, stats, brandWidth) > availableWidth) {
             stats.remove(stats.size() - 1);
@@ -50,7 +50,7 @@ public final class CincoHud {
         CincoDraw.rounded(ctx, x + 4, y + 4, x + brandWidth - 4, y + h - 4, 14, CincoTheme.sidebar());
         CincoDraw.rounded(ctx, x + 10, y + 11, x + 13, y + 31, 2, CincoTheme.accent());
         ctx.drawText(client.textRenderer, hudText("CINCO CLIENT"), x + 20, y + 8, textColor(0xFFFFC078), false);
-        ctx.drawText(client.textRenderer, hudText("EMBER EDITION  /  v2.4"), x + 20, y + 23, textColor(0xFFFFB86B), false);
+        ctx.drawText(client.textRenderer, hudText("EMBER EDITION  /  GTA"), x + 20, y + 23, textColor(0xFFFFB86B), false);
 
         int cursor = x + brandWidth + 3;
         for (Stat stat : stats) {
@@ -69,12 +69,11 @@ public final class CincoHud {
             for (HudLine line : details) maxTextWidth = Math.max(maxTextWidth, client.textRenderer.getWidth(line.text));
             int panelWidth = Math.min(Math.max(210, maxTextWidth + 20), Math.max(210, screenWidth - 20));
             int panelHeight = 9 + details.size() * lineHeight;
-            ctx.fill(left - 1, top - 1, left + panelWidth + 1, top + panelHeight + 1, CincoTheme.accentDark());
-            ctx.fill(left, top, left + panelWidth, top + panelHeight, CincoTheme.panel());
-            ctx.fill(left, top, left + 3, top + panelHeight, CincoTheme.accent());
+            CincoDraw.bubble(ctx, left - 1, top - 1, left + panelWidth + 1, top + panelHeight + 1, 11, CincoTheme.accentDark(), CincoTheme.panel());
+            CincoDraw.rounded(ctx, left + 4, top + 5, left + 7, top + panelHeight - 5, 2, CincoTheme.accent());
             int textY = top + 6;
             for (HudLine line : details) {
-                ctx.drawText(client.textRenderer, hudText(line.text), left + 10, textY, textColor(line.color), false);
+                ctx.drawText(client.textRenderer, hudText(line.text), left + 14, textY, textColor(line.color), false);
                 textY += lineHeight;
             }
         }
@@ -119,8 +118,8 @@ public final class CincoHud {
     }
 
     private static int getBarWidth(MinecraftClient client, List<Stat> stats, int brandWidth) {
-        int width = brandWidth;
-        for (Stat stat : stats) width += cellWidth(client, stat);
+        int width = brandWidth + (stats.isEmpty() ? 0 : 3);
+        for (Stat stat : stats) width += cellWidth(client, stat) + 5;
         return width;
     }
 

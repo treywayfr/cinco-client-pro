@@ -59,17 +59,17 @@ public final class CincoClickGuiScreen extends Screen {
         int panelY = t + lift;
 
         // Opaque surfaces deliberately prevent the world and stars showing through text and cards.
-        c.fill(l - 2, panelY - 2, l + W + 2, panelY + H + 2, CincoTheme.accent());
-        c.fill(l, panelY, l + W, panelY + H, CincoTheme.panel());
+        CincoDraw.rounded(c, l - 2, panelY - 2, l + W + 2, panelY + H + 2, 16, CincoTheme.accent());
+        CincoDraw.rounded(c, l, panelY, l + W, panelY + H, 14, CincoTheme.panel());
         c.fill(l, panelY, l + W, panelY + 3, CincoTheme.accent());
-        c.fill(l, panelY + 3, l + SIDE, panelY + H, CincoTheme.sidebar());
+        CincoDraw.rounded(c, l + 4, panelY + 5, l + SIDE + 6, panelY + H - 5, 11, CincoTheme.sidebar());
         c.fill(l + SIDE, panelY + 3, l + SIDE + 1, panelY + H, CincoTheme.line());
 
         // Brand header
         c.fill(l + 12, panelY + 11, l + 15, panelY + 39, CincoTheme.accent());
         c.drawText(textRenderer, uiText("CINCO CLIENT"), l + 23, panelY + 12, uiColor(CincoTheme.primaryText()), false);
         c.drawText(textRenderer, uiText("PURPLE NEBULA  /  v2.3"), l + 23, panelY + 27, uiColor(CincoTheme.accent()), false);
-        c.fill(l + W - 111, panelY + 13, l + W - 14, panelY + 34, CincoTheme.panel());
+        CincoDraw.rounded(c, l + W - 111, panelY + 11, l + W - 14, panelY + 36, 12, CincoTheme.card());
         drawCenteredTextSharp(c, uiText("SHARP UI  •  READY"), l + W - 62, panelY + 20, CincoTheme.primaryText());
 
         int catY = panelY + 58;
@@ -77,7 +77,7 @@ public final class CincoClickGuiScreen extends Screen {
             int y = catY + category.ordinal() * 34;
             boolean selected = category == CincoClient.selectedCategory;
             if (selected) {
-                c.fill(l + 8, y - 5, l + SIDE - 8, y + 22, CincoTheme.accentDark());
+                CincoDraw.rounded(c, l + 8, y - 5, l + SIDE - 8, y + 22, 8, CincoTheme.accentDark());
                 c.fill(l + 8, y - 5, l + 11, y + 22, CincoTheme.accent());
             } else {
                 c.fill(l + 14, y + 7, l + 17, y + 10, CincoTheme.accentMuted());
@@ -98,7 +98,7 @@ public final class CincoClickGuiScreen extends Screen {
                 contentX, panelY + 28, uiColor(CincoTheme.secondaryText()), false);
 
         int searchX = l + W - 213, searchY = panelY + 10;
-        c.fill(searchX, searchY, searchX + 194, searchY + 23, panelColor(searchFocused ? CincoTheme.cardHover() : CincoTheme.panel()));
+        CincoDraw.rounded(c, searchX, searchY, searchX + 194, searchY + 23, 9, panelColor(searchFocused ? CincoTheme.cardHover() : CincoTheme.panel()));
         c.fill(searchX, searchY, searchX + 2, searchY + 23, searchFocused ? CincoTheme.accent() : CincoTheme.accentMuted());
         c.drawText(textRenderer, uiText((search.isEmpty() ? "SEARCH MODULES" : search.toUpperCase(Locale.ROOT))
                 + (searchFocused ? " _" : "")), searchX + 9, searchY + 7, uiColor(CincoTheme.primaryText()), false);
@@ -117,7 +117,7 @@ public final class CincoClickGuiScreen extends Screen {
             boolean hovered = mx >= contentX && mx <= l + W - 13 && my >= y && my <= y + ROW - 5;
             int cardRight = l + W - 13;
             int cardBottom = y + ROW - 5;
-            c.fill(contentX, y, cardRight, cardBottom, hovered ? CincoTheme.cardHover() : CincoTheme.card());
+            CincoDraw.rounded(c, contentX, y, cardRight, cardBottom, 9, hovered ? CincoTheme.cardHover() : CincoTheme.card());
             if (hovered) drawHoverGlow(c, contentX, y, cardRight, cardBottom, now);
             c.fill(contentX, y, contentX + 3, cardBottom, module.enabled ? CincoTheme.accent() : CincoTheme.disabled());
             c.drawText(textRenderer, uiText(module.name), contentX + 11, y + 6, uiColor(module.enabled ? CincoTheme.primaryText() : CincoTheme.secondaryText()), false);
@@ -133,7 +133,7 @@ public final class CincoClickGuiScreen extends Screen {
                     sliderX + sliderWidth + 8, y + 35, uiColor(CincoTheme.secondaryText()), false);
 
             int toggleX = l + W - 79;
-            c.fill(toggleX, y + 9, toggleX + 57, y + 26, module.enabled ? CincoTheme.enabled() : CincoTheme.disabled());
+            CincoDraw.rounded(c, toggleX, y + 8, toggleX + 57, y + 27, 9, module.enabled ? CincoTheme.enabled() : CincoTheme.disabled());
             drawCenteredTextSharp(c, uiText(module.enabled ? "ON" : "OFF"), toggleX + 28, y + 14, CincoTheme.primaryText());
         }
         c.disableScissor();

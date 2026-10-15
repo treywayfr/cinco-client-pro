@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "cinco_client",
+  "version": "${version}",
+  "name": "Cinco Client",
+  "description": "Purple-nebula client-side GUI, configurable HUD, PvP helpers, and nearby block radar.",
+  "authors": ["Trey / Cinco"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": { "client": ["gg.cinco.client.CincoClient"] },
+  "depends": {
+    "fabricloader": ">=0.16.5",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

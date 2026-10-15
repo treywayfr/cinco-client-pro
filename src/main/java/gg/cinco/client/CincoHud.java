@@ -34,7 +34,7 @@ public final class CincoHud {
 
         int screenWidth = client.getWindow().getScaledWidth();
         List<Stat> stats = buildStats(client);
-        int brandWidth = 124;
+        int brandWidth = 146;
         int availableWidth = Math.max(120, screenWidth - 16);
         while (stats.size() > 1 && getBarWidth(client, stats, brandWidth) > availableWidth) {
             stats.remove(stats.size() - 1);
@@ -44,25 +44,22 @@ public final class CincoHud {
         int y = 8;
         int h = 42;
 
-        // Solid, high-contrast panels keep the HUD crisp at different Minecraft GUI scales.
-        ctx.fill(x - 1, y - 1, x + barWidth + 1, y + h + 1, CincoTheme.accent());
-        ctx.fill(x, y, x + barWidth, y + h, CincoTheme.panel());
-        ctx.fill(x, y, x + brandWidth, y + h, CincoTheme.sidebar());
-        ctx.fill(x, y, x + barWidth, y + 2, CincoTheme.accent());
-        ctx.fill(x, y + h - 2, x + barWidth, y + h, CincoTheme.line());
+        // The HUD is now a set of clean, rounded pills instead of one long rectangle.
+        CincoDraw.bubble(ctx, x - 2, y - 2, x + barWidth + 2, y + h + 2, 20,
+                CincoTheme.accent(), CincoTheme.panel());
+        CincoDraw.rounded(ctx, x + 4, y + 4, x + brandWidth - 4, y + h - 4, 14, CincoTheme.sidebar());
+        CincoDraw.rounded(ctx, x + 10, y + 11, x + 13, y + 31, 2, CincoTheme.accent());
+        ctx.drawText(client.textRenderer, hudText("CINCO CLIENT"), x + 20, y + 8, textColor(0xFFFFC078), false);
+        ctx.drawText(client.textRenderer, hudText("EMBER EDITION  /  v2.4"), x + 20, y + 23, textColor(0xFFFFB86B), false);
 
-        ctx.fill(x + 9, y + 8, x + 12, y + 33, CincoTheme.accent());
-        ctx.drawText(client.textRenderer, hudText("CINCO CLIENT"), x + 19, y + 8, textColor(0xFFFFC078), false);
-        ctx.drawText(client.textRenderer, hudText("PURPLE NEBULA  /  v2.3"), x + 19, y + 23, textColor(0xFFFFB86B), false);
-
-        int cursor = x + brandWidth;
+        int cursor = x + brandWidth + 3;
         for (Stat stat : stats) {
             int cellWidth = cellWidth(client, stat);
-            ctx.fill(cursor, y + 8, cursor + 1, y + h - 8, CincoTheme.line());
-            int tx = cursor + 10;
-            ctx.drawText(client.textRenderer, hudText(stat.label), tx, y + 7, textColor(0xFFE88736), false);
+            CincoDraw.rounded(ctx, cursor, y + 5, cursor + cellWidth, y + h - 5, 10, CincoTheme.card());
+            int tx = cursor + 9;
+            ctx.drawText(client.textRenderer, hudText(stat.label), tx, y + 9, textColor(0xFFE88736), false);
             ctx.drawText(client.textRenderer, hudText(stat.value), tx, y + 22, textColor(stat.valueColor), false);
-            cursor += cellWidth;
+            cursor += cellWidth + 5;
         }
 
         List<HudLine> details = buildDetails(client);

@@ -10,22 +10,20 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
 /**
  * Solid local-only player cosmetics.
  *
- * Accessories are built from filled triangles rather than wireframe DEBUG_LINES. This makes wings,
- * capes, crowns, halos and horns read as actual objects instead of hollow outlines. Relative player
- * position/body yaw are also time-smoothed to keep third-person movement clean while the camera is
- * following the player.
+ * The accessory transform is sampled from Minecraft's interpolated player render transform every
+ * frame. There is deliberately no second smoothing filter here: a second filter makes cosmetics lag
+ * behind the player/camera while walking, jumping or turning. Using the same tick interpolation as
+ * vanilla keeps the accessory rigidly attached to the rendered player while its own cosmetic motion
+ * remains smooth and independent.
  */
 public final class CustomAccessoryRenderer {
-    private static Vec3d smoothRelative;
-    private static double smoothYaw;
-    private static long lastFrameNanos;
-
     private CustomAccessoryRenderer() {}
 
     public static void render(WorldRenderContext context) {
@@ -41,12 +39,14 @@ public final class CustomAccessoryRenderer {
         double t = System.currentTimeMillis() / 1000.0 * motion;
         int tier = StarPerformance.animationTier(client);
 
+        // Match vanilla's render interpolation exactly. This removes the old one-frame/rubber-band
+        // delay that appeared when the camera turned or the player moved vertically.
+        float tickDelta = context.tickCounter().getTickDelta(false);
         Vec3d camera = context.camera().getPos();
-        Vec3d targetRelative = client.player.getPos().subtract(camera);
-        double targetYaw = Math.toRadians(client.player.getBodyYaw());
-        smoothTransform(targetRelative, targetYaw);
-        Vec3d p = smoothRelative == null ? targetRelative : smoothRelative;
-        double yaw = smoothYaw;
+        Vec3d renderedPlayer = client.player.getLerpedPos(tickDelta);
+        Vec3d p = renderedPlayer.subtract(camera);
+        float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, client.player.prevBodyYaw, client.player.bodyYaw);
+        double yaw = Math.toRadians(bodyYaw);
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -82,31 +82,10 @@ public final class CustomAccessoryRenderer {
         RenderSystem.disableBlend();
     }
 
-    private static void smoothTransform(Vec3d target, double targetYaw) {
-        long now = System.nanoTime();
-        double dt = lastFrameNanos == 0L ? 1.0 / 60.0 : Math.min(0.10, (now - lastFrameNanos) / 1_000_000_000.0);
-        lastFrameNanos = now;
-        double alpha = 1.0 - Math.exp(-dt * 24.0);
-        if (smoothRelative == null || smoothRelative.squaredDistanceTo(target) > 16.0) smoothRelative = target;
-        else smoothRelative = smoothRelative.lerp(target, alpha);
-
-        if (!Double.isFinite(smoothYaw)) smoothYaw = targetYaw;
-        double delta = wrapRadians(targetYaw - smoothYaw);
-        if (Math.abs(delta) > Math.PI * 0.75) smoothYaw = targetYaw;
-        else smoothYaw += delta * alpha;
-    }
-
-    private static double wrapRadians(double a) {
-        while (a > Math.PI) a -= Math.PI * 2.0;
-        while (a < -Math.PI) a += Math.PI * 2.0;
-        return a;
-    }
-
     private static void angelWings(BufferBuilder b, Matrix4f m, double x,double y,double z,double yaw,
                                    double s,double t,int main,int light,int shade) {
         double flap = Math.sin(t * 1.65) * 0.055;
         for (int side : new int[]{-1, 1}) {
-            // Broad filled feather fan behind the shoulders.
             double[] root = {0.16*side,1.47,-0.10};
             double[] upper = {0.55*side,1.72+flap,-0.17};
             double[] tip = {1.18*side,1.50+flap*0.8,-0.27};
@@ -118,7 +97,6 @@ public final class CustomAccessoryRenderer {
             triLocal(b,m,x,y,z,yaw,root,mid,low,s,main);
             triLocal(b,m,x,y,z,yaw,root,low,inner,s,shade);
 
-            // Layered solid feather blades create depth without wireframe clutter.
             for (int i=0;i<5;i++) {
                 double fy = 1.40 - i*0.13;
                 double outer = 1.03 - i*0.085;
@@ -232,7 +210,6 @@ public final class CustomAccessoryRenderer {
                         new double[]{x1,y1,z11},new double[]{x0,y1,z10},s,c);
             }
         }
-        // Filled shoulder clasp/upper cape keeps it visually attached to the character.
         quadLocal(b,m,x,y,z,yaw,
                 new double[]{-0.32,1.54,-0.12},new double[]{0.32,1.54,-0.12},
                 new double[]{0.29,1.42,-0.15},new double[]{-0.29,1.42,-0.15},s,light);
@@ -261,8 +238,6 @@ public final class CustomAccessoryRenderer {
                                            int seg,double s,double rotation,int main,int light) {
         for(int i=0;i<seg;i++) {
             double a0=i*Math.PI*2/seg,a1=(i+1)*Math.PI*2/seg;
-            double[] c0=verticalPoint(cx,cy,cz,rx,ry,a0,rotation);
-            double[] c1=verticalPoint(cx,cy,cz,rx,ry,a1,rotation);
             double[] o0=verticalPoint(cx,cy,cz,rx+halfWidth,ry+halfWidth,a0,rotation);
             double[] o1=verticalPoint(cx,cy,cz,rx+halfWidth,ry+halfWidth,a1,rotation);
             double[] i0=verticalPoint(cx,cy,cz,Math.max(0.05,rx-halfWidth),Math.max(0.05,ry-halfWidth),a0,rotation);

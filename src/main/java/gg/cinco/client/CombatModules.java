@@ -346,7 +346,8 @@ public final class CombatModules {
         if (allowPlace && !rightDown) return;
         if (!allowPlace && !enabled("Crystal Breaker")) return;
         if (crystalCooldown > 0) return;
-        double range = 4.5;
+        ClientModule crystalSettings = CincoClient.findModule(allowPlace ? "Auto Crystal" : "Crystal Breaker");
+        double range = allowPlace && crystalSettings != null ? crystalSettings.setting3 : 4.5;
         EndCrystalEntity nearest = null;
         double best = range * range;
         for (EndCrystalEntity entity : client.world.getEntitiesByClass(EndCrystalEntity.class,

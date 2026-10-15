@@ -13,8 +13,8 @@ Cinco Client has an animated purple-star ClickGUI, a global HSV color wheel, bol
 Install that JAR and Fabric API for Minecraft 1.21.1 in `%appdata%\.minecraft\mods`. Launch the Fabric 1.21.1 profile.
 
 ## Controls
-- **Right Shift:** open/close GUI
-- **H:** toggle HUD
+- **Right Shift:** open/close GUI by default (remappable under SETTINGS → Open GUI)
+- **H:** toggle HUD by default (remappable under SETTINGS → Toggle HUD)
 - **Mouse wheel:** scroll modules
 - **Left-click a module card:** toggle it (the Color Wheel card opens the picker)
 - **Drag a card slider:** change its main setting
@@ -36,7 +36,7 @@ Anchor Macro starts with **G**. When the module is enabled, its configured key r
 - **World:** Base Finder, Container Finder, Sus Chunk Finder, Portal Finder, Spawner Finder, Shulker Finder, Stash Radar, Chunk Density, Nearby Player List, Block Notes
 - **Utility:** Config Auto-Save, Session Timer, Keystrokes, CPS, Safe Logout Reminder, Auto Refill, Inventory Checklist
 - **Practice:** Anchor Practice Timer, Reach Trainer, Cooldown Coach, Surround Trainer, Pearl Reminder
-- **Settings:** Color Wheel, Bold Typeface, GUI Animation, Panel Opacity
+- **Settings:** Color Wheel, Open GUI keybind, Toggle HUD keybind, Bold Typeface, GUI Animation, Panel Opacity
 
 Some entries are configuration/visual foundations. Check each module in the detail screen for its current options.
 

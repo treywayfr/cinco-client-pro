@@ -28,10 +28,10 @@ public final class StorageEspWorldRenderer {
 
         int style = style();
         Vec3d camera = context.camera().getPos();
-        Vec3d playerEye = client.player.getEyePos();
-        float playerX = (float) (playerEye.x - camera.x);
-        float playerY = (float) (playerEye.y - camera.y);
-        float playerZ = (float) (playerEye.z - camera.z);
+        Vec3d anchor = crosshairAnchor(camera, context.camera().getYaw(), context.camera().getPitch());
+        float anchorX = (float) (anchor.x - camera.x);
+        float anchorY = (float) (anchor.y - camera.y);
+        float anchorZ = (float) (anchor.z - camera.z);
         double range = module.setting;
         double rangeSq = range * range;
 
@@ -42,10 +42,10 @@ public final class StorageEspWorldRenderer {
         RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.lineWidth(switch (style) {
-            case 2 -> 2.05F; // Neon
-            case 3 -> 1.0F;  // Minimal
-            case 4 -> 2.45F; // Bold
-            default -> 1.35F; // Clean
+            case 2 -> 2.05F;
+            case 3 -> 1.0F;
+            case 4 -> 2.45F;
+            default -> 1.35F;
         });
 
         BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
@@ -87,8 +87,10 @@ public final class StorageEspWorldRenderer {
             if (setting.tracer) {
                 int tracerAlpha = style == 3 ? 82 : style == 2 ? 175 : 135;
                 int tracer = withAlpha(setting.color, Math.min(tracerAlpha, (outline >>> 24) & 0xFF));
+                // Static block center -> one shared camera-forward endpoint. This keeps every tracer
+                // converging at the crosshair instead of wobbling toward the player's feet/eye.
                 emitLine(buffer, matrix, (float) dx, (float) dy, (float) dz,
-                        playerX, playerY, playerZ, tracer);
+                        anchorX, anchorY, anchorZ, tracer);
             }
             rendered++;
         }
@@ -102,6 +104,17 @@ public final class StorageEspWorldRenderer {
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
+    }
+
+    private static Vec3d crosshairAnchor(Vec3d camera, float yawDegrees, float pitchDegrees) {
+        double yaw = Math.toRadians(yawDegrees);
+        double pitch = Math.toRadians(pitchDegrees);
+        double cosPitch = Math.cos(pitch);
+        Vec3d forward = new Vec3d(
+                -Math.sin(yaw) * cosPitch,
+                -Math.sin(pitch),
+                Math.cos(yaw) * cosPitch);
+        return camera.add(forward.multiply(0.34));
     }
 
     private static int style() {

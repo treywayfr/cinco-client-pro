@@ -1,46 +1,63 @@
-# CINCO CLIENT — Ember Edition 2.3.0
+# ★ STAR CLIENT 2.3.0
 
 **Target:** Minecraft Java Edition 1.21.1 · Fabric · Java 21
 
-Cinco Client combines an animated purple-star ClickGUI, the global HSV color wheel, bold themeable typography, expandable per-module settings, saved keyboard bindings, PvP quick-actions, local HUDs, FOV control, animated sky presets, and a generated local battle-royale-inspired skin.
+Star Client is a performance-focused custom Minecraft client with a fully animated ClickGUI, selectable UI font profiles, configurable HSV theme, draggable Screen GUI widgets, PvP helpers, Free Cam, custom Player Changer models, player/storage/light ESP, DonutSMP-style loaded-chunk tools, and adaptive rendering controls.
 
 ## Build and install (Windows)
-1. Install JDK 21: https://adoptium.net/temurin/releases/?version=21 (Windows x64, JDK, version 21, MSI installer).
+1. Install JDK 21 from Adoptium Temurin (Windows x64 JDK 21).
 2. Download the repository ZIP and extract it.
-3. Open the extracted folder and double-click `build-cinco.bat`. It uses Gradle 8.10.2 if installed, or downloads it into the local `.tools` folder.
-4. After `BUILD SUCCESSFUL`, find `build\libs\cinco-client-2.3.0.jar`.
-5. Put the JAR and Fabric API for Minecraft 1.21.1 in `%appdata%\.minecraft\mods` and launch the Fabric 1.21.1 profile.
+3. Run `build-star.bat` (or `build-star.ps1`). The helper uses Gradle 8.10.2 if installed or downloads it into the local `.tools` folder.
+4. After `BUILD SUCCESSFUL`, find `build\libs\star-client-2.3.0.jar`.
+5. Put the JAR and Fabric API for Minecraft 1.21.1 in `%appdata%\.minecraft\mods`, then launch Fabric 1.21.1.
 
-## Controls
-- **Right Shift:** open the GUI by default (remappable via SETTINGS → Open GUI).
-- **H:** toggle the HUD by default (remappable via SETTINGS → Toggle HUD).
-- **Right-click a module card:** open expanded settings.
-- **Click its keybind field, then press a key:** assign a module key; Delete clears it and Escape cancels.
-- **Click the Color Wheel card:** open the global hue/saturation/brightness picker.
-- **Mouse wheel:** scroll modules; **/** focuses module search; **Escape** closes screens.
-- **Left-click a module card:** toggle it; drag sliders to change its main setting.
+## Main controls
+- **Right Shift:** open Star Client by default.
+- **H:** toggle the Screen GUI/HUD master switch.
+- **C:** Free Cam by default.
+- **Right-click a module:** expanded settings.
+- **Middle-click a module:** favorite/unfavorite it.
+- **Search:** click the search box and type to filter modules.
+- **Open Minecraft chat:** enabled Screen GUI widgets enter edit mode. Drag a widget with left click, hover it and use the mouse wheel to resize it, or click its `×` to disable that widget.
+- Module settings and keybinds persist in the client config; HUD positions/scales persist in `star-hud.json`.
 
-Module toggles, all three settings per module, and keyboard bindings are saved to `.minecraft/config/cinco-client.json`.
+## Interface
+Star Client uses a compact two-column module layout with smooth hover, click, toggle, category, search-focus and open/close animations. Performance Mode automatically shortens or removes decorative animation and reduces ESP/cosmetic rendering when FPS drops below your chosen target.
 
-## PvP modules
-- **Anchor Macro (G by default):** enable it, aim at a placeable block (or an existing respawn anchor), then press its chosen key. The macro places the anchor when needed, switches to glowstone to charge it, waits for the charge to register, then selects a totem and activates it. It refuses to run in the Nether because respawn anchors behave differently there. You need an anchor, glowstone and totem in the hotbar.
-- **Auto Crystal:** enable it, hold end crystals, aim at an obsidian/bedrock base, and hold right-click. It attempts repeated placement while the button is held and rapidly attacks nearby crystals during that action.
-- **Crystal Breaker:** attacks nearby crystals while enabled.
-- **Key Pearl (V by default):** enable it and press its assigned key. It selects a hotbar pearl and throws it, optionally restoring your previous slot after the configurable delay.
-- **Auto Totem, Auto Eat, Auto Safe Anchor, reminders and practice helpers:** adjustable module settings; test gameplay automation in a private world first.
+Available interface font profiles include **Minecraft Ten**, **Clean Sans**, **Classic Bold**, and **Compact UI** using bundled Minecraft font renderers so the client does not depend on external system fonts.
 
-## Visual modules
-- **FOV Changer:** sets FOV while enabled, with an optional smooth transition.
-- **Sky Changer:** animated presets: **Sunset, Aurora, Cyberpunk, Cosmic, Ember**. Speed and intensity are configurable; sky/cloud colors are client-side.
-- **Fortnite Style:** swaps only your local player's rendered skin texture to a generated battle-royale-inspired tactical outfit. Outfit style, suit palette and visor are configurable. It does not alter your actual Mojang account skin or other players' skins.
-- **Hover Glow:** animated accent glow on hovered module cards, detail sliders and color controls. Intensity, pulse speed and width are adjustable.
-- **Color Wheel:** changes hue, saturation and brightness across the ClickGUI, module editors, HUD panels and accents.
-- **HUD and render modules:** FPS, coordinates, direction, armor, potion count, click rate, keystrokes, crosshair guide and nearby-block readouts.
+The global Color Wheel controls the client palette. Star Client also supports optional soft GUI click sounds, favorites, and quick profiles for **Custom**, **PvP**, **DonutSMP**, **Visual**, and **Performance** setups.
 
-## World scanning notes
-Base Finder, Container Finder, Sus Chunk Finder and related scanners inspect only block states already present in the client-loaded area. They don't load distant chunks, reveal unloaded bases, or bypass server protections.
+## PvP / utility highlights
+- **Auto Crystal:** while enabled, hold an end crystal in the main hand, look directly at obsidian, and hold right-click. It only works on the exact targeted obsidian rather than acting like a crystal aura.
+- **Anchor Macro:** one-key anchor placement/charge/detonation flow. It handles replaceable blocks such as fire and water and uses a totem from the hotbar for detonation rather than relying on the offhand.
+- **Key Pearl:** selects and throws a hotbar pearl with configurable restore behavior.
+- **Fast XP:** hold XP bottles and right-click for rapid client-side use attempts, up to one use attempt per client tick at the fastest setting.
+- **Flight:** client-side directional flight; servers may still reject movement that their rules do not allow.
+- **Free Cam:** moves only a detached local render camera through already loaded terrain while your real player position remains untouched by the Free Cam controller.
 
-## Important notes
-Gameplay automation may consume items, cause self-damage, or violate server rules. Use it only where your server rules permit it. The generated skin is a client-side visual override, not an account-skin upload. Some less-used modules remain HUD/config foundations rather than full gameplay implementations.
+## Player Changer
+Player Changer replaces the local blocky player render with custom low-poly characters. Current choices include:
+- Franklin / GTA V-inspired streetwear character
+- Spiky cartoon kid
+- Anime heroine
+- Tung Tung Sahur-inspired wooden character
 
-GitHub Actions builds the mod and publishes the JAR as an artifact when compilation succeeds.
+Close-range detail uses automatic level-of-detail rendering to protect FPS. Player Changer also has **First-person hands**, which replaces the vanilla first-person arm with a hand/sleeve matching the selected character and palette. The settings screen includes a live character preview.
+
+## ESP and world visuals
+- **Player ESP:** through-wall player glow plus clean 3D box/corner-box geometry and optional compact names/distances.
+- **Storage ESP:** Minecraft-selection-style through-wall outlines around storage blocks. Chests, barrels, shulkers, ender chests, hoppers, furnaces, dispensers/droppers and spawners each have their own highlight toggle, tracer toggle and color.
+- **Storage tracers:** connect the storage block center to the real player's eye position, including while Free Cam is detached.
+- **Light Finder:** highlights likely underground artificial-light pockets using loaded-world block-light data.
+- **ESP Style:** shared **Clean**, **Neon**, **Minimal**, and **Bold** visual presets for player, storage and light ESP.
+- **Fullbright:** strong lightmap override plus extended configurable gamma.
+- **Sus Chunk Finder:** ranks already-loaded chunks using storage/utility density and underground light evidence. It does not request or reveal unloaded chunks.
+
+## Performance
+Star Client keeps the requested 8× supersampled rounded-edge quality, but caches corner coverage by radius and draws rounded rows as spans instead of rebuilding colored AA textures every frame. Performance Mode also reduces star particles, decorative animation, ESP limits and light-render load when FPS falls below the configured target.
+
+## Notes
+World scanners use only data Minecraft has already loaded locally; they do not load distant chunks or bypass server protections. Gameplay automation may consume items, cause self-damage, or violate server rules, so use it only where permitted.
+
+GitHub Actions builds **Star Client** and publishes `star-client-2.3.0` when compilation succeeds.

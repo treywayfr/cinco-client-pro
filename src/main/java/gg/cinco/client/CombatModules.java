@@ -71,7 +71,7 @@ public final class CombatModules {
         if (!(client.crosshairTarget instanceof BlockHitResult hit)
                 || hit.getType() != HitResult.Type.BLOCK
                 || !client.world.getBlockState(hit.getBlockPos()).isOf(Blocks.RESPAWN_ANCHOR)) {
-            notify(client, "Aim at a placed respawn anchor, then press G.");
+            notify(client, "Aim at a placed respawn anchor, then press this module's configured key.");
             return;
         }
         activeAnchor = hit.getBlockPos().toImmutable();
@@ -131,7 +131,7 @@ public final class CombatModules {
             }
             int totemSlot = findHotbarItem(client, Items.TOTEM_OF_UNDYING);
             if (totemSlot < 0) {
-                notify(client, "Anchor is charged. Put a totem in your hotbar, then press G again to activate.");
+                notify(client, "Anchor is charged. Put a totem in your hotbar and run the configured key again to activate.");
                 resetAnchor();
                 return;
             }

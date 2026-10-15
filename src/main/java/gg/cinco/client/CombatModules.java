@@ -55,7 +55,7 @@ public final class CombatModules {
         if (anchorCooldown > 0) anchorCooldown--;
         tickPearlRestore(client);
 
-        if (enabled("Auto Crystal") || enabled("Crystal Breaker")) tickAutoCrystal(client, enabled("Auto Crystal"));
+        if (enabled("Auto Crystal")) tickAutoCrystal(client, true);
         tickAnchorSequence(client);
         tickAutoTotem(client);
         tickAutoEat(client);

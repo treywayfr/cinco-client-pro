@@ -9,7 +9,9 @@
     "CombatModulesMixin",
     "CincoClientMixin",
     "EntityGlowMixin",
-    "LightmapFullbrightMixin"
+    "LightmapFullbrightMixin",
+    "GameRendererFullbrightMixin",
+    "FreeCamPlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -12,7 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /** Compact Star Client per-module settings screen. */
-public final class ModuleSettingsScreen extends Screen {
+public final class ModuleSettingsScreen extends StarLegacyScreen {
     private static final int W = 520;
     private static final int H = 342;
     private final ClientModule module;

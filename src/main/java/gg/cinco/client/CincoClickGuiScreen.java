@@ -68,7 +68,7 @@ public final class CincoClickGuiScreen extends Screen {
         // Brand header
         c.fill(l + 12, panelY + 11, l + 15, panelY + 39, CincoTheme.accent());
         c.drawText(textRenderer, uiText("CINCO CLIENT"), l + 23, panelY + 12, uiColor(CincoTheme.primaryText()), false);
-        c.drawText(textRenderer, uiText("PURPLE NEBULA  /  v2.2"), l + 23, panelY + 27, uiColor(CincoTheme.accent()), false);
+        c.drawText(textRenderer, uiText("PURPLE NEBULA  /  v2.3"), l + 23, panelY + 27, uiColor(CincoTheme.accent()), false);
         c.fill(l + W - 111, panelY + 13, l + W - 14, panelY + 34, CincoTheme.panel());
         drawCenteredTextSharp(c, uiText("SHARP UI  •  READY"), l + W - 62, panelY + 20, CincoTheme.primaryText());
 

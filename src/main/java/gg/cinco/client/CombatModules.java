@@ -81,7 +81,7 @@ public final class CombatModules {
         anchorWait = 0;
         safeGlowstonePlaced = false;
         anchorStage = previousCharges > 0 ? 2 : 1;
-        if (previousCharges > 0) anchorWait = Math.max(0, moduleSettingInt("Anchor Macro", 3));
+        if (previousCharges > 0) anchorWait = Math.max(0, (int) moduleSetting("Anchor Macro", 3));
         notify(client, previousCharges > 0 ? "Anchor sequence: activating charged anchor..." : "Anchor sequence started.");
     }
 
@@ -117,7 +117,7 @@ public final class CombatModules {
             client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, anchorHit);
             client.player.swingHand(Hand.MAIN_HAND);
             anchorStage = 2;
-            anchorWait = anchorDelay;
+            anchorWait = anchorDelay + Math.max(0, (int) moduleSetting("Anchor Macro", 3));
             anchorRetries++;
             return;
         }
@@ -126,7 +126,7 @@ public final class CombatModules {
             int charges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
             if (charges == 0 && previousCharges == 0 && anchorRetries < moduleSettingInt("Anchor Macro", 2)) {
                 anchorStage = 1;
-                anchorWait = Math.max(0, moduleSettingInt("Anchor Macro", 3));
+                anchorWait = anchorDelay;
                 return;
             }
             int totemSlot = findHotbarItem(client, Items.TOTEM_OF_UNDYING);

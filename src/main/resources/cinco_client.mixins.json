@@ -7,7 +7,6 @@
     "ClientWorldSkyMixin",
     "PlayerEntityRendererMixin",
     "PlayerChangerArmMixin",
-    "HandViewMixin",
     "CombatModulesMixin",
     "CincoClientMixin",
     "EntityGlowMixin",
@@ -16,10 +15,12 @@
     "SimpleOptionAccessor",
     "PlayerChangerAliasMixin",
     "ModuleSettingsMixin",
+    "ClientModuleTuningMixin",
     "FreeCamMouseMixin",
     "FreeCamMovementMixin",
     "ChatHudEditorMixin",
     "StarActionBarMixin",
+    "HandViewMixin",
     "StarGuiBackgroundMixin"
   ],
   "injectors": {

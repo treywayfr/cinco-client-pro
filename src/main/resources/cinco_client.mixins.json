@@ -18,6 +18,7 @@
     "ModuleSettingsMixin",
     "ClientModuleTuningMixin",
     "PatchModuleCleanupMixin",
+    "PvpFolderFilterMixin",
     "FreeCamMouseMixin",
     "FreeCamMovementMixin",
     "ChatHudEditorMixin",

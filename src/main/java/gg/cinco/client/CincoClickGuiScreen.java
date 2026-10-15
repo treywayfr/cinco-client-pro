@@ -20,8 +20,8 @@ public final class CincoClickGuiScreen extends Screen {
     private static final int W = 700;
     private static final int H = 420;
     private static final int SIDE = 126;
-    private static final int CARD_H = 58;
-    private static final int GAP = 8;
+    private static final int CARD_H = 56;
+    private static final int GAP = 7;
     private static final Set<String> FAVORITES = new LinkedHashSet<>();
 
     private int scroll;
@@ -79,21 +79,19 @@ public final class CincoClickGuiScreen extends Screen {
             }
         }
 
-        c.fill(0, 0, width, height, 0xEE06050A);
+        c.fill(0, 0, width, height, 0xF0020204);
         drawStars(c, now, delta);
 
         int l = left(), t = top();
         int py = t + Math.round((1f - open) * 18f);
 
-        // One shadow for the entire interface. Performance tiers can remove it before FPS tanks.
         if (StarPerformance.allowMenuShadow(client))
-            CincoDraw.softShadow(c, l, py, l + W, py + H, 18, CincoTheme.accent(), Math.round(52 * open));
-        CincoDraw.bubble(c, l, py, l + W, py + H, 18, CincoTheme.accentMuted(), 0xF20B0911);
-        CincoDraw.rounded(c, l + 6, py + 6, l + SIDE, py + H - 6, 14, 0xF00F0C17);
+            CincoDraw.softShadow(c, l, py, l + W, py + H, 18, CincoTheme.accent(), Math.round(42 * open));
+        CincoDraw.bubble(c, l, py, l + W, py + H, 18, 0xFF322044, 0xF508080C);
+        CincoDraw.rounded(c, l + 6, py + 6, l + SIDE, py + H - 6, 14, 0xF008080D);
 
-        // Brand block.
-        CincoDraw.rounded(c, l + 14, py + 14, l + 46, py + 46, 12, CincoTheme.accentDark());
-        c.drawCenteredTextWithShadow(textRenderer, ui("★", true), l + 30, py + 25, CincoTheme.starGold());
+        CincoDraw.rounded(c, l + 14, py + 14, l + 46, py + 46, 12, 0xFF1C102B);
+        c.drawCenteredTextWithShadow(textRenderer, ui("★", true), l + 30, py + 25, CincoTheme.accentLight());
         c.drawText(textRenderer, ui("STAR", true), l + 55, py + 17, 0xFFFFFFFF, false);
         c.drawText(textRenderer, ui("CLIENT", false), l + 55, py + 31, CincoTheme.secondaryText(), false);
 
@@ -105,39 +103,39 @@ public final class CincoClickGuiScreen extends Screen {
                     selected ? 1f : 0f, StarAnimations.CATEGORY_MS, StarAnimations.Curve.CUBIC_IN_OUT, true, now);
             if (selectedAnim > 0.01f) {
                 CincoDraw.rounded(c, l + 11, y, l + SIDE - 10, y + 24, 9,
-                        withAlpha(CincoTheme.accentDark(), Math.round(50 + 155 * selectedAnim)));
+                        withAlpha(CincoTheme.accentDark(), Math.round(42 + 150 * selectedAnim)));
                 int railH = Math.max(2, Math.round(10f * selectedAnim));
                 int cy = y + 12;
                 CincoDraw.rounded(c, l + 15, cy - railH / 2, l + 18, cy + (railH + 1) / 2,
-                        2, mix(CincoTheme.magenta(), CincoTheme.cyan(), selectedAnim));
+                        2, CincoTheme.accentLight());
             }
             c.drawText(textRenderer, ui(category.label, selected), l + 25, y + 8,
-                    mix(0xFF827C91, 0xFFFFFFFF, selectedAnim), false);
+                    mix(0xFF77717F, 0xFFFFFFFF, selectedAnim), false);
         }
 
         int enabled = (int) CincoClient.MODULES.stream().filter(m -> m.enabled).count();
-        CincoDraw.rounded(c, l + 12, py + H - 55, l + SIDE - 11, py + H - 13, 11, 0xCC171220);
-        c.drawText(textRenderer, ui("★  " + enabled + " ACTIVE", true), l + 20, py + H - 43, CincoTheme.starGold(), false);
+        CincoDraw.rounded(c, l + 12, py + H - 55, l + SIDE - 11, py + H - 13, 11, 0xD00A0A0E);
+        c.drawText(textRenderer, ui("★  " + enabled + " ACTIVE", true), l + 20, py + H - 43, CincoTheme.accentLight(), false);
         ClientModule perf = CincoClient.findModule("Performance Mode");
         String perfText = perf != null && perf.enabled ? "ADAPTIVE FPS" : "QUALITY MODE";
-        c.drawText(textRenderer, ui(perfText, false), l + 20, py + H - 28, 0xFF8C849A, false);
+        c.drawText(textRenderer, ui(perfText, false), l + 20, py + H - 28, 0xFF807988, false);
 
         int contentX = l + SIDE + 16;
         int contentRight = l + W - 14;
         c.drawText(textRenderer, ui(CincoClient.selectedCategory.label, true), contentX, py + 17, 0xFFFFFFFF, false);
         c.drawText(textRenderer, ui("LMB toggle  •  RMB settings  •  MMB ★ favorite", false),
-                contentX, py + 32, 0xFF827C91, false);
+                contentX, py + 32, 0xFF77717F, false);
 
         int searchW = 180, searchX = contentRight - searchW, searchY = py + 12;
         float sf = searchAnim.to(searchFocused ? 1f : 0f,
                 StarAnimations.duration(client, StarAnimations.SEARCH_FOCUS_MS, false),
                 StarAnimations.Curve.CUBIC_OUT, now);
         CincoDraw.bubble(c, searchX, searchY, contentRight, searchY + 29, 11,
-                mix(0xFF2A2434, CincoTheme.cyan(), sf * 0.70f),
-                mix(0xFF120F18, 0xFF181020, sf));
+                mix(0xFF25222C, CincoTheme.accent(), sf * 0.72f),
+                mix(0xFF09090D, 0xFF100B17, sf));
         String s = search.isEmpty() ? "⌕ SEARCH MODULES" : search.toUpperCase(Locale.ROOT) + (searchFocused ? "  _" : "");
         c.drawText(textRenderer, ui(s, false), searchX + 10, searchY + 10,
-                mix(0xFF817A8C, 0xFFF5EFFF, sf), false);
+                mix(0xFF7C7584, 0xFFF5F1FF, sf), false);
 
         List<ClientModule> list = filteredModules();
         int viewportTop = py + 57;
@@ -171,39 +169,35 @@ public final class CincoClickGuiScreen extends Screen {
             float click = StarAnimations.clickPulse(clickAt.getOrDefault(module.name, 0L), now, client);
             int drawY = y - Math.round(h * 2f) + Math.round(click);
 
-            int border = mix(0xFF282231, CincoTheme.magenta(), h * 0.72f);
-            border = mix(border, CincoTheme.starGold(), click * 0.20f);
-            int fill = mix(0xE5120F18, 0xF0211728, h);
+            int border = mix(0xFF25222B, CincoTheme.accent(), h * 0.70f);
+            border = mix(border, CincoTheme.accentLight(), click * 0.18f);
+            int fill = mix(0xF00C0C10, 0xF014101A, h);
             CincoDraw.bubble(c, x, drawY, x + cardW, drawY + CARD_H, 12, border, fill);
 
-            // Thin animated status rail instead of expensive per-card glows.
             CincoDraw.rounded(c, x + 7, drawY + 8, x + 10, drawY + CARD_H - 8, 2,
-                    mix(0xFF373140, CincoTheme.cyan(), e));
+                    mix(0xFF302D35, CincoTheme.accentLight(), e));
 
             boolean favorite = FAVORITES.contains(module.name);
             c.drawText(textRenderer, ui((favorite ? "★ " : "") + module.name, true), x + 17, drawY + 8,
-                    mix(0xFFAAA4B2, 0xFFFFFFFF, Math.max(h, e)), false);
-            c.drawText(textRenderer, ui(trim(module.description, 30), false), x + 17, drawY + 22,
-                    mix(0xFF716B7B, 0xFFAAA2B5, h), false);
+                    mix(0xFFA39DAA, 0xFFFFFFFF, Math.max(h, e)), false);
+            c.drawText(textRenderer, ui(trim(module.description, 31), false), x + 17, drawY + 22,
+                    mix(0xFF6F6975, 0xFFA29AAA, h), false);
 
-            // Toggle: 175 ms cubic transition; no overshoot so the knob never escapes its track.
-            int sw = 34, sx = x + cardW - sw - 10, sy = drawY + 9;
+            int sw = 34, sx = x + cardW - sw - 10, sy = drawY + 8;
             CincoDraw.rounded(c, sx, sy, sx + sw, sy + 15, 8,
-                    mix(0xFF312B38, CincoTheme.enabled(), e));
+                    mix(0xFF2A2730, CincoTheme.enabled(), e));
             int knob = sx + 3 + Math.round(e * (sw - 14));
             CincoDraw.rounded(c, knob, sy + 3, knob + 9, sy + 12, 5, 0xFFFFFFFF);
 
-            // Compact main-setting slider. Direct dragging remains immediate; visual emphasis is cheap.
-            int sliderX = x + 17, sliderY = drawY + 43, sliderW = cardW - 34;
-            CincoDraw.rounded(c, sliderX, sliderY, sliderX + sliderW, sliderY + 3, 2, 0xFF2E2935);
+            int sliderX = x + 17, sliderY = drawY + 41, sliderW = cardW - 34;
+            CincoDraw.rounded(c, sliderX, sliderY, sliderX + sliderW, sliderY + 3, 2, CincoTheme.sliderTrack());
             double f = (module.setting - module.min) / Math.max(0.0001, module.max - module.min);
             int fillX = sliderX + (int) Math.round(Math.max(0, Math.min(1, f)) * sliderW);
             if (fillX > sliderX) CincoDraw.rounded(c, sliderX, sliderY, fillX, sliderY + 3, 2, CincoTheme.accent());
-            CincoDraw.rounded(c, fillX - 2, sliderY - 2, fillX + 3, sliderY + 5, 3,
-                    mix(CincoTheme.accentLight(), CincoTheme.starGold(), click * 0.30f));
+            CincoDraw.rounded(c, fillX - 2, sliderY - 2, fillX + 3, sliderY + 5, 3, CincoTheme.accentLight());
             String settingText = shortSetting(module);
             int tw = textRenderer.getWidth(settingText);
-            c.drawText(textRenderer, ui(settingText, false), x + cardW - tw - 10, drawY + 32, 0xFF948DA0, false);
+            c.drawText(textRenderer, ui(settingText, false), x + cardW - tw - 10, drawY + 31, 0xFF8E8795, false);
         }
         c.disableScissor();
     }
@@ -232,10 +226,11 @@ public final class CincoClickGuiScreen extends Screen {
             Star star = stars.get(i);
             if (!lowMotion) star.y += star.speed * Math.max(0.6, delta);
             if (star.y > height) star.y = 0;
-            int alpha = lowMotion ? 42 : 35 + (int) (((Math.sin(now / 620.0 + star.phase) + 1.0) * 0.5) * 90);
+            int alpha = lowMotion ? 48 : 42 + (int) (((Math.sin(now / 620.0 + star.phase) + 1.0) * 0.5) * 96);
             int x = (int) (star.x % Math.max(1, width));
             int y = (int) star.y;
-            c.fill(x, y, x + 1, y + 1, (alpha << 24) | (CincoTheme.accentLight() & 0x00FFFFFF));
+            int purple = (i & 1) == 0 ? CincoTheme.accent() : CincoTheme.accentLight();
+            c.fill(x, y, x + 1, y + 1, (alpha << 24) | (purple & 0x00FFFFFF));
         }
     }
 
@@ -321,7 +316,7 @@ public final class CincoClickGuiScreen extends Screen {
                 MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(module, this));
                 return true;
             }
-            int sliderX = x + 17, sliderY = y + 37, sliderW = cardW - 34;
+            int sliderX = x + 17, sliderY = y + 35, sliderW = cardW - 34;
             if (mx >= sliderX - 4 && mx <= sliderX + sliderW + 4 && my >= sliderY && my <= y + CARD_H) {
                 draggingSlider = true;
                 draggingModule = module;

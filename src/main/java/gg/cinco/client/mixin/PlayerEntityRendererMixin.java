@@ -14,8 +14,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(PlayerEntityRenderer.class)
 public abstract class PlayerEntityRendererMixin {
     @Inject(method = "getTexture", at = @At("HEAD"), cancellable = true)
-    private void cinco$localFortniteSkin(AbstractClientPlayerEntity player, CallbackInfoReturnable<Identifier> cir) {
-        var module = CincoClient.findModule("Fortnite Style");
+    private void cinco$localGtaSkin(AbstractClientPlayerEntity player, CallbackInfoReturnable<Identifier> cir) {
+        var module = CincoClient.findModule("GTA Skin Changer");
         if (module != null && module.enabled && player == MinecraftClient.getInstance().player) {
             cir.setReturnValue(FortniteSkinTexture.getTexture());
         }

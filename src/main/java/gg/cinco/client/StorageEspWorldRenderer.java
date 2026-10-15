@@ -40,9 +40,12 @@ public final class StorageEspWorldRenderer {
         BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getPositionMatrix();
 
+        // Findings are distance-sorted, so a hard cap preserves the nearest/useful ESP while
+        // preventing giant stashes from pushing thousands of line vertices every frame.
         int rendered = 0;
+        final int renderCap = 220;
         for (BlockPos pos : EnhancedWorldScan.storage()) {
-            if (rendered >= 300) break;
+            if (rendered >= renderCap) break;
             double cx = pos.getX() + 0.5;
             double cy = pos.getY() + 0.5;
             double cz = pos.getZ() + 0.5;

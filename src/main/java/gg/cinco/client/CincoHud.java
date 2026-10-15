@@ -45,20 +45,20 @@ public final class CincoHud {
         int h = 42;
 
         // Solid, high-contrast panels keep the HUD crisp at different Minecraft GUI scales.
-        ctx.fill(x - 1, y - 1, x + barWidth + 1, y + h + 1, 0xFFFF8C24);
-        ctx.fill(x, y, x + barWidth, y + h, 0xFF100B1A);
-        ctx.fill(x, y, x + brandWidth, y + h, 0xFF21152F);
-        ctx.fill(x, y, x + barWidth, y + 2, 0xFFFF8C24);
-        ctx.fill(x, y + h - 2, x + barWidth, y + h, 0xFF50336F);
+        ctx.fill(x - 1, y - 1, x + barWidth + 1, y + h + 1, CincoTheme.accent());
+        ctx.fill(x, y, x + barWidth, y + h, CincoTheme.panel());
+        ctx.fill(x, y, x + brandWidth, y + h, CincoTheme.sidebar());
+        ctx.fill(x, y, x + barWidth, y + 2, CincoTheme.accent());
+        ctx.fill(x, y + h - 2, x + barWidth, y + h, CincoTheme.line());
 
-        ctx.fill(x + 9, y + 8, x + 12, y + 33, 0xFFC49AFF);
+        ctx.fill(x + 9, y + 8, x + 12, y + 33, CincoTheme.accent());
         ctx.drawText(client.textRenderer, hudText("CINCO CLIENT"), x + 19, y + 8, textColor(0xFFFFC078), false);
         ctx.drawText(client.textRenderer, hudText("PURPLE NEBULA  /  v2.1"), x + 19, y + 23, textColor(0xFFFFB86B), false);
 
         int cursor = x + brandWidth;
         for (Stat stat : stats) {
             int cellWidth = cellWidth(client, stat);
-            ctx.fill(cursor, y + 8, cursor + 1, y + h - 8, 0xFF413052);
+            ctx.fill(cursor, y + 8, cursor + 1, y + h - 8, CincoTheme.line());
             int tx = cursor + 10;
             ctx.drawText(client.textRenderer, hudText(stat.label), tx, y + 7, textColor(0xFFE88736), false);
             ctx.drawText(client.textRenderer, hudText(stat.value), tx, y + 22, textColor(stat.valueColor), false);
@@ -72,9 +72,9 @@ public final class CincoHud {
             for (HudLine line : details) maxTextWidth = Math.max(maxTextWidth, client.textRenderer.getWidth(line.text));
             int panelWidth = Math.min(Math.max(210, maxTextWidth + 20), Math.max(210, screenWidth - 20));
             int panelHeight = 9 + details.size() * lineHeight;
-            ctx.fill(left - 1, top - 1, left + panelWidth + 1, top + panelHeight + 1, 0xFF63418A);
-            ctx.fill(left, top, left + panelWidth, top + panelHeight, 0xFF100B1A);
-            ctx.fill(left, top, left + 3, top + panelHeight, 0xFFFF8C24);
+            ctx.fill(left - 1, top - 1, left + panelWidth + 1, top + panelHeight + 1, CincoTheme.accentDark());
+            ctx.fill(left, top, left + panelWidth, top + panelHeight, CincoTheme.panel());
+            ctx.fill(left, top, left + 3, top + panelHeight, CincoTheme.accent());
             int textY = top + 6;
             for (HudLine line : details) {
                 ctx.drawText(client.textRenderer, hudText(line.text), left + 10, textY, textColor(line.color), false);
@@ -220,19 +220,19 @@ public final class CincoHud {
 
     private static void drawKeystrokes(DrawContext ctx, MinecraftClient client) {
         int x = 10, y = client.getWindow().getScaledHeight() - 72;
-        ctx.fill(x - 4, y - 4, x + 78, y + 55, 0xFF100B1A);
-        ctx.fill(x - 4, y - 4, x + 78, y - 2, 0xFFC49AFF);
+        ctx.fill(x - 4, y - 4, x + 78, y + 55, CincoTheme.panel());
+        ctx.fill(x - 4, y - 4, x + 78, y - 2, CincoTheme.accent());
         key(ctx, client.options.forwardKey.isPressed(), x + 27, y, "W");
         key(ctx, client.options.leftKey.isPressed(), x, y + 18, "A");
         key(ctx, client.options.backKey.isPressed(), x + 27, y + 18, "S");
         key(ctx, client.options.rightKey.isPressed(), x + 54, y + 18, "D");
-        ctx.fill(x, y + 37, x + 76, y + 48, client.options.jumpKey.isPressed() ? 0xFFB65B18 : 0xFF3A2112);
+        ctx.fill(x, y + 37, x + 76, y + 48, client.options.jumpKey.isPressed() ? 0xFFB65B18 : CincoTheme.disabled());
         Text jumpText = hudText("JUMP");
         ctx.drawText(client.textRenderer, jumpText, x + 38 - client.textRenderer.getWidth(jumpText) / 2, y + 39, textColor(0xFFFFFFFF), false);
     }
 
     private static void key(DrawContext ctx, boolean pressed, int x, int y, String label) {
-        ctx.fill(x, y, x + 22, y + 16, pressed ? 0xFF8550D8 : 0xFF342744);
+        ctx.fill(x, y, x + 22, y + 16, pressed ? CincoTheme.enabled() : CincoTheme.disabled());
         Text keyText = hudText(label);
         var renderer = MinecraftClient.getInstance().textRenderer;
         ctx.drawText(renderer, keyText, x + 11 - renderer.getWidth(keyText) / 2, y + 4, textColor(0xFFFFFFFF), false);
@@ -255,13 +255,7 @@ public final class CincoHud {
     }
 
     private static int textColor(int original) {
-        ClientModule palette = module("Text Palette");
-        int choice = palette == null || !palette.enabled ? 1 : (int) Math.round(palette.setting);
-        int r = (original >> 16) & 255, g = (original >> 8) & 255, b = original & 255;
-        boolean bright = (r * 299 + g * 587 + b * 114) / 1000 >= 170;
-        if (choice == 2) return bright ? 0xFFFFD36B : 0xFFE09A22;
-        if (choice >= 3) return bright ? 0xFFD9B3FF : 0xFFA87BDE;
-        return bright ? 0xFFFFC078 : 0xFFE88736;
+        return CincoTheme.textColor(original);
     }
 
     private static boolean on(String name) {

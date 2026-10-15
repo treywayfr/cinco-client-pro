@@ -48,16 +48,16 @@ public final class CincoHud {
         ctx.fill(x, y + h - 2, x + barWidth, y + h, 0xFF50336F);
 
         ctx.fill(x + 9, y + 8, x + 12, y + 33, 0xFFC49AFF);
-        ctx.drawTextWithShadow(client.textRenderer, Text.literal("CINCO CLIENT"), x + 19, y + 8, 0xFFFFFFFF);
-        ctx.drawTextWithShadow(client.textRenderer, Text.literal("PURPLE NEBULA  /  v2.1"), x + 19, y + 23, 0xFFD0B6FF);
+        ctx.drawText(client.textRenderer, Text.literal("CINCO CLIENT"), x + 19, y + 8, 0xFFFFFFFF, false);
+        ctx.drawText(client.textRenderer, Text.literal("PURPLE NEBULA  /  v2.1"), x + 19, y + 23, 0xFFD0B6FF, false);
 
         int cursor = x + brandWidth;
         for (Stat stat : stats) {
             int cellWidth = cellWidth(client, stat);
             ctx.fill(cursor, y + 8, cursor + 1, y + h - 8, 0xFF413052);
             int tx = cursor + 10;
-            ctx.drawTextWithShadow(client.textRenderer, Text.literal(stat.label), tx, y + 7, 0xFFAD98C7);
-            ctx.drawTextWithShadow(client.textRenderer, Text.literal(stat.value), tx, y + 22, stat.valueColor);
+            ctx.drawText(client.textRenderer, Text.literal(stat.label), tx, y + 7, 0xFFAD98C7, false);
+            ctx.drawText(client.textRenderer, Text.literal(stat.value), tx, y + 22, stat.valueColor, false);
             cursor += cellWidth;
         }
 
@@ -73,7 +73,7 @@ public final class CincoHud {
             ctx.fill(left, top, left + 3, top + panelHeight, 0xFFB58CFF);
             int textY = top + 6;
             for (HudLine line : details) {
-                ctx.drawTextWithShadow(client.textRenderer, Text.literal(line.text), left + 10, textY, line.color);
+                ctx.drawText(client.textRenderer, Text.literal(line.text), left + 10, textY, line.color, false);
                 textY += lineHeight;
             }
         }
@@ -200,12 +200,12 @@ public final class CincoHud {
         key(ctx, client.options.backKey.isPressed(), x + 27, y + 18, "S");
         key(ctx, client.options.rightKey.isPressed(), x + 54, y + 18, "D");
         ctx.fill(x, y + 37, x + 76, y + 48, client.options.jumpKey.isPressed() ? 0xFF8550D8 : 0xFF342744);
-        ctx.drawCenteredTextWithShadow(client.textRenderer, Text.literal("JUMP"), x + 38, y + 39, 0xFFFFFFFF);
+        ctx.drawCenteredText(client.textRenderer, Text.literal("JUMP"), x + 38, y + 39, 0xFFFFFFFF);
     }
 
     private static void key(DrawContext ctx, boolean pressed, int x, int y, String label) {
         ctx.fill(x, y, x + 22, y + 16, pressed ? 0xFF8550D8 : 0xFF342744);
-        ctx.drawCenteredTextWithShadow(MinecraftClient.getInstance().textRenderer, Text.literal(label), x + 11, y + 4, 0xFFFFFFFF);
+        ctx.drawCenteredText(MinecraftClient.getInstance().textRenderer, Text.literal(label), x + 11, y + 4, 0xFFFFFFFF);
     }
 
     private static void drawCrosshair(DrawContext ctx, MinecraftClient client, int size) {

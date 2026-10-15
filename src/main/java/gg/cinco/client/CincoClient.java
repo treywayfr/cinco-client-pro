@@ -11,7 +11,9 @@ import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class CincoClient implements ClientModInitializer {
     public static final List<ClientModule> MODULES = new ArrayList<>();
@@ -20,7 +22,7 @@ public final class CincoClient implements ClientModInitializer {
     public static boolean sprintAssistEnabled = false;
     private KeyBinding guiKey;
     private KeyBinding hudKey;
-    private KeyBinding anchorTriggerKey;
+    private final Map<String, Boolean> lastModuleKeyStates = new HashMap<>();
     private int tickCounter;
 
     @Override
@@ -34,8 +36,6 @@ public final class CincoClient implements ClientModInitializer {
                 "key.cinco_client.open_gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, "category.cinco_client"));
         hudKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.cinco_client.toggle_hud", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_H, "category.cinco_client"));
-        anchorTriggerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.cinco_client.anchor_macro", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "category.cinco_client"));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (guiKey.wasPressed()) client.setScreen(new CincoClickGuiScreen());
@@ -46,7 +46,7 @@ public final class CincoClient implements ClientModInitializer {
                 if (client.player != null) client.player.sendMessage(Text.literal("Cinco HUD " + (hudEnabled ? "enabled" : "disabled")), true);
                 ConfigStore.save();
             }
-            while (anchorTriggerKey.wasPressed()) CombatModules.triggerAnchorMacro(client);
+            pollModuleKeybinds(client);
 
             if (sprintAssistEnabled && client.player != null && client.options.forwardKey.isPressed()) client.player.setSprinting(true);
             ClickRateTracker.tick(client);
@@ -57,6 +57,49 @@ public final class CincoClient implements ClientModInitializer {
             }
         });
         HudRenderCallback.EVENT.register((ctx, tickCounter) -> CincoHud.render(ctx, MinecraftClient.getInstance()));
+    }
+
+    private void pollModuleKeybinds(MinecraftClient client) {
+        if (client.getWindow() == null) return;
+        long window = client.getWindow().getHandle();
+        boolean screenOpen = client.currentScreen != null;
+
+        for (ClientModule module : MODULES) {
+            int code = module.keyCode;
+            if (code == GLFW.GLFW_KEY_UNKNOWN || code < 0) continue;
+            boolean down = GLFW.glfwGetKey(window, code) == GLFW.GLFW_PRESS;
+            boolean wasDown = lastModuleKeyStates.getOrDefault(module.name, false);
+            lastModuleKeyStates.put(module.name, down);
+
+            if (screenOpen || !down || wasDown) continue;
+            if (module.name.equals("Anchor Macro")) {
+                if (!module.enabled) {
+                    module.enabled = true;
+                    if (client.player != null) client.player.sendMessage(Text.literal("Cinco Anchor Macro armed — press its key again to run."), true);
+                } else {
+                    CombatModules.triggerAnchorMacro(client);
+                }
+                ConfigStore.save();
+                continue;
+            }
+
+            module.enabled = !module.enabled;
+            if (module.name.equals("Sprint Assist")) sprintAssistEnabled = module.enabled;
+            if (module.name.equals("Client HUD")) hudEnabled = module.enabled;
+            if (module.name.equals("Base Finder") || module.name.equals("Container Finder")) {
+                ClientModule base = findModule("Base Finder");
+                ClientModule containers = findModule("Container Finder");
+                if (base != null && containers != null) {
+                    base.enabled = module.enabled;
+                    containers.enabled = module.enabled;
+                }
+                if (!module.enabled) BaseScanner.reset();
+            }
+            if (client.player != null) {
+                client.player.sendMessage(Text.literal("Cinco: " + module.name + (module.enabled ? " enabled" : " disabled")), true);
+            }
+            ConfigStore.save();
+        }
     }
 
     private static boolean isEnabled(String name, boolean fallback) {

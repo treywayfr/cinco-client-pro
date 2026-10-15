@@ -240,10 +240,10 @@ public final class CincoHud {
 
     private static void drawCrosshair(DrawContext ctx, MinecraftClient client, int size) {
         int cx = client.getWindow().getScaledWidth() / 2, cy = client.getWindow().getScaledHeight() / 2;
-        ctx.fill(cx - size, cy, cx - 2, cy + 1, 0xFFE0C9FF);
-        ctx.fill(cx + 2, cy, cx + size, cy + 1, 0xFFE0C9FF);
-        ctx.fill(cx, cy - size, cx + 1, cy - 2, 0xFFE0C9FF);
-        ctx.fill(cx, cy + 2, cx + 1, cy + size, 0xFFE0C9FF);
+        ctx.fill(cx - size, cy, cx - 2, cy + 1, CincoTheme.accent());
+        ctx.fill(cx + 2, cy, cx + size, cy + 1, CincoTheme.accent());
+        ctx.fill(cx, cy - size, cx + 1, cy - 2, CincoTheme.accent());
+        ctx.fill(cx, cy + 2, cx + 1, cy + size, CincoTheme.accent());
     }
 
     private static Text hudText(String value) {

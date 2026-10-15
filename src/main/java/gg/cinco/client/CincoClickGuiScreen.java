@@ -67,10 +67,10 @@ public final class CincoClickGuiScreen extends Screen {
 
         // Brand header
         c.fill(l + 12, panelY + 11, l + 15, panelY + 39, PURPLE);
-        c.drawTextWithShadow(textRenderer, Text.literal("CINCO CLIENT"), l + 23, panelY + 12, TEXT);
-        c.drawTextWithShadow(textRenderer, Text.literal("PURPLE NEBULA  /  v2.1"), l + 23, panelY + 27, PURPLE);
+        c.drawText(textRenderer, Text.literal("CINCO CLIENT"), l + 23, panelY + 12, TEXT, false);
+        c.drawText(textRenderer, Text.literal("PURPLE NEBULA  /  v2.1"), l + 23, panelY + 27, PURPLE, false);
         c.fill(l + W - 111, panelY + 13, l + W - 14, panelY + 34, 0xFF21172E);
-        c.drawCenteredTextWithShadow(textRenderer, Text.literal("SHARP UI  •  READY"), l + W - 62, panelY + 20, 0xFFE8DAFF);
+        c.drawCenteredText(textRenderer, Text.literal("SHARP UI  •  READY"), l + W - 62, panelY + 20, 0xFFE8DAFF);
 
         int catY = panelY + 58;
         for (ClientModule.Category category : ClientModule.Category.values()) {
@@ -82,27 +82,27 @@ public final class CincoClickGuiScreen extends Screen {
             } else {
                 c.fill(l + 14, y + 7, l + 17, y + 10, 0xFF6D5C80);
             }
-            c.drawTextWithShadow(textRenderer, Text.literal(category.label), l + 24, y + 3,
-                    selected ? TEXT : MUTED);
+            c.drawText(textRenderer, Text.literal(category.label), l + 24, y + 3,
+                    selected ? TEXT : MUTED, false);
         }
 
         int enabled = (int) CincoClient.MODULES.stream().filter(m -> m.enabled).count();
         c.fill(l + 12, panelY + H - 58, l + SIDE - 12, panelY + H - 57, 0xFF4A365F);
-        c.drawTextWithShadow(textRenderer, Text.literal("CLIENT STATUS"), l + 15, panelY + H - 46, 0xFF9F8ABF);
-        c.drawTextWithShadow(textRenderer, Text.literal(enabled + " modules enabled"), l + 15, panelY + H - 31, TEXT);
-        c.drawTextWithShadow(textRenderer, Text.literal("RIGHT SHIFT  /  ESC"), l + 15, panelY + H - 17, 0xFF9F8ABF);
+        c.drawText(textRenderer, Text.literal("CLIENT STATUS"), l + 15, panelY + H - 46, 0xFF9F8ABF, false);
+        c.drawText(textRenderer, Text.literal(enabled + " modules enabled"), l + 15, panelY + H - 31, TEXT, false);
+        c.drawText(textRenderer, Text.literal("RIGHT SHIFT  /  ESC"), l + 15, panelY + H - 17, 0xFF9F8ABF, false);
 
         int contentX = l + SIDE + 16;
-        c.drawTextWithShadow(textRenderer, Text.literal(CincoClient.selectedCategory.label + " MODULES"),
-                contentX, panelY + 13, TEXT);
-        c.drawTextWithShadow(textRenderer, Text.literal("Click card to toggle  •  drag slider to adjust"),
-                contentX, panelY + 28, MUTED);
+        c.drawText(textRenderer, Text.literal(CincoClient.selectedCategory.label + " MODULES"),
+                contentX, panelY + 13, TEXT, false);
+        c.drawText(textRenderer, Text.literal("Click card to toggle  •  drag slider to adjust"),
+                contentX, panelY + 28, MUTED, false);
 
         int searchX = l + W - 213, searchY = panelY + 10;
         c.fill(searchX, searchY, searchX + 194, searchY + 23, searchFocused ? 0xFF3A2851 : 0xFF21182E);
         c.fill(searchX, searchY, searchX + 2, searchY + 23, searchFocused ? PURPLE : 0xFF6B4A8D);
-        c.drawTextWithShadow(textRenderer, Text.literal((search.isEmpty() ? "SEARCH MODULES" : search.toUpperCase(Locale.ROOT))
-                + (searchFocused ? " _" : "")), searchX + 9, searchY + 7, TEXT);
+        c.drawText(textRenderer, Text.literal((search.isEmpty() ? "SEARCH MODULES" : search.toUpperCase(Locale.ROOT))
+                + (searchFocused ? " _" : "")), searchX + 9, searchY + 7, TEXT, false);
 
         List<ClientModule> list = filteredModules();
         int viewportTop = panelY + 47, viewportBottom = panelY + H - 15;
@@ -118,9 +118,9 @@ public final class CincoClickGuiScreen extends Screen {
             boolean hovered = mx >= contentX && mx <= l + W - 13 && my >= y && my <= y + ROW - 5;
             c.fill(contentX, y, l + W - 13, y + ROW - 5, hovered ? CARD_HOVER : CARD);
             c.fill(contentX, y, contentX + 3, y + ROW - 5, module.enabled ? PURPLE : 0xFF584768);
-            c.drawTextWithShadow(textRenderer, Text.literal(module.name), contentX + 11, y + 6,
-                    module.enabled ? TEXT : 0xFFE0D8EB);
-            c.drawTextWithShadow(textRenderer, Text.literal(module.description), contentX + 11, y + 20, MUTED);
+            c.drawText(textRenderer, Text.literal(module.name), contentX + 11, y + 6,
+                    module.enabled ? TEXT : 0xFFE0D8EB, false);
+            c.drawText(textRenderer, Text.literal(module.description), contentX + 11, y + 20, MUTED, false);
 
             int sliderX = l + W - 285, sliderWidth = 78, sliderY = y + 39;
             c.fill(sliderX, sliderY, sliderX + sliderWidth, sliderY + 3, 0xFF51405F);
@@ -128,12 +128,12 @@ public final class CincoClickGuiScreen extends Screen {
             int knob = sliderX + (int) (Math.max(0, Math.min(1, fraction)) * sliderWidth);
             c.fill(sliderX, sliderY, knob, sliderY + 3, PURPLE);
             c.fill(knob - 2, sliderY - 2, knob + 3, sliderY + 5, 0xFFFFFFFF);
-            c.drawTextWithShadow(textRenderer, Text.literal(module.settingLabel + ": " + format(module.setting)),
-                    sliderX + sliderWidth + 8, y + 35, 0xFFE2CEFF);
+            c.drawText(textRenderer, Text.literal(module.settingLabel + ": " + format(module.setting)),
+                    sliderX + sliderWidth + 8, y + 35, 0xFFE2CEFF, false);
 
             int toggleX = l + W - 79;
             c.fill(toggleX, y + 9, toggleX + 57, y + 26, module.enabled ? 0xFF8550D8 : 0xFF41364E);
-            c.drawCenteredTextWithShadow(textRenderer, Text.literal(module.enabled ? "ON" : "OFF"),
+            c.drawCenteredText(textRenderer, Text.literal(module.enabled ? "ON" : "OFF"),
                     toggleX + 28, y + 14, TEXT);
         }
         c.disableScissor();

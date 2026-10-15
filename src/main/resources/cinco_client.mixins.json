@@ -11,8 +11,7 @@
     "EntityGlowMixin",
     "LightmapFullbrightMixin",
     "GameRendererFullbrightMixin",
-    "FreeCamPlayerMixin",
-    "ModuleSettingsMixin"
+    "SimpleOptionAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

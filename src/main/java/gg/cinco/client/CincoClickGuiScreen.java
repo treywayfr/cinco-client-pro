@@ -100,7 +100,7 @@ public final class CincoClickGuiScreen extends Screen {
         int contentX = l + SIDE + 16;
         c.drawText(textRenderer, uiText(CincoClient.selectedCategory.label + " MODULES"),
                 contentX, panelY + 13, uiColor(TEXT), false);
-        c.drawText(textRenderer, uiText("Click card to toggle  •  drag slider to adjust"),
+        c.drawText(textRenderer, uiText("LEFT CLICK: TOGGLE  •  RIGHT CLICK: FULL SETTINGS"),
                 contentX, panelY + 28, uiColor(MUTED), false);
 
         int searchX = l + W - 213, searchY = panelY + 10;
@@ -219,6 +219,19 @@ public final class CincoClickGuiScreen extends Screen {
             return true;
         }
         if (button == 0) searchFocused = false;
+
+        if (button == 1) {
+            int contentX = l + SIDE + 16, viewportTop = t + 47;
+            List<ClientModule> list = filteredModules();
+            for (int i = 0; i < list.size(); i++) {
+                ClientModule module = list.get(i);
+                int y = viewportTop + i * ROW - scroll;
+                if (mx >= contentX && mx <= l + W - 13 && my >= y && my <= y + ROW - 5) {
+                    MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(module));
+                    return true;
+                }
+            }
+        }
 
         if (button == 0) {
             for (ClientModule.Category category : ClientModule.Category.values()) {

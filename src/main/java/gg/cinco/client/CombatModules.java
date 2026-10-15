@@ -6,7 +6,9 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
 import net.minecraft.item.Items;
+import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -18,15 +20,38 @@ import net.minecraft.world.World;
 public final class CombatModules {
     private static int crystalCooldown;
     private static int anchorCooldown;
+    private static int anchorStage; // 0 idle, 1 charge once, 2 activate
+    private static int anchorWait;
+    private static int anchorRetries;
+    private static int previousCharges;
+    private static int anchorDelay = 1;
+    private static BlockPos activeAnchor;
+    private static boolean safeGlowstonePlaced;
+    private static boolean autoEatPressing;
+    private static int autoEatTicks;
+    private static int autoTotemCooldown;
 
     private CombatModules() {}
 
     public static void tick(MinecraftClient client) {
         if (crystalCooldown > 0) crystalCooldown--;
         if (anchorCooldown > 0) anchorCooldown--;
+        if (autoTotemCooldown > 0) autoTotemCooldown--;
+
         if (enabled("Auto Crystal") || enabled("Crystal Breaker")) tickAutoCrystal(client, enabled("Auto Crystal"));
-        if (enabled("Anchor Macro")) tickAnchorMacro(client);
-        if (enabled("Base Finder") || enabled("Container Finder")) BaseScanner.tick(client);
+        tickAnchorSequence(client);
+        tickAutoTotem(client);
+        tickAutoEat(client);
+
+        if (scannerEnabled()) {
+            BaseScanner.tick(client);
+            if (enabled("Sus Chunk Finder") || enabled("Stash Radar") || enabled("Chunk Density")) {
+                SusChunkScanner.tick(client);
+            }
+        } else {
+            BaseScanner.reset();
+            SusChunkScanner.reset();
+        }
     }
 
     private static boolean enabled(String name) {
@@ -34,13 +59,202 @@ public final class CombatModules {
         return module != null && module.enabled;
     }
 
+    public static void triggerAnchorMacro(MinecraftClient client) {
+        if (!enabled("Anchor Macro")) {
+            notify(client, "Enable Anchor Macro in the GUI first.");
+            return;
+        }
+        if (client.player == null || client.world == null || client.interactionManager == null) return;
+        if (client.world.getRegistryKey().equals(World.NETHER)) {
+            notify(client, "Anchor Macro is disabled in the Nether to avoid activating a respawn anchor there.");
+            return;
+        }
+        if (!(client.crosshairTarget instanceof BlockHitResult hit)
+                || hit.getType() != HitResult.Type.BLOCK
+                || !client.world.getBlockState(hit.getBlockPos()).isOf(Blocks.RESPAWN_ANCHOR)) {
+            notify(client, "Aim at a placed respawn anchor, then press G.");
+            return;
+        }
+        activeAnchor = hit.getBlockPos().toImmutable();
+        previousCharges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
+        anchorDelay = Math.max(1, moduleSettingInt("Anchor Macro", 1));
+        anchorRetries = 0;
+        anchorWait = 0;
+        safeGlowstonePlaced = false;
+        anchorStage = previousCharges > 0 ? 2 : 1;
+        notify(client, previousCharges > 0 ? "Anchor sequence: activating charged anchor..." : "Anchor sequence started.");
+    }
+
+    private static void tickAnchorSequence(MinecraftClient client) {
+        if (anchorStage == 0 || client.player == null || client.world == null || client.interactionManager == null) return;
+        if (activeAnchor == null || !client.world.getBlockState(activeAnchor).isOf(Blocks.RESPAWN_ANCHOR)) {
+            resetAnchor();
+            return;
+        }
+
+        tickAutoSafeAnchor(client);
+        if (anchorWait > 0) {
+            anchorWait--;
+            return;
+        }
+
+        if (anchorStage == 1) {
+            int charges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
+            if (charges > 0) {
+                previousCharges = charges;
+                anchorStage = 2;
+                anchorWait = anchorDelay;
+                return;
+            }
+            int glowstoneSlot = findHotbarItem(client, Items.GLOWSTONE);
+            if (glowstoneSlot < 0) {
+                notify(client, "Anchor Macro stopped: put glowstone in your hotbar.");
+                resetAnchor();
+                return;
+            }
+            client.player.getInventory().selectedSlot = glowstoneSlot;
+            BlockHitResult anchorHit = anchorHit(activeAnchor);
+            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, anchorHit);
+            client.player.swingHand(Hand.MAIN_HAND);
+            anchorStage = 2;
+            anchorWait = anchorDelay;
+            anchorRetries++;
+            return;
+        }
+
+        if (anchorStage == 2) {
+            int charges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
+            if (charges == 0 && previousCharges == 0 && anchorRetries < 2) {
+                anchorStage = 1;
+                anchorWait = anchorDelay;
+                return;
+            }
+            int totemSlot = findHotbarItem(client, Items.TOTEM_OF_UNDYING);
+            if (totemSlot < 0) {
+                notify(client, "Anchor is charged. Put a totem in your hotbar, then press G again to activate.");
+                resetAnchor();
+                return;
+            }
+            client.player.getInventory().selectedSlot = totemSlot;
+            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, anchorHit(activeAnchor));
+            client.player.swingHand(Hand.MAIN_HAND);
+            anchorCooldown = 8;
+            notify(client, "Anchor macro sequence complete.");
+            resetAnchor();
+        }
+    }
+
+    private static void tickAutoSafeAnchor(MinecraftClient client) {
+        if (!enabled("Auto Safe Anchor") || safeGlowstonePlaced || anchorStage == 0 || client.player == null) return;
+        ClientModule safe = CincoClient.findModule("Auto Safe Anchor");
+        float threshold = safe == null ? 70 : (float) safe.setting;
+        if (client.player.getPitch() < threshold) return; // positive pitch means looking down
+        if (!(client.crosshairTarget instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
+        BlockPos target = hit.getBlockPos();
+        if (target.equals(activeAnchor) || client.player.squaredDistanceTo(Vec3d.ofCenter(target)) > 9.0) return;
+        if (target.getY() < client.player.getBlockY() - 2 || target.getY() > client.player.getBlockY() + 1) return;
+        int glowstoneSlot = findHotbarItem(client, Items.GLOWSTONE);
+        if (glowstoneSlot < 0) return;
+        client.player.getInventory().selectedSlot = glowstoneSlot;
+        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
+        client.player.swingHand(Hand.MAIN_HAND);
+        safeGlowstonePlaced = true;
+        notify(client, "Safe Anchor: placed glowstone at your look point near your feet.");
+    }
+
+    private static BlockHitResult anchorHit(BlockPos pos) {
+        return new BlockHitResult(Vec3d.ofCenter(pos), Direction.UP, pos, false);
+    }
+
+    private static void resetAnchor() {
+        anchorStage = 0;
+        anchorWait = 0;
+        activeAnchor = null;
+        anchorRetries = 0;
+        safeGlowstonePlaced = false;
+    }
+
+    private static void tickAutoTotem(MinecraftClient client) {
+        if (!enabled("Auto Totem") || client.player == null || client.world == null
+                || client.interactionManager == null || client.currentScreen != null || autoTotemCooldown > 0) return;
+        ClientModule module = CincoClient.findModule("Auto Totem");
+        float threshold = module == null ? 12.0f : (float) module.setting;
+        if (client.player.getHealth() > threshold || client.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)) return;
+
+        for (int inventoryIndex = 0; inventoryIndex < 36; inventoryIndex++) {
+            if (!client.player.getInventory().getStack(inventoryIndex).isOf(Items.TOTEM_OF_UNDYING)) continue;
+            int handlerSlot = inventoryIndex < 9 ? inventoryIndex + 36 : inventoryIndex;
+            client.interactionManager.clickSlot(client.player.playerScreenHandler.syncId,
+                    handlerSlot, 40, SlotActionType.SWAP, client.player);
+            autoTotemCooldown = 10;
+            notify(client, "Auto Totem: moving a totem to your offhand.");
+            return;
+        }
+    }
+
+    private static void tickAutoEat(MinecraftClient client) {
+        if (client.player == null || client.world == null || client.currentScreen != null) {
+            releaseAutoEat(client);
+            return;
+        }
+        if (!enabled("Auto Eat")) {
+            releaseAutoEat(client);
+            return;
+        }
+
+        ClientModule module = CincoClient.findModule("Auto Eat");
+        int hungerThreshold = module == null ? 8 : (int) module.setting;
+        int hunger = client.player.getHungerManager().getFoodLevel();
+
+        if (autoEatPressing) {
+            autoEatTicks++;
+            if (hunger > hungerThreshold || autoEatTicks > 100) {
+                releaseAutoEat(client);
+                return;
+            }
+            client.options.useKey.setPressed(true);
+            return;
+        }
+        if (hunger > hungerThreshold || client.player.isUsingItem()) return;
+
+        for (int slot = 0; slot < 9; slot++) {
+            Item item = client.player.getInventory().getStack(slot).getItem();
+            if (!isUsefulFood(item)) continue;
+            client.player.getInventory().selectedSlot = slot;
+            client.options.useKey.setPressed(true);
+            autoEatPressing = true;
+            autoEatTicks = 0;
+            return;
+        }
+    }
+
+    private static boolean isUsefulFood(Item item) {
+        return item == Items.COOKED_BEEF || item == Items.COOKED_PORKCHOP || item == Items.COOKED_MUTTON
+                || item == Items.COOKED_CHICKEN || item == Items.COOKED_RABBIT || item == Items.BAKED_POTATO
+                || item == Items.GOLDEN_CARROT || item == Items.BREAD || item == Items.PUMPKIN_PIE
+                || item == Items.GOLDEN_APPLE || item == Items.COOKED_COD || item == Items.COOKED_SALMON;
+    }
+
+    private static void releaseAutoEat(MinecraftClient client) {
+        if (autoEatPressing && client != null) client.options.useKey.setPressed(false);
+        autoEatPressing = false;
+        autoEatTicks = 0;
+    }
+
+    private static boolean scannerEnabled() {
+        return enabled("Base Finder") || enabled("Container Finder") || enabled("Sus Chunk Finder")
+                || enabled("Portal Finder") || enabled("Spawner Finder") || enabled("Shulker Finder")
+                || enabled("Stash Radar") || enabled("Chunk Density");
+    }
+
     private static void tickAutoCrystal(MinecraftClient client, boolean allowPlace) {
         if (client.player == null || client.world == null || client.interactionManager == null || crystalCooldown > 0) return;
         ClientModule module = CincoClient.findModule(allowPlace ? "Auto Crystal" : "Crystal Breaker");
-        double range = module == null ? 4.5 : module.setting;
+        double range = module == null ? 4.0 : module.setting;
         EndCrystalEntity crystal = null;
         double best = range * range;
-        for (EndCrystalEntity endCrystal : client.world.getEntitiesByClass(EndCrystalEntity.class, client.player.getBoundingBox().expand(range), Entity::isAlive)) {
+        for (EndCrystalEntity endCrystal : client.world.getEntitiesByClass(EndCrystalEntity.class,
+                client.player.getBoundingBox().expand(range), Entity::isAlive)) {
             double dist = client.player.squaredDistanceTo(endCrystal);
             if (dist < best) { best = dist; crystal = endCrystal; }
         }
@@ -50,7 +264,6 @@ public final class CombatModules {
             crystalCooldown = 2;
             return;
         }
-
         if (!allowPlace) return;
         PlayerEntity target = null;
         double targetDistance = range * range;
@@ -64,60 +277,31 @@ public final class CombatModules {
         if (crystalSlot < 0) return;
         client.player.getInventory().selectedSlot = crystalSlot;
         BlockPos targetPos = target.getBlockPos();
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -2; dx <= 2; dx++) {
-                for (int dz = -2; dz <= 2; dz++) {
-                    BlockPos base = targetPos.add(dx, dy, dz);
-                    if (!client.world.getBlockState(base).isOf(Blocks.OBSIDIAN)
-                            && !client.world.getBlockState(base).isOf(Blocks.BEDROCK)) continue;
-                    if (!client.world.getBlockState(base.up()).isAir() || !client.world.getBlockState(base.up(2)).isAir()) continue;
-                    if (client.player.squaredDistanceTo(Vec3d.ofCenter(base)) > range * range) continue;
-                    Vec3d hitPos = new Vec3d(base.getX() + 0.5, base.getY() + 1.0, base.getZ() + 0.5);
-                    BlockHitResult hit = new BlockHitResult(hitPos, Direction.UP, base, false);
-                    client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
-                    client.player.swingHand(Hand.MAIN_HAND);
-                    crystalCooldown = 5;
-                    return;
-                }
-            }
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+            BlockPos base = targetPos.add(dx, dy, dz);
+            if (!client.world.getBlockState(base).isOf(Blocks.OBSIDIAN)
+                    && !client.world.getBlockState(base).isOf(Blocks.BEDROCK)) continue;
+            if (!client.world.getBlockState(base.up()).isAir() || !client.world.getBlockState(base.up(2)).isAir()) continue;
+            if (client.player.squaredDistanceTo(Vec3d.ofCenter(base)) > range * range) continue;
+            BlockHitResult hit = new BlockHitResult(new Vec3d(base.getX() + .5, base.getY() + 1.0, base.getZ() + .5), Direction.UP, base, false);
+            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
+            client.player.swingHand(Hand.MAIN_HAND);
+            crystalCooldown = 5;
+            return;
         }
     }
 
-    private static int findHotbarItem(MinecraftClient client, net.minecraft.item.Item item) {
+    private static int findHotbarItem(MinecraftClient client, Item item) {
         for (int i = 0; i < 9; i++) if (client.player.getInventory().getStack(i).isOf(item)) return i;
         return -1;
     }
 
-    private static void tickAnchorMacro(MinecraftClient client) {
-        if (client.player == null || client.world == null || client.interactionManager == null || anchorCooldown > 0) return;
-        boolean inNether = client.world.getRegistryKey().equals(World.NETHER);
-        if (!(client.crosshairTarget instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
-        BlockPos pos = hit.getBlockPos();
-        if (!client.world.getBlockState(pos).isOf(Blocks.RESPAWN_ANCHOR)) return;
-        int charges = client.world.getBlockState(pos).get(RespawnAnchorBlock.CHARGES);
-        if (charges < 4) {
-            int glowstoneSlot = findHotbarItem(client, Items.GLOWSTONE);
-            if (glowstoneSlot < 0) return;
-            client.player.getInventory().selectedSlot = glowstoneSlot;
-        } else {
-            if (inNether) return;
-            int safeSlot = findNonGlowstoneSlot(client);
-            if (safeSlot >= 0) client.player.getInventory().selectedSlot = safeSlot;
-        }
-        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
-        client.player.swingHand(Hand.MAIN_HAND);
-        anchorCooldown = Math.max(3, moduleSettingInt("Anchor Macro", 4));
-    }
-
-    private static int findNonGlowstoneSlot(MinecraftClient client) {
-        for (int i = 0; i < 9; i++) {
-            if (!client.player.getInventory().getStack(i).isOf(Items.GLOWSTONE)) return i;
-        }
-        return -1;
-    }
-
     private static int moduleSettingInt(String name, int fallback) {
-        ClientModule m = CincoClient.findModule(name);
-        return m == null ? fallback : (int)m.setting;
+        ClientModule module = CincoClient.findModule(name);
+        return module == null ? fallback : (int) module.setting;
+    }
+
+    private static void notify(MinecraftClient client, String message) {
+        if (client.player != null) client.player.sendMessage(Text.literal("§6Cinco §8» §6" + message), true);
     }
 }

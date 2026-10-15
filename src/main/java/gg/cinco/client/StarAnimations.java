@@ -78,11 +78,18 @@ public final class StarAnimations {
     }
 
     public static int duration(MinecraftClient client, int baseMs, boolean essential) {
+        ClientModule animation = CincoClient.findModule("GUI Animation");
+        if (animation != null && !animation.enabled) return 0;
+
+        // GUI Animation's 220 default is the 1.0x Nebula Luxe pace.
+        double pace = animation == null ? 1.0 : Math.max(0.50, Math.min(2.0, animation.setting / 220.0));
+        int scaled = Math.max(1, (int) Math.round(baseMs * pace));
+
         int tier = StarPerformance.animationTier(client);
-        if (tier >= 2) return baseMs;
-        if (tier == 1) return Math.max(65, Math.round(baseMs * 0.72f));
+        if (tier >= 2) return scaled;
+        if (tier == 1) return Math.max(65, Math.round(scaled * 0.72f));
         // Low-FPS mode keeps only functional motion, and makes it finish almost immediately.
-        return essential ? Math.max(45, Math.round(baseMs * 0.42f)) : 0;
+        return essential ? Math.max(45, Math.round(scaled * 0.42f)) : 0;
     }
 
     public static float progress(long elapsedMs, int durationMs, Curve curve) {

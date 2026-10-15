@@ -105,7 +105,10 @@ public final class FreeCamController {
 
         UUID id = UUID.nameUUIDFromBytes("star-free-camera".getBytes(StandardCharsets.UTF_8));
         camera = new OtherClientPlayerEntity(client.world, new GameProfile(id, "StarFreeCam"));
-        camera.setPosition(client.player.getX(), client.player.getEyeY(), client.player.getZ());
+        // The render Camera adds this entity's normal eye height itself, so seed the detached
+        // entity at the player's feet rather than at eyeY. Starting at eyeY would double-add the
+        // eye height and make toggling Free Cam jump upward by roughly a block and a half.
+        camera.setPosition(client.player.getX(), client.player.getY(), client.player.getZ());
         camera.prevX = camera.getX();
         camera.prevY = camera.getY();
         camera.prevZ = camera.getZ();

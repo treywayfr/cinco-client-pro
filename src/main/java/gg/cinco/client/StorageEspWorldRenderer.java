@@ -26,6 +26,7 @@ public final class StorageEspWorldRenderer {
         MatrixStack matrices = context.matrixStack();
         if (matrices == null) return;
 
+        int style = style();
         Vec3d camera = context.camera().getPos();
         Vec3d playerEye = client.player.getEyePos();
         float playerX = (float) (playerEye.x - camera.x);
@@ -40,7 +41,12 @@ public final class StorageEspWorldRenderer {
         RenderSystem.depthMask(false);
         RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.lineWidth(1.35F);
+        RenderSystem.lineWidth(switch (style) {
+            case 2 -> 2.05F; // Neon
+            case 3 -> 1.0F;  // Minimal
+            case 4 -> 2.45F; // Bold
+            default -> 1.35F; // Clean
+        });
 
         BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getPositionMatrix();
@@ -71,12 +77,16 @@ public final class StorageEspWorldRenderer {
             float y1 = y0 + 1.005F;
             float z1 = z0 + 1.005F;
 
-            int outline = distanceFade(setting.color, Math.sqrt(playerDistanceSq), range, 105, 238);
-            if (setting.highlight) emitBox(buffer, matrix, x0, y0, z0, x1, y1, z1, outline);
+            int farAlpha = style == 3 ? 70 : style == 2 ? 135 : 105;
+            int nearAlpha = style == 3 ? 180 : 245;
+            int outline = distanceFade(setting.color, Math.sqrt(playerDistanceSq), range, farAlpha, nearAlpha);
+            if (setting.highlight) {
+                if (style == 3) emitCornerBox(buffer, matrix, x0, y0, z0, x1, y1, z1, outline, 0.28F);
+                else emitBox(buffer, matrix, x0, y0, z0, x1, y1, z1, outline);
+            }
             if (setting.tracer) {
-                int tracer = withAlpha(setting.color, Math.min(150, (outline >>> 24) & 0xFF));
-                // Start at the storage block center and terminate at the real player's eye position.
-                // This stays correct even while Free Cam's render camera is detached.
+                int tracerAlpha = style == 3 ? 82 : style == 2 ? 175 : 135;
+                int tracer = withAlpha(setting.color, Math.min(tracerAlpha, (outline >>> 24) & 0xFF));
                 emitLine(buffer, matrix, (float) dx, (float) dy, (float) dz,
                         playerX, playerY, playerZ, tracer);
             }
@@ -92,6 +102,11 @@ public final class StorageEspWorldRenderer {
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
+    }
+
+    private static int style() {
+        ClientModule module = CincoClient.findModule("ESP Style");
+        return module == null ? 1 : Math.max(1, Math.min(4, (int) Math.round(module.setting)));
     }
 
     private static int distanceFade(int color, double distance, double range, int farAlpha, int nearAlpha) {
@@ -112,6 +127,24 @@ public final class StorageEspWorldRenderer {
         emitLine(b,m,x1,y1,z1,x0,y1,z1,c); emitLine(b,m,x0,y1,z1,x0,y1,z0,c);
         emitLine(b,m,x0,y0,z0,x0,y1,z0,c); emitLine(b,m,x1,y0,z0,x1,y1,z0,c);
         emitLine(b,m,x1,y0,z1,x1,y1,z1,c); emitLine(b,m,x0,y0,z1,x0,y1,z1,c);
+    }
+
+    private static void emitCornerBox(BufferBuilder b, Matrix4f m,
+                                      float x0, float y0, float z0, float x1, float y1, float z1,
+                                      int c, float fraction) {
+        corner(b,m,x0,y0,z0,x1,y0,z0,c,fraction); corner(b,m,x1,y0,z0,x1,y0,z1,c,fraction);
+        corner(b,m,x1,y0,z1,x0,y0,z1,c,fraction); corner(b,m,x0,y0,z1,x0,y0,z0,c,fraction);
+        corner(b,m,x0,y1,z0,x1,y1,z0,c,fraction); corner(b,m,x1,y1,z0,x1,y1,z1,c,fraction);
+        corner(b,m,x1,y1,z1,x0,y1,z1,c,fraction); corner(b,m,x0,y1,z1,x0,y1,z0,c,fraction);
+        corner(b,m,x0,y0,z0,x0,y1,z0,c,fraction); corner(b,m,x1,y0,z0,x1,y1,z0,c,fraction);
+        corner(b,m,x1,y0,z1,x1,y1,z1,c,fraction); corner(b,m,x0,y0,z1,x0,y1,z1,c,fraction);
+    }
+
+    private static void corner(BufferBuilder b, Matrix4f m, float ax,float ay,float az,float bx,float by,float bz,
+                               int c,float f) {
+        float dx=bx-ax, dy=by-ay, dz=bz-az;
+        emitLine(b,m,ax,ay,az,ax+dx*f,ay+dy*f,az+dz*f,c);
+        emitLine(b,m,bx-dx*f,by-dy*f,bz-dz*f,bx,by,bz,c);
     }
 
     private static void emitLine(BufferBuilder b, Matrix4f m,

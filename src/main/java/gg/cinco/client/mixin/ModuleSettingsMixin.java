@@ -16,7 +16,7 @@ public abstract class ModuleSettingsMixin {
     @Inject(method = "displaySetting", at = @At("HEAD"), cancellable = true, remap = false)
     private void cinco$friendlySettingNames(int which, double value, CallbackInfoReturnable<String> cir) {
         int selected = (int) Math.round(value);
-        if (module.name.equals("GTA Skin Changer") && which == 0) {
+        if ((module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer")) && which == 0) {
             cir.setReturnValue(switch (selected) {
                 case 2 -> "Spiky Cartoon Kid";
                 case 3 -> "Anime Heroine";

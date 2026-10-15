@@ -106,7 +106,19 @@ public final class CombatModules {
             return;
         }
 
-        BlockPos placePos = target.offset(hit.getSide());
+        // Replaceable targets such as fire should not shift the anchor above the fire.
+        boolean targetReplaceable = client.world.getBlockState(target).isReplaceable();
+        BlockPos placePos = targetReplaceable ? target : target.offset(hit.getSide());
+        BlockHitResult placementHit = hit;
+        if (targetReplaceable) {
+            BlockPos support = target.down();
+            if (client.world.getBlockState(support).isAir()) {
+                notify(client, "Aim at a solid supporting block under the fire.");
+                return;
+            }
+            placementHit = new BlockHitResult(Vec3d.ofCenter(support).add(0, 0.5, 0),
+                    Direction.UP, support, false);
+        }
         if (!client.world.getBlockState(placePos).isReplaceable()) {
             notify(client, "Can't place anchor there — the adjacent block space isn't empty.");
             return;
@@ -119,7 +131,7 @@ public final class CombatModules {
         activeAnchor = placePos.toImmutable();
         previousCharges = 0;
         client.player.getInventory().selectedSlot = anchorSlot;
-        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
+        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, placementHit);
         client.player.swingHand(Hand.MAIN_HAND);
         anchorStage = 3; // wait for the server/client world to show the placed anchor
         anchorPlacementTicks = 20;
@@ -323,49 +335,19 @@ public final class CombatModules {
     }
 
     private static void tickAutoCrystal(MinecraftClient client, boolean allowPlace) {
-        if (client.player == null || client.world == null || client.interactionManager == null) return;
-        boolean rightDown = client.currentScreen == null && client.getWindow() != null
-                && GLFW.glfwGetMouseButton(client.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
-        rightMouseWasDown = rightDown;
-
-        // Auto Crystal only places from the user's own right-click and only when the crystal is held.
-        if (allowPlace && rightDown && client.player.getMainHandStack().isOf(Items.END_CRYSTAL) && crystalPlaceCooldown <= 0) {
-            if (client.crosshairTarget instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK) {
-                BlockPos base = hit.getBlockPos();
-                boolean crystalBase = client.world.getBlockState(base).isOf(Blocks.OBSIDIAN)
-                        || client.world.getBlockState(base).isOf(Blocks.BEDROCK);
-                if (crystalBase && client.world.getBlockState(base.up()).isAir()
-                        && client.world.getBlockState(base.up(2)).isAir()) {
-                    client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
-                    client.player.swingHand(Hand.MAIN_HAND);
-                    ClientModule module = CincoClient.findModule("Auto Crystal");
-                    crystalPlaceCooldown = module == null ? 1 : Math.max(1, (int) module.setting + 1);
-                }
-            }
-        }
-
-        // Break nearby crystals rapidly while Auto Crystal is being used, or continuously for Crystal Breaker.
-        if (allowPlace && (!rightDown || !client.player.getMainHandStack().isOf(Items.END_CRYSTAL))) return;
-        if (!allowPlace && !enabled("Crystal Breaker")) return;
-        if (crystalCooldown > 0) return;
-        ClientModule crystalSettings = CincoClient.findModule(allowPlace ? "Auto Crystal" : "Crystal Breaker");
-        double range = allowPlace && crystalSettings != null ? crystalSettings.setting3 : 4.5;
-        EndCrystalEntity nearest = null;
-        double best = range * range;
-        for (EndCrystalEntity entity : client.world.getEntitiesByClass(EndCrystalEntity.class,
-                client.player.getBoundingBox().expand(range), Entity::isAlive)) {
-            double distance = client.player.squaredDistanceTo(entity);
-            if (distance < best) {
-                best = distance;
-                nearest = entity;
-            }
-        }
-        if (nearest != null) {
-            client.interactionManager.attackEntity(client.player, nearest);
-            client.player.swingHand(Hand.MAIN_HAND);
-            ClientModule module = CincoClient.findModule(allowPlace ? "Auto Crystal" : "Crystal Breaker");
-            crystalCooldown = module == null ? 1 : Math.max(1, (int) module.setting2);
-        }
+        // Manual placement only: no automatic target acquisition or crystal attacks.
+        if (!allowPlace || client.player == null || client.world == null || client.interactionManager == null) return;
+        if (client.currentScreen != null || client.getWindow() == null) return;
+        boolean rightDown = GLFW.glfwGetMouseButton(client.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+        if (!rightDown || !client.player.getMainHandStack().isOf(Items.END_CRYSTAL) || crystalPlaceCooldown > 0) return;
+        if (!(client.crosshairTarget instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
+        BlockPos base = hit.getBlockPos();
+        if (!client.world.getBlockState(base).isOf(Blocks.OBSIDIAN)) return;
+        if (!client.world.getBlockState(base.up()).isAir() || !client.world.getBlockState(base.up(2)).isAir()) return;
+        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
+        client.player.swingHand(Hand.MAIN_HAND);
+        ClientModule module = CincoClient.findModule("Auto Crystal");
+        crystalPlaceCooldown = module == null ? 2 : Math.max(2, (int) module.setting + 2);
     }
 
     public static void triggerPearl(MinecraftClient client) {

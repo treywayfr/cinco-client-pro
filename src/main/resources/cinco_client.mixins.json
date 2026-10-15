@@ -18,8 +18,7 @@
     "FreeCamMouseMixin",
     "FreeCamMovementMixin",
     "ChatHudEditorMixin",
-    "StarActionBarMixin",
-    "StarGuiSoundMixin"
+    "StarActionBarMixin"
   ],
   "injectors": {
     "defaultRequire": 1

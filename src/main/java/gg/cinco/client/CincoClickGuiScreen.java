@@ -49,6 +49,8 @@ public final class CincoClickGuiScreen extends Screen {
 
     @Override
     public void render(DrawContext c, int mx, int my, float delta) {
+        // Paint vanilla's background first. Never draw it over the custom controls.
+        super.render(c, mx, my, delta);
         long now = System.currentTimeMillis();
         c.fill(0, 0, width, height, BACKGROUND);
         drawStars(c, now, delta);
@@ -140,7 +142,6 @@ public final class CincoClickGuiScreen extends Screen {
         // Animated accent glint is kept to the border so it never crosses text.
         int glintX = l + 8 + (int) ((now / 12L) % (W - 16));
         c.fill(glintX, panelY, Math.min(l + W, glintX + 28), panelY + 3, 0xFFFFFFFF);
-        super.render(c, mx, my, delta);
     }
 
 

@@ -120,7 +120,6 @@ public final class CincoClient implements ClientModInitializer {
         add("Auto Eat", "Eat a hotbar food when hunger falls below the threshold", ClientModule.Category.COMBAT, false, "Hunger", 8, 2, 18, 2);
         add("Offhand Manager", "Offhand management UI/settings foundation", ClientModule.Category.COMBAT, false, "Mode", 1, 1, 3, 1);
         add("Auto Regear", "Regear checklist helper foundation", ClientModule.Category.COMBAT, false, "Preset", 1, 1, 4, 1);
-        add("Crystal Breaker", "Attack nearby end crystals", ClientModule.Category.COMBAT, false, "Range", 4.0, 2.0, 6.0, 0.5);
         add("Totem Reminder", "Warn when your offhand is not holding a totem", ClientModule.Category.COMBAT, false, "Interval", 5, 1, 15, 1);
         add("Gapple Reminder", "Warn when no golden apples remain", ClientModule.Category.COMBAT, false, "Interval", 8, 1, 20, 1);
         add("Crystal Practice Timer", "Practice timing helper; no automated attack", ClientModule.Category.COMBAT, false, "Seconds", 2, 1, 5, 1);

@@ -31,6 +31,7 @@ public final class CombatModules {
     private static boolean autoEatPressing;
     private static int autoEatTicks;
     private static int autoTotemCooldown;
+    private static int autoEatCooldown;
 
     private CombatModules() {}
 
@@ -38,6 +39,7 @@ public final class CombatModules {
         if (crystalCooldown > 0) crystalCooldown--;
         if (anchorCooldown > 0) anchorCooldown--;
         if (autoTotemCooldown > 0) autoTotemCooldown--;
+        if (autoEatCooldown > 0) autoEatCooldown--;
 
         if (enabled("Auto Crystal") || enabled("Crystal Breaker")) tickAutoCrystal(client, enabled("Auto Crystal"));
         tickAnchorSequence(client);
@@ -74,11 +76,12 @@ public final class CombatModules {
         }
         activeAnchor = hit.getBlockPos().toImmutable();
         previousCharges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
-        anchorDelay = Math.max(1, moduleSettingInt("Anchor Macro", 1));
+        anchorDelay = Math.max(1, (int) moduleSetting("Anchor Macro", 1));
         anchorRetries = 0;
         anchorWait = 0;
         safeGlowstonePlaced = false;
         anchorStage = previousCharges > 0 ? 2 : 1;
+        if (previousCharges > 0) anchorWait = Math.max(0, moduleSettingInt("Anchor Macro", 3));
         notify(client, previousCharges > 0 ? "Anchor sequence: activating charged anchor..." : "Anchor sequence started.");
     }
 
@@ -121,9 +124,9 @@ public final class CombatModules {
 
         if (anchorStage == 2) {
             int charges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
-            if (charges == 0 && previousCharges == 0 && anchorRetries < 2) {
+            if (charges == 0 && previousCharges == 0 && anchorRetries < moduleSettingInt("Anchor Macro", 2)) {
                 anchorStage = 1;
-                anchorWait = anchorDelay;
+                anchorWait = Math.max(0, moduleSettingInt("Anchor Macro", 3));
                 return;
             }
             int totemSlot = findHotbarItem(client, Items.TOTEM_OF_UNDYING);
@@ -148,7 +151,7 @@ public final class CombatModules {
         if (client.player.getPitch() < threshold) return; // positive pitch means looking down
         if (!(client.crosshairTarget instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
         BlockPos target = hit.getBlockPos();
-        if (target.equals(activeAnchor) || client.player.squaredDistanceTo(Vec3d.ofCenter(target)) > 9.0) return;
+        if (target.equals(activeAnchor) || client.player.squaredDistanceTo(Vec3d.ofCenter(target)) > Math.pow(safe == null ? 2.0 : safe.setting2, 2.0)) return;
         if (target.getY() < client.player.getBlockY() - 2 || target.getY() > client.player.getBlockY() + 1) return;
         int glowstoneSlot = findHotbarItem(client, Items.GLOWSTONE);
         if (glowstoneSlot < 0) return;
@@ -175,7 +178,7 @@ public final class CombatModules {
         if (!enabled("Auto Totem") || client.player == null || client.world == null
                 || client.interactionManager == null || client.currentScreen != null || autoTotemCooldown > 0) return;
         ClientModule module = CincoClient.findModule("Auto Totem");
-        float threshold = module == null ? 12.0f : (float) module.setting;
+        float threshold = module == null ? 12.0f : (float) (module.setting + module.setting3);
         if (client.player.getHealth() > threshold || client.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)) return;
 
         for (int inventoryIndex = 0; inventoryIndex < 36; inventoryIndex++) {
@@ -183,13 +186,14 @@ public final class CombatModules {
             int handlerSlot = inventoryIndex < 9 ? inventoryIndex + 36 : inventoryIndex;
             client.interactionManager.clickSlot(client.player.playerScreenHandler.syncId,
                     handlerSlot, 40, SlotActionType.SWAP, client.player);
-            autoTotemCooldown = 10;
+            autoTotemCooldown = module == null ? 10 : (int) module.setting2;
             notify(client, "Auto Totem: moving a totem to your offhand.");
             return;
         }
     }
 
     private static void tickAutoEat(MinecraftClient client) {
+        ClientModule module = CincoClient.findModule("Auto Eat");
         if (client.player == null || client.world == null || client.currentScreen != null) {
             releaseAutoEat(client);
             return;
@@ -199,7 +203,6 @@ public final class CombatModules {
             return;
         }
 
-        ClientModule module = CincoClient.findModule("Auto Eat");
         int hungerThreshold = module == null ? 8 : (int) module.setting;
         int hunger = client.player.getHungerManager().getFoodLevel();
 
@@ -212,11 +215,12 @@ public final class CombatModules {
             client.options.useKey.setPressed(true);
             return;
         }
-        if (hunger > hungerThreshold || client.player.isUsingItem()) return;
+        if (hunger > hungerThreshold || client.player.isUsingItem() || autoEatCooldown > 0) return;
 
         for (int slot = 0; slot < 9; slot++) {
             Item item = client.player.getInventory().getStack(slot).getItem();
             if (!isUsefulFood(item)) continue;
+            if (item == Items.GOLDEN_APPLE && module != null && module.setting3 < 0.5) continue;
             client.player.getInventory().selectedSlot = slot;
             client.options.useKey.setPressed(true);
             autoEatPressing = true;
@@ -234,6 +238,10 @@ public final class CombatModules {
 
     private static void releaseAutoEat(MinecraftClient client) {
         if (autoEatPressing && client != null) client.options.useKey.setPressed(false);
+        if (autoEatPressing) {
+            ClientModule module = CincoClient.findModule("Auto Eat");
+            autoEatCooldown = module == null ? 5 : (int) module.setting2;
+        }
         autoEatPressing = false;
         autoEatTicks = 0;
     }
@@ -258,7 +266,7 @@ public final class CombatModules {
         if (crystal != null) {
             client.interactionManager.attackEntity(client.player, crystal);
             client.player.swingHand(Hand.MAIN_HAND);
-            crystalCooldown = 2;
+            crystalCooldown = Math.max(1, module == null ? 2 : (int) module.setting2);
             return;
         }
         if (!allowPlace) return;
@@ -283,7 +291,7 @@ public final class CombatModules {
             BlockHitResult hit = new BlockHitResult(new Vec3d(base.getX() + .5, base.getY() + 1.0, base.getZ() + .5), Direction.UP, base, false);
             client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
             client.player.swingHand(Hand.MAIN_HAND);
-            crystalCooldown = 5;
+            crystalCooldown = Math.max(1, module == null ? 5 : (int) module.setting2);
             return;
         }
     }
@@ -295,7 +303,20 @@ public final class CombatModules {
 
     private static int moduleSettingInt(String name, int fallback) {
         ClientModule module = CincoClient.findModule(name);
-        return module == null ? fallback : (int) module.setting;
+        if (module == null) return fallback;
+        if (name.equals("Anchor Macro")) return (int) module.setting2;
+        if (name.equals("Auto Totem")) return (int) module.setting2;
+        return (int) module.setting;
+    }
+
+    private static double moduleSetting(String name, int slot) {
+        ClientModule module = CincoClient.findModule(name);
+        if (module == null) return 1.0;
+        return switch (slot) {
+            case 2 -> module.setting2;
+            case 3 -> module.setting3;
+            default -> module.setting;
+        };
     }
 
     private static void notify(MinecraftClient client, String message) {

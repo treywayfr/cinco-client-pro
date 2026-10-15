@@ -13,8 +13,19 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
-/** Local-only procedural accessories for the player's model. */
+/**
+ * Solid local-only player cosmetics.
+ *
+ * Accessories are built from filled triangles rather than wireframe DEBUG_LINES. This makes wings,
+ * capes, crowns, halos and horns read as actual objects instead of hollow outlines. Relative player
+ * position/body yaw are also time-smoothed to keep third-person movement clean while the camera is
+ * following the player.
+ */
 public final class CustomAccessoryRenderer {
+    private static Vec3d smoothRelative;
+    private static double smoothYaw;
+    private static long lastFrameNanos;
+
     private CustomAccessoryRenderer() {}
 
     public static void render(WorldRenderContext context) {
@@ -30,204 +41,337 @@ public final class CustomAccessoryRenderer {
         double t = System.currentTimeMillis() / 1000.0 * motion;
         int tier = StarPerformance.animationTier(client);
 
-        Vec3d cam = context.camera().getPos();
-        double x = client.player.getX() - cam.x;
-        double y = client.player.getY() - cam.y;
-        double z = client.player.getZ() - cam.z;
-        double yaw = Math.toRadians(client.player.getBodyYaw());
+        Vec3d camera = context.camera().getPos();
+        Vec3d targetRelative = client.player.getPos().subtract(camera);
+        double targetYaw = Math.toRadians(client.player.getBodyYaw());
+        smoothTransform(targetRelative, targetYaw);
+        Vec3d p = smoothRelative == null ? targetRelative : smoothRelative;
+        double yaw = smoothYaw;
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(false);
+        RenderSystem.depthMask(true);
         RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.lineWidth(tier == 0 ? 1.4F : 2.0F);
 
-        BufferBuilder b = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        BufferBuilder b = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         Matrix4f m = matrices.peek().getPositionMatrix();
-        int bright = color(style, 235);
-        int dim = color(style, 92);
+
+        int main = mainColor(style, 232);
+        int light = lightColor(style, 248);
+        int shade = shadeColor(style, 208);
+        int glow = mainColor(style, 96);
 
         switch (style) {
-            case 2 -> demonWings(b, m, x, y, z, yaw, size, t, bright, dim);
-            case 3 -> halo(b, m, x, y, z, yaw, size, t, bright, tier);
-            case 4 -> crown(b, m, x, y, z, yaw, size, t, bright);
-            case 5 -> orbitStars(b, m, x, y, z, yaw, size, t, bright, tier);
-            case 6 -> horns(b, m, x, y, z, yaw, size, t, bright);
-            case 7 -> energyRing(b, m, x, y, z, yaw, size, t, bright, dim, tier);
-            case 8 -> cape(b, m, x, y, z, yaw, size, t, bright, dim, tier);
-            default -> angelWings(b, m, x, y, z, yaw, size, t, bright, dim);
+            case 2 -> demonWings(b, m, p.x, p.y, p.z, yaw, size, t, main, light, shade);
+            case 3 -> halo(b, m, p.x, p.y, p.z, yaw, size, t, main, light, shade, tier);
+            case 4 -> crown(b, m, p.x, p.y, p.z, yaw, size, t, main, light, shade, tier);
+            case 5 -> orbitStars(b, m, p.x, p.y, p.z, yaw, size, t, main, light, shade, tier);
+            case 6 -> horns(b, m, p.x, p.y, p.z, yaw, size, t, main, light, shade, tier);
+            case 7 -> energyRing(b, m, p.x, p.y, p.z, yaw, size, t, main, light, shade, glow, tier);
+            case 8 -> cape(b, m, p.x, p.y, p.z, yaw, size, t, main, light, shade, tier);
+            default -> angelWings(b, m, p.x, p.y, p.z, yaw, size, t, main, light, shade);
         }
 
         try { BufferRenderer.drawWithGlobalProgram(b.end()); }
         catch (IllegalStateException ignored) {}
 
-        RenderSystem.lineWidth(1.0F);
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
     }
 
-    private static void angelWings(BufferBuilder b, Matrix4f m, double x, double y, double z, double yaw,
-                                   double s, double t, int c, int dim) {
-        double flap = Math.sin(t * 2.0) * 0.09;
+    private static void smoothTransform(Vec3d target, double targetYaw) {
+        long now = System.nanoTime();
+        double dt = lastFrameNanos == 0L ? 1.0 / 60.0 : Math.min(0.10, (now - lastFrameNanos) / 1_000_000_000.0);
+        lastFrameNanos = now;
+        double alpha = 1.0 - Math.exp(-dt * 24.0);
+        if (smoothRelative == null || smoothRelative.squaredDistanceTo(target) > 16.0) smoothRelative = target;
+        else smoothRelative = smoothRelative.lerp(target, alpha);
+
+        if (!Double.isFinite(smoothYaw)) smoothYaw = targetYaw;
+        double delta = wrapRadians(targetYaw - smoothYaw);
+        if (Math.abs(delta) > Math.PI * 0.75) smoothYaw = targetYaw;
+        else smoothYaw += delta * alpha;
+    }
+
+    private static double wrapRadians(double a) {
+        while (a > Math.PI) a -= Math.PI * 2.0;
+        while (a < -Math.PI) a += Math.PI * 2.0;
+        return a;
+    }
+
+    private static void angelWings(BufferBuilder b, Matrix4f m, double x,double y,double z,double yaw,
+                                   double s,double t,int main,int light,int shade) {
+        double flap = Math.sin(t * 1.65) * 0.055;
         for (int side : new int[]{-1, 1}) {
-            double[][] spine = {
-                    {0.18 * side, 1.45, 0.10}, {0.52 * side, 1.55 + flap, 0.18},
-                    {0.90 * side, 1.40 + flap, 0.24}, {1.15 * side, 1.05, 0.30},
-                    {0.92 * side, 0.72, 0.27}, {0.48 * side, 0.90, 0.18}, {0.18 * side, 1.20, 0.10}
-            };
-            polyLocal(b,m,x,y,z,yaw,spine,s,c,true);
-            for (int i = 0; i < 5; i++) {
-                double sy = 1.36 - i * 0.13;
-                pLine(b,m,x,y,z,yaw,0.34*side,sy,0.16,(0.93-i*0.08)*side,sy-0.18,0.26,s,dim);
+            // Broad filled feather fan behind the shoulders.
+            double[] root = {0.16*side,1.47,-0.10};
+            double[] upper = {0.55*side,1.72+flap,-0.17};
+            double[] tip = {1.18*side,1.50+flap*0.8,-0.27};
+            double[] mid = {1.06*side,1.08,-0.31};
+            double[] low = {0.74*side,0.66,-0.28};
+            double[] inner = {0.28*side,0.92,-0.15};
+            triLocal(b,m,x,y,z,yaw,root,upper,tip,s,light);
+            triLocal(b,m,x,y,z,yaw,root,tip,mid,s,main);
+            triLocal(b,m,x,y,z,yaw,root,mid,low,s,main);
+            triLocal(b,m,x,y,z,yaw,root,low,inner,s,shade);
+
+            // Layered solid feather blades create depth without wireframe clutter.
+            for (int i=0;i<5;i++) {
+                double fy = 1.40 - i*0.13;
+                double outer = 1.03 - i*0.085;
+                double[] a = {0.27*side, fy, -0.185-i*0.006};
+                double[] d = {outer*side, fy-0.11, -0.32-i*0.010};
+                double[] e = {(outer-0.13)*side, fy-0.27, -0.30-i*0.010};
+                triLocal(b,m,x,y,z,yaw,a,d,e,s,i<2?light:main);
             }
         }
     }
 
-    private static void demonWings(BufferBuilder b, Matrix4f m, double x, double y, double z, double yaw,
-                                   double s, double t, int c, int dim) {
-        double flap = Math.sin(t * 2.5) * 0.07;
+    private static void demonWings(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
+                                   double s,double t,int main,int light,int shade) {
+        double flap = Math.sin(t * 1.9) * 0.045;
         for (int side : new int[]{-1,1}) {
-            double[][] outline = {
-                    {0.17*side,1.42,0.12},{0.58*side,1.62+flap,0.20},{1.18*side,1.48,0.30},
-                    {0.86*side,1.13,0.25},{1.10*side,0.78,0.32},{0.60*side,0.88,0.20},
-                    {0.18*side,1.16,0.10}
+            double[] root={0.15*side,1.45,-0.11};
+            double[] top={0.58*side,1.72+flap,-0.18};
+            double[] point={1.22*side,1.52+flap,-0.30};
+            double[] notch1={0.87*side,1.18,-0.27};
+            double[] point2={1.12*side,0.81,-0.33};
+            double[] notch2={0.67*side,0.91,-0.23};
+            double[] bottom={0.26*side,1.11,-0.14};
+            triLocal(b,m,x,y,z,yaw,root,top,point,s,light);
+            triLocal(b,m,x,y,z,yaw,root,point,notch1,s,main);
+            triLocal(b,m,x,y,z,yaw,root,notch1,point2,s,shade);
+            triLocal(b,m,x,y,z,yaw,root,point2,notch2,s,main);
+            triLocal(b,m,x,y,z,yaw,root,notch2,bottom,s,shade);
+        }
+    }
+
+    private static void halo(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
+                             double s,double t,int main,int light,int shade,int tier) {
+        int seg=tier==0?18:tier==1?28:40;
+        double yy=2.12+Math.sin(t*1.25)*0.018;
+        annulusHorizontal(b,m,x,y,z,yaw,0.0,yy,-0.015,0.38,0.27,0.055,seg,s,main,light,shade);
+    }
+
+    private static void crown(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
+                              double s,double t,int main,int light,int shade,int tier) {
+        int seg=tier==0?12:18;
+        double yy=2.02+Math.sin(t*1.15)*0.012;
+        annulusHorizontal(b,m,x,y,z,yaw,0.0,yy,-0.01,0.29,0.22,0.10,seg,s,main,light,shade);
+        int spikes=6;
+        for(int i=0;i<spikes;i++) {
+            double a=i*Math.PI*2.0/spikes;
+            double cx=Math.cos(a)*0.255, cz=Math.sin(a)*0.255;
+            double tx=Math.cos(a)*0.19, tz=Math.sin(a)*0.19;
+            double[] left={cx-Math.sin(a)*0.07,yy+0.06,cz+Math.cos(a)*0.07};
+            double[] right={cx+Math.sin(a)*0.07,yy+0.06,cz-Math.cos(a)*0.07};
+            double[] tip={tx,yy+0.30+(i%2)*0.055,tz};
+            triLocal(b,m,x,y,z,yaw,left,right,tip,s,i%2==0?light:main);
+        }
+    }
+
+    private static void orbitStars(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
+                                   double s,double t,int main,int light,int shade,int tier) {
+        int count=tier==0?5:tier==1?7:9;
+        for(int i=0;i<count;i++) {
+            double a=t*0.52+i*Math.PI*2.0/count;
+            double lx=Math.cos(a)*0.64;
+            double lz=Math.sin(a)*0.43;
+            double ly=0.68+(i%4)*0.31+Math.sin(t*1.2+i)*0.035;
+            diamond(b,m,x,y,z,yaw,lx,ly,lz,0.075+(i%3)*0.012,s,
+                    i%2==0?light:main,shade);
+        }
+    }
+
+    private static void horns(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
+                              double s,double t,int main,int light,int shade,int tier) {
+        for(int side:new int[]{-1,1}) {
+            double wobble=Math.sin(t*1.15+side)*0.010;
+            double[][] pts={
+                    {0.13*side,1.96,-0.01},
+                    {0.19*side,2.10+wobble,-0.015},
+                    {0.29*side,2.20+wobble,-0.005},
+                    {0.27*side,2.32,0.015},
+                    {0.17*side,2.40,0.025}
             };
-            polyLocal(b,m,x,y,z,yaw,outline,s,c,true);
-            pLine(b,m,x,y,z,yaw,0.30*side,1.35,0.14,1.18*side,1.48,0.30,s,dim);
-            pLine(b,m,x,y,z,yaw,0.35*side,1.26,0.14,1.10*side,0.78,0.32,s,dim);
+            for(int i=0;i<pts.length-1;i++) {
+                double width=0.075*(1.0-i/(double)(pts.length-1)*0.72);
+                solidRibbonSegment(b,m,x,y,z,yaw,pts[i],pts[i+1],width,s,i==0?shade:(i==pts.length-2?light:main));
+            }
         }
     }
 
-    private static void halo(BufferBuilder b, Matrix4f m, double x, double y, double z, double yaw,
-                             double s, double t, int c, int tier) {
-        int seg = tier == 0 ? 24 : 42;
-        double cy = 2.08 + Math.sin(t * 1.4) * 0.025;
-        ellipseLocal(b,m,x,y,z,yaw,0.35,cy,0.0,0.35,0.16,seg,s,c);
+    private static void energyRing(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
+                                   double s,double t,int main,int light,int shade,int glow,int tier) {
+        int seg=tier==0?24:tier==1?36:52;
+        double pulse=0.72+Math.sin(t*1.5)*0.035;
+        verticalRibbonRing(b,m,x,y,z,yaw,0.0,1.02,0.0,pulse,0.97,0.065,seg,s,t*0.18,main,light);
+        if(tier>0) verticalRibbonRing(b,m,x,y,z,yaw,0.0,1.02,0.0,pulse*0.87,0.82,0.032,seg,s,-t*0.13,glow,shade);
     }
 
-    private static void crown(BufferBuilder b, Matrix4f m, double x, double y, double z, double yaw,
-                              double s, double t, int c) {
-        double yy = 1.98 + Math.sin(t * 1.3) * 0.02;
-        double[][] pts = {
-                {-0.26,yy,0.0},{-0.18,yy+0.25,0.0},{-0.07,yy+0.08,0.0},
-                {0.0,yy+0.31,0.0},{0.07,yy+0.08,0.0},{0.18,yy+0.25,0.0},{0.26,yy,0.0}
+    private static void cape(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
+                             double s,double t,int main,int light,int shade,int tier) {
+        int cols=tier==0?3:tier==1?5:7;
+        int rows=tier==0?4:6;
+        for(int row=0;row<rows;row++) {
+            double v0=row/(double)rows, v1=(row+1)/(double)rows;
+            double y0=1.52-v0*1.02, y1=1.52-v1*1.02;
+            for(int col=0;col<cols;col++) {
+                double u0=col/(double)cols, u1=(col+1)/(double)cols;
+                double x0=-0.31+u0*0.62, x1=-0.31+u1*0.62;
+                double z00=-0.14-v0*0.28+Math.sin(t*1.45+col*0.42+row*0.28)*0.028*v0;
+                double z01=-0.14-v0*0.28+Math.sin(t*1.45+(col+1)*0.42+row*0.28)*0.028*v0;
+                double z10=-0.14-v1*0.28+Math.sin(t*1.45+col*0.42+(row+1)*0.28)*0.035*v1;
+                double z11=-0.14-v1*0.28+Math.sin(t*1.45+(col+1)*0.42+(row+1)*0.28)*0.035*v1;
+                int c=((row+col)&1)==0?main:shade;
+                quadLocal(b,m,x,y,z,yaw,
+                        new double[]{x0,y0,z00},new double[]{x1,y0,z01},
+                        new double[]{x1,y1,z11},new double[]{x0,y1,z10},s,c);
+            }
+        }
+        // Filled shoulder clasp/upper cape keeps it visually attached to the character.
+        quadLocal(b,m,x,y,z,yaw,
+                new double[]{-0.32,1.54,-0.12},new double[]{0.32,1.54,-0.12},
+                new double[]{0.29,1.42,-0.15},new double[]{-0.29,1.42,-0.15},s,light);
+    }
+
+    private static void annulusHorizontal(BufferBuilder b,Matrix4f m,double x,double y,double z,double yaw,
+                                          double cx,double cy,double cz,double outer,double inner,double thickness,
+                                          int seg,double s,int main,int light,int shade) {
+        double yTop=cy+thickness*0.5, yBot=cy-thickness*0.5;
+        for(int i=0;i<seg;i++) {
+            double a0=i*Math.PI*2/seg,a1=(i+1)*Math.PI*2/seg;
+            double[] o0={cx+Math.cos(a0)*outer,yTop,cz+Math.sin(a0)*outer};
+            double[] o1={cx+Math.cos(a1)*outer,yTop,cz+Math.sin(a1)*outer};
+            double[] i1={cx+Math.cos(a1)*inner,yTop,cz+Math.sin(a1)*inner};
+            double[] i0={cx+Math.cos(a0)*inner,yTop,cz+Math.sin(a0)*inner};
+            quadLocal(b,m,x,y,z,yaw,o0,o1,i1,i0,s,light);
+            double[] bo0={o0[0],yBot,o0[2]},bo1={o1[0],yBot,o1[2]};
+            quadLocal(b,m,x,y,z,yaw,bo0,bo1,o1,o0,s,main);
+            double[] bi0={i0[0],yBot,i0[2]},bi1={i1[0],yBot,i1[2]};
+            quadLocal(b,m,x,y,z,yaw,i0,i1,bi1,bi0,s,shade);
+        }
+    }
+
+    private static void verticalRibbonRing(BufferBuilder b,Matrix4f m,double x,double y,double z,double yaw,
+                                           double cx,double cy,double cz,double rx,double ry,double halfWidth,
+                                           int seg,double s,double rotation,int main,int light) {
+        for(int i=0;i<seg;i++) {
+            double a0=i*Math.PI*2/seg,a1=(i+1)*Math.PI*2/seg;
+            double[] c0=verticalPoint(cx,cy,cz,rx,ry,a0,rotation);
+            double[] c1=verticalPoint(cx,cy,cz,rx,ry,a1,rotation);
+            double[] o0=verticalPoint(cx,cy,cz,rx+halfWidth,ry+halfWidth,a0,rotation);
+            double[] o1=verticalPoint(cx,cy,cz,rx+halfWidth,ry+halfWidth,a1,rotation);
+            double[] i0=verticalPoint(cx,cy,cz,Math.max(0.05,rx-halfWidth),Math.max(0.05,ry-halfWidth),a0,rotation);
+            double[] i1=verticalPoint(cx,cy,cz,Math.max(0.05,rx-halfWidth),Math.max(0.05,ry-halfWidth),a1,rotation);
+            triLocal(b,m,x,y,z,yaw,o0,o1,i1,s,(i&1)==0?light:main);
+            triLocal(b,m,x,y,z,yaw,o0,i1,i0,s,(i&1)==0?light:main);
+        }
+    }
+
+    private static double[] verticalPoint(double cx,double cy,double cz,double rx,double ry,double a,double rot) {
+        double h=Math.cos(a)*rx;
+        return new double[]{cx+Math.cos(rot)*h,cy+Math.sin(a)*ry,cz+Math.sin(rot)*h};
+    }
+
+    private static void diamond(BufferBuilder b,Matrix4f m,double x,double y,double z,double yaw,
+                                double cx,double cy,double cz,double r,double s,int topColor,int bottomColor) {
+        double[] top={cx,cy+r*1.55,cz},bottom={cx,cy-r*1.55,cz};
+        double[] left={cx-r,cy,cz},right={cx+r,cy,cz},front={cx,cy,cz+r},back={cx,cy,cz-r};
+        triLocal(b,m,x,y,z,yaw,top,left,front,s,topColor);
+        triLocal(b,m,x,y,z,yaw,top,front,right,s,topColor);
+        triLocal(b,m,x,y,z,yaw,top,right,back,s,topColor);
+        triLocal(b,m,x,y,z,yaw,top,back,left,s,topColor);
+        triLocal(b,m,x,y,z,yaw,bottom,front,left,s,bottomColor);
+        triLocal(b,m,x,y,z,yaw,bottom,right,front,s,bottomColor);
+        triLocal(b,m,x,y,z,yaw,bottom,back,right,s,bottomColor);
+        triLocal(b,m,x,y,z,yaw,bottom,left,back,s,bottomColor);
+    }
+
+    private static void solidRibbonSegment(BufferBuilder b,Matrix4f m,double x,double y,double z,double yaw,
+                                           double[] a,double[] d,double width,double s,int color) {
+        double dx=d[0]-a[0],dy=d[1]-a[1];
+        double len=Math.max(0.0001,Math.hypot(dx,dy));
+        double px=-dy/len*width,py=dx/len*width;
+        double z0=-width*0.72,z1=width*0.72;
+        double[] a0={a[0]+px,a[1]+py,a[2]+z0},a1={a[0]-px,a[1]-py,a[2]+z0};
+        double[] d0={d[0]+px,d[1]+py,d[2]+z1},d1={d[0]-px,d[1]-py,d[2]+z1};
+        quadLocal(b,m,x,y,z,yaw,a0,d0,d1,a1,s,color);
+        double[] ba0={a0[0],a0[1],a[2]-z0},ba1={a1[0],a1[1],a[2]-z0};
+        double[] bd0={d0[0],d0[1],d[2]-z1},bd1={d1[0],d1[1],d[2]-z1};
+        quadLocal(b,m,x,y,z,yaw,ba1,bd1,bd0,ba0,s,color);
+    }
+
+    private static int mainColor(int style,int alpha) {
+        int rgb=switch(style) {
+            case 1 -> 0xD9D7FF;
+            case 2 -> 0x7A2EFF;
+            case 3 -> 0xFFE07A;
+            case 4 -> 0xC28CFF;
+            case 5 -> 0xA968FF;
+            case 6 -> 0x9A4DFF;
+            case 7 -> 0x9B68FF;
+            case 8 -> 0x6E46D8;
+            default -> 0xA968FF;
         };
-        polyLocal(b,m,x,y,z,yaw,pts,s,c,false);
-        pLine(b,m,x,y,z,yaw,-0.26,yy,0.0,0.26,yy,0.0,s,c);
+        return (clamp255(alpha)<<24)|rgb;
     }
 
-    private static void orbitStars(BufferBuilder b, Matrix4f m, double x, double y, double z, double yaw,
-                                   double s, double t, int c, int tier) {
-        int count = tier == 0 ? 5 : 8;
-        for (int i=0;i<count;i++) {
-            double a = t * 0.8 + i * Math.PI * 2.0 / count;
-            double lx = Math.cos(a) * 0.62;
-            double lz = Math.sin(a) * 0.34;
-            double ly = 0.58 + (i % 4) * 0.34 + Math.sin(t*1.7+i)*0.05;
-            starLocal(b,m,x,y,z,yaw,lx,ly,lz,0.07,s,c);
-        }
-    }
-
-    private static void horns(BufferBuilder b, Matrix4f m, double x, double y, double z, double yaw,
-                              double s, double t, int c) {
-        for (int side : new int[]{-1,1}) {
-            double wobble = Math.sin(t*1.6 + side) * 0.015;
-            double[][] horn = {
-                    {0.13*side,1.94,0.0},{0.20*side,2.08+wobble,0.01},
-                    {0.28*side,2.18+wobble,0.02},{0.24*side,2.30,0.03},{0.15*side,2.36,0.04}
-            };
-            polyLocal(b,m,x,y,z,yaw,horn,s,c,false);
-        }
-    }
-
-    private static void energyRing(BufferBuilder b, Matrix4f m, double x, double y, double z, double yaw,
-                                   double s, double t, int c, int dim, int tier) {
-        int seg = tier == 0 ? 28 : 48;
-        double pulse = 0.70 + Math.sin(t*2.0)*0.05;
-        verticalEllipseLocal(b,m,x,y,z,yaw,0.0,0.95,0.0,pulse,0.98,seg,s,c,t*0.35);
-        verticalEllipseLocal(b,m,x,y,z,yaw,0.0,0.95,0.0,pulse*0.82,0.78,seg,s,dim,-t*0.25);
-    }
-
-    private static void cape(BufferBuilder b, Matrix4f m, double x, double y, double z, double yaw,
-                             double s, double t, int c, int dim, int tier) {
-        int strips = tier == 0 ? 4 : 7;
-        for (int i=0;i<strips;i++) {
-            double lx = -0.28 + i * (0.56 / Math.max(1, strips-1));
-            double wave = Math.sin(t*2.0 + i*0.8) * 0.07;
-            pLine(b,m,x,y,z,yaw,lx,1.50,0.16,lx,0.55,0.42+wave,s,i%2==0?c:dim);
-        }
-        pLine(b,m,x,y,z,yaw,-0.30,1.50,0.16,0.30,1.50,0.16,s,c);
-        pLine(b,m,x,y,z,yaw,-0.30,0.55,0.42,0.30,0.55,0.42,s,dim);
-    }
-
-    private static int color(int style, int alpha) {
-        int rgb = switch (style) {
-            case 1 -> 0xF2F4FF;
-            case 2,6,7,8 -> 0xA45CFF;
-            case 3 -> 0xFFF2B7;
-            case 4 -> 0xFFD85F;
-            case 5 -> 0xB984FF;
-            default -> 0xA45CFF;
+    private static int lightColor(int style,int alpha) {
+        int rgb=switch(style) {
+            case 1 -> 0xFFFFFF;
+            case 2 -> 0xC56CFF;
+            case 3 -> 0xFFF5C7;
+            case 4 -> 0xF0D9FF;
+            case 5 -> 0xE6CBFF;
+            case 6 -> 0xD7A6FF;
+            case 7 -> 0xE5D5FF;
+            case 8 -> 0xBFA6FF;
+            default -> 0xE0CAFF;
         };
-        return (Math.max(0,Math.min(255,alpha))<<24) | rgb;
+        return (clamp255(alpha)<<24)|rgb;
     }
 
-    private static void ellipseLocal(BufferBuilder b, Matrix4f m, double x,double y,double z,double yaw,
-                                     double cx,double cy,double cz,double rx,double rz,int seg,double s,int c) {
-        double[] prev = world(x,y,z,yaw,cx+rx,cy,cz,s);
-        for(int i=1;i<=seg;i++) {
-            double a=i*Math.PI*2.0/seg;
-            double[] next=world(x,y,z,yaw,cx+Math.cos(a)*rx,cy,cz+Math.sin(a)*rz,s);
-            line(b,m,prev,next,c); prev=next;
-        }
+    private static int shadeColor(int style,int alpha) {
+        int rgb=switch(style) {
+            case 1 -> 0x77719D;
+            case 2 -> 0x36126D;
+            case 3 -> 0x8E6A24;
+            case 4 -> 0x694487;
+            case 5 -> 0x553377;
+            case 6 -> 0x4A2368;
+            case 7 -> 0x4A2B78;
+            case 8 -> 0x321F63;
+            default -> 0x4B2C72;
+        };
+        return (clamp255(alpha)<<24)|rgb;
     }
 
-    private static void verticalEllipseLocal(BufferBuilder b, Matrix4f m, double x,double y,double z,double yaw,
-                                             double cx,double cy,double cz,double rx,double ry,int seg,double s,int c,double rot) {
-        double[] prev = world(x,y,z,yaw,cx+Math.cos(rot)*rx,cy,cz+Math.sin(rot)*rx,s);
-        for(int i=1;i<=seg;i++) {
-            double a=i*Math.PI*2.0/seg;
-            double h=Math.cos(a)*rx;
-            double[] next=world(x,y,z,yaw,cx+Math.cos(rot)*h,cy+Math.sin(a)*ry,cz+Math.sin(rot)*h,s);
-            line(b,m,prev,next,c); prev=next;
-        }
+    private static int clamp255(int v){return Math.max(0,Math.min(255,v));}
+
+    private static void quadLocal(BufferBuilder b,Matrix4f m,double x,double y,double z,double yaw,
+                                  double[] a,double[] d,double[] e,double[] f,double s,int color) {
+        triLocal(b,m,x,y,z,yaw,a,d,e,s,color);
+        triLocal(b,m,x,y,z,yaw,a,e,f,s,color);
     }
 
-    private static void starLocal(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
-                                  double lx,double ly,double lz,double r,double s,int c) {
-        pLine(b,m,x,y,z,yaw,lx-r,ly,lz,lx+r,ly,lz,s,c);
-        pLine(b,m,x,y,z,yaw,lx,ly-r,lz,lx,ly+r,lz,s,c);
-        pLine(b,m,x,y,z,yaw,lx,ly,lz-r,lx,ly,lz+r,s,c);
-    }
-
-    private static void polyLocal(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
-                                  double[][] pts,double s,int c,boolean close) {
-        for(int i=1;i<pts.length;i++) {
-            pLine(b,m,x,y,z,yaw,pts[i-1][0],pts[i-1][1],pts[i-1][2],pts[i][0],pts[i][1],pts[i][2],s,c);
-        }
-        if(close && pts.length>2) {
-            double[] a=pts[pts.length-1], d=pts[0];
-            pLine(b,m,x,y,z,yaw,a[0],a[1],a[2],d[0],d[1],d[2],s,c);
-        }
-    }
-
-    private static void pLine(BufferBuilder b, Matrix4f m,double x,double y,double z,double yaw,
-                              double ax,double ay,double az,double bx,double by,double bz,double s,int c) {
-        line(b,m,world(x,y,z,yaw,ax,ay,az,s),world(x,y,z,yaw,bx,by,bz,s),c);
+    private static void triLocal(BufferBuilder b,Matrix4f m,double x,double y,double z,double yaw,
+                                 double[] a,double[] d,double[] e,double s,int color) {
+        double[] aw=world(x,y,z,yaw,a[0],a[1],a[2],s);
+        double[] dw=world(x,y,z,yaw,d[0],d[1],d[2],s);
+        double[] ew=world(x,y,z,yaw,e[0],e[1],e[2],s);
+        b.vertex(m,(float)aw[0],(float)aw[1],(float)aw[2]).color(color);
+        b.vertex(m,(float)dw[0],(float)dw[1],(float)dw[2]).color(color);
+        b.vertex(m,(float)ew[0],(float)ew[1],(float)ew[2]).color(color);
     }
 
     private static double[] world(double x,double y,double z,double yaw,double lx,double ly,double lz,double s) {
         lx*=s; ly*=s; lz*=s;
-        double rightX=Math.cos(yaw), rightZ=Math.sin(yaw);
-        double forwardX=-Math.sin(yaw), forwardZ=Math.cos(yaw);
-        return new double[]{x + rightX*lx + forwardX*lz, y + ly, z + rightZ*lx + forwardZ*lz};
-    }
-
-    private static void line(BufferBuilder b, Matrix4f m,double[] a,double[] d,int c) {
-        b.vertex(m,(float)a[0],(float)a[1],(float)a[2]).color(c);
-        b.vertex(m,(float)d[0],(float)d[1],(float)d[2]).color(c);
+        double rightX=Math.cos(yaw),rightZ=Math.sin(yaw);
+        double forwardX=-Math.sin(yaw),forwardZ=Math.cos(yaw);
+        return new double[]{x+rightX*lx+forwardX*lz,y+ly,z+rightZ*lx+forwardZ*lz};
     }
 }

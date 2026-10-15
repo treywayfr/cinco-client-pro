@@ -20,9 +20,9 @@ public final class ConfigStore {
     private static final class State {
         boolean enabled;
         double setting;
-        double setting2;
-        double setting3;
-        int keyCode;
+        Double setting2;
+        Double setting3;
+        Integer keyCode;
         State(boolean enabled, double setting, double setting2, double setting3, int keyCode) {
             this.enabled = enabled;
             this.setting = setting;
@@ -56,11 +56,9 @@ public final class ConfigStore {
                 if (state == null) continue;
                 module.enabled = state.enabled;
                 module.setting = Math.max(module.min, Math.min(module.max, state.setting));
-                // Older configs do not have these fields, so keep each module's new defaults.
-                if (state.setting2 != 0) module.setting2 = Math.max(module.min2, Math.min(module.max2, state.setting2));
-                if (state.setting3 != 0) module.setting3 = Math.max(module.min3, Math.min(module.max3, state.setting3));
-                // In legacy configs keyCode deserializes as zero; only accept valid GLFW keys or UNKNOWN.
-                if (state.keyCode == -1 || state.keyCode >= 32) module.keyCode = state.keyCode;
+                if (state.setting2 != null) module.setting2 = Math.max(module.min2, Math.min(module.max2, state.setting2));
+                if (state.setting3 != null) module.setting3 = Math.max(module.min3, Math.min(module.max3, state.setting3));
+                if (state.keyCode != null) module.keyCode = state.keyCode;
             }
             ClientModule sprint = CincoClient.findModule("Sprint Assist");
             if (sprint != null) CincoClient.sprintAssistEnabled = sprint.enabled;

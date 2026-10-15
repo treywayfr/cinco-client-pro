@@ -107,7 +107,7 @@ public final class CombatModules {
         }
 
         BlockPos placePos = target.offset(hit.getSide());
-        if (!client.world.getBlockState(placePos).isAir()) {
+        if (!client.world.getBlockState(placePos).isReplaceable()) {
             notify(client, "Can't place anchor there — the adjacent block space isn't empty.");
             return;
         }
@@ -122,7 +122,7 @@ public final class CombatModules {
         client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
         client.player.swingHand(Hand.MAIN_HAND);
         anchorStage = 3; // wait for the server/client world to show the placed anchor
-        anchorPlacementTicks = 8;
+        anchorPlacementTicks = 20;
         anchorWait = Math.max(1, anchorDelay);
         notify(client, "Anchor placed — charging and totem activation sequence started.");
     }

@@ -1,5 +1,6 @@
 package gg.cinco.client.mixin;
 
+import gg.cinco.client.CharacterDetailOverlay;
 import gg.cinco.client.CincoClient;
 import gg.cinco.client.GtaCharacterRenderer;
 import net.minecraft.client.MinecraftClient;
@@ -25,6 +26,7 @@ public abstract class PlayerEntityRendererMixin {
         var module = CincoClient.findModule("GTA Skin Changer");
         if (module != null && module.enabled && player == MinecraftClient.getInstance().player) {
             GtaCharacterRenderer.render(player, bodyYaw, tickDelta, matrices, consumers, light);
+            CharacterDetailOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
             ci.cancel();
         }
     }

@@ -13,8 +13,6 @@ public final class CincoPatchClient implements ClientModInitializer {
     public void onInitializeClient() {
         boolean changedModules = false;
 
-        // Keep the existing object/settings so old configs migrate cleanly, but expose the much
-        // cleaner user-facing name requested for the module.
         ClientModule legacyPlayerChanger = CincoClient.findModule("GTA Skin Changer");
         if (legacyPlayerChanger != null) legacyPlayerChanger.name = "Player Changer";
 
@@ -42,7 +40,6 @@ public final class CincoPatchClient implements ClientModInitializer {
             changedModules = true;
         }
 
-        // Replace the old 0.5-5 gamma control with a much wider visual range.
         ClientModule oldFullbright = CincoClient.findModule("Fullbright");
         if (oldFullbright != null && oldFullbright.max < 20.0) {
             int index = CincoClient.MODULES.indexOf(oldFullbright);
@@ -68,5 +65,6 @@ public final class CincoPatchClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((ctx, tickCounter) ->
                 EnhancedEspHud.render(ctx, MinecraftClient.getInstance()));
         WorldRenderEvents.LAST.register(StorageEspWorldRenderer::render);
+        WorldRenderEvents.LAST.register(CleanEspWorldRenderer::render);
     }
 }

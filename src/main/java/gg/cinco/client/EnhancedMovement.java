@@ -14,7 +14,8 @@ public final class EnhancedMovement {
 
     public static void tickFlight(MinecraftClient client) {
         ClientModule flight = CincoClient.findModule("Flight");
-        if (client == null || client.player == null || flight == null || !flight.enabled || client.player.isSpectator()) {
+        if (client == null || client.player == null || flight == null || !flight.enabled
+                || client.player.isSpectator() || FreeCamController.isActive()) {
             restore(client);
             return;
         }
@@ -26,7 +27,6 @@ public final class EnhancedMovement {
             oldFlySpeed = abilities.getFlySpeed();
             captured = true;
         }
-
         abilities.allowFlying = true;
         abilities.flying = true;
         abilities.setFlySpeed((float) Math.max(0.02, Math.min(0.25, flight.setting2 * 0.08)));
@@ -40,13 +40,11 @@ public final class EnhancedMovement {
                 - (client.options.sneakKey.isPressed() ? flight.setting3 : 0.0) : 0.0;
 
         double yaw = Math.toRadians(client.player.getYaw());
-        double dx = -Math.sin(yaw) * forward - Math.cos(yaw) * strafe;
-        double dz = Math.cos(yaw) * forward - Math.sin(yaw) * strafe;
+        // Minecraft yaw 0 faces +Z. Left should therefore be +X at yaw 0.
+        double dx = -Math.sin(yaw) * forward + Math.cos(yaw) * strafe;
+        double dz =  Math.cos(yaw) * forward + Math.sin(yaw) * strafe;
         double length = Math.hypot(dx, dz);
-        if (length > 0.0001) {
-            dx /= length;
-            dz /= length;
-        }
+        if (length > 0.0001) { dx /= length; dz /= length; }
 
         double horizontalSpeed = Math.max(0.05, flight.setting2);
         client.player.setVelocity(dx * horizontalSpeed, vertical, dz * horizontalSpeed);

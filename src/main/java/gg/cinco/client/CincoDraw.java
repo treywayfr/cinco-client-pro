@@ -6,12 +6,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Shared UI drawing helpers. Rounded rectangles use an 8x supersampled corner mask so the
- * silhouette has real alpha-antialiased edges instead of staircase/blocky corners.
+ * Shared UI drawing helpers. Rounded rectangles keep the requested 8x supersampled edge quality,
+ * but cache only radius coverage and render each rounded row as spans instead of hundreds of
+ * individual pixels. This keeps the smooth silhouette without tanking frame time.
  */
 public final class CincoDraw {
     private static final int AA_SCALE = 8;
-    private static final Map<Long, int[]> ROUNDED_TEXTURE_CACHE = new HashMap<>();
+    private static final Map<Integer, byte[]> ROUNDED_TEXTURE_CACHE = new HashMap<>();
 
     private CincoDraw() {}
 
@@ -26,41 +27,61 @@ public final class CincoDraw {
             return;
         }
 
-        // Large interior surfaces stay batched as two rectangles. Only the corner pixels are
-        // emitted individually, which keeps the AA quality high without turning a 600px panel
-        // into hundreds of thousands of DrawContext calls.
-        context.fill(left + r, top, right - r, bottom, color);
-        context.fill(left, top + r, right, bottom - r, color);
+        // Middle body is one batch-friendly rectangle.
+        if (bottom - top > r * 2) context.fill(left, top + r, right, bottom - r, color);
 
-        int[] roundedTexture = generateRoundedTexture(r, color);
+        byte[] mask = generateRoundedTexture(r);
+        int sourceAlpha = (color >>> 24) & 0xFF;
+        int rgb = color & 0x00FFFFFF;
+
+        // A rounded row normally has only one partially covered boundary pixel per side.
+        // Draw that tiny AA fringe, then draw the fully covered center as one span.
         for (int py = 0; py < r; py++) {
+            int firstVisible = r;
+            int firstOpaque = r;
             for (int px = 0; px < r; px++) {
-                int sample = roundedTexture[py * r + px];
-                if (((sample >>> 24) & 0xFF) == 0) continue;
+                int coverage = mask[py * r + px] & 0xFF;
+                if (coverage > 0 && firstVisible == r) firstVisible = px;
+                if (coverage >= 255) { firstOpaque = px; break; }
+            }
 
-                context.fill(left + px, top + py, left + px + 1, top + py + 1, sample);
-                context.fill(right - 1 - px, top + py, right - px, top + py + 1, sample);
-                context.fill(left + px, bottom - 1 - py, left + px + 1, bottom - py, sample);
-                context.fill(right - 1 - px, bottom - 1 - py, right - px, bottom - py, sample);
+            int yTop = top + py;
+            int yBottom = bottom - 1 - py;
+            int solidLeft = left + firstOpaque;
+            int solidRight = right - firstOpaque;
+            if (solidRight > solidLeft) {
+                context.fill(solidLeft, yTop, solidRight, yTop + 1, color);
+                if (yBottom != yTop) context.fill(solidLeft, yBottom, solidRight, yBottom + 1, color);
+            }
+
+            for (int px = firstVisible; px < firstOpaque; px++) {
+                int coverage = mask[py * r + px] & 0xFF;
+                if (coverage <= 0) continue;
+                int alpha = (sourceAlpha * coverage + 127) / 255;
+                int aaColor = (alpha << 24) | rgb;
+                int lx = left + px;
+                int rx = right - 1 - px;
+                context.fill(lx, yTop, lx + 1, yTop + 1, aaColor);
+                if (rx != lx) context.fill(rx, yTop, rx + 1, yTop + 1, aaColor);
+                if (yBottom != yTop) {
+                    context.fill(lx, yBottom, lx + 1, yBottom + 1, aaColor);
+                    if (rx != lx) context.fill(rx, yBottom, rx + 1, yBottom + 1, aaColor);
+                }
             }
         }
     }
 
     /**
-     * Generates one antialiased quarter-circle texture in CPU memory. Each final GUI pixel is
-     * sampled on an 8x8 subpixel grid, then cached by radius + ARGB color.
+     * Generates one 8x supersampled quarter-circle coverage texture. Coverage depends only on
+     * radius, so animated colors/glows no longer create a new cache entry every frame.
      */
-    private static int[] generateRoundedTexture(int radius, int color) {
-        long key = ((long) radius << 32) ^ (color & 0xFFFFFFFFL);
-        int[] cached = ROUNDED_TEXTURE_CACHE.get(key);
+    private static byte[] generateRoundedTexture(int radius) {
+        byte[] cached = ROUNDED_TEXTURE_CACHE.get(radius);
         if (cached != null) return cached;
 
-        int[] texture = new int[radius * radius];
-        int sourceAlpha = (color >>> 24) & 0xFF;
-        int rgb = color & 0x00FFFFFF;
+        byte[] texture = new byte[radius * radius];
         int samples = AA_SCALE * AA_SCALE;
         double rr = radius * (double) radius;
-
         for (int py = 0; py < radius; py++) {
             for (int px = 0; px < radius; px++) {
                 int inside = 0;
@@ -73,12 +94,12 @@ public final class CincoDraw {
                         if (dx * dx + dy * dy <= rr) inside++;
                     }
                 }
-                int alpha = Math.max(0, Math.min(255,
-                        (int) Math.round(sourceAlpha * (inside / (double) samples))));
-                texture[py * radius + px] = (alpha << 24) | rgb;
+                int coverage = Math.max(0, Math.min(255,
+                        (int) Math.round(255.0 * inside / samples)));
+                texture[py * radius + px] = (byte) coverage;
             }
         }
-        ROUNDED_TEXTURE_CACHE.put(key, texture);
+        ROUNDED_TEXTURE_CACHE.put(radius, texture);
         return texture;
     }
 
@@ -93,10 +114,11 @@ public final class CincoDraw {
 
     public static void softShadow(DrawContext context, int left, int top, int right, int bottom,
                                   int radius, int rgb, int alpha) {
-        for (int i = 4; i >= 1; i--) {
-            int a = Math.max(2, alpha / (i + 1));
-            rounded(context, left - i, top - i, right + i, bottom + i,
-                    radius + i, (a << 24) | (rgb & 0x00FFFFFF));
+        // Two AA layers are enough visually and are much cheaper than the previous four-pass shadow.
+        for (int i = 2; i >= 1; i--) {
+            int a = Math.max(2, alpha / (i + 2));
+            rounded(context, left - i * 2, top - i * 2, right + i * 2, bottom + i * 2,
+                    radius + i * 2, (a << 24) | (rgb & 0x00FFFFFF));
         }
     }
 

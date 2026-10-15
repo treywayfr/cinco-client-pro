@@ -1,75 +1,88 @@
 package gg.cinco.client;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 
-/** Small, performance-minded primitives shared by Orbit HUD and Nebula ClickGUI. */
+/** Shared crisp black + purple primitives for both Star Client GUI modes. */
 public final class StarCrispUi {
-    public static final int BG = 0xE9070B16;
-    public static final int SURFACE = 0xEC0B1020;
-    public static final int SURFACE_2 = 0xE911172A;
-    public static final int SURFACE_HOVER = 0xEE151E36;
-    public static final int BORDER = 0x8C405AAE;
-    public static final int BORDER_SOFT = 0x60384473;
-    public static final int BLUE = 0xFF3F7BFF;
-    public static final int BLUE_HI = 0xFF72A0FF;
-    public static final int PURPLE = 0xFF7657FF;
-    public static final int PURPLE_HI = 0xFF9A82FF;
-    public static final int TEXT = 0xFFF1F5FF;
-    public static final int MUTED = 0xFFB2BDD8;
-    public static final int DIM = 0xFF7180A6;
-    public static final int TRACK = 0xFF252F4B;
+    public static final int BG = 0xF4020205;
+    public static final int SURFACE = 0xF008080D;
+    public static final int SURFACE_2 = 0xF00D0A13;
+    public static final int SURFACE_HOVER = 0xF014101B;
+    public static final int BORDER = 0x925F3A8E;
+    public static final int BORDER_SOFT = 0x66452A66;
+
+    public static final int PURPLE = 0xFF8B5CFF;
+    public static final int PURPLE_HI = 0xFFB58AFF;
+    public static final int PURPLE_DARK = 0xFF32184F;
+
+    // Compatibility aliases. The whole interface is intentionally purple now.
+    public static final int BLUE = PURPLE;
+    public static final int BLUE_HI = PURPLE_HI;
+
+    public static final int TEXT = 0xFFFFFFFF;
+    public static final int MUTED = 0xFFE6E0EC;
+    public static final int DIM = 0xFFA39AAE;
+    public static final int TRACK = 0xFF29242F;
 
     private StarCrispUi() {}
 
     public static void panel(DrawContext c, int x, int y, int w, int h, int radius, boolean focused) {
-        // One restrained shadow only. Avoid stacking expensive glow layers on every component.
         if (focused && StarPerformance.allowMenuShadow(MinecraftClient.getInstance())) {
-            CincoDraw.softShadow(c, x, y, x + w, y + h, radius + 2, BLUE, 28);
+            CincoDraw.softShadow(c, x, y, x + w, y + h, radius + 2, PURPLE, 25);
         }
-        CincoDraw.bubble(c, x, y, x + w, y + h, radius, focused ? 0xC15F82EE : BORDER, BG);
-        // Crisp inner keyline and top highlight create the glass effect without a real blur shader.
-        CincoDraw.rounded(c, x + 1, y + 1, x + w - 1, y + 2, 1, focused ? 0xA76FA0FF : 0x5C536B9E);
+        CincoDraw.bubble(c, x, y, x + w, y + h, radius,
+                focused ? 0xC08359DD : BORDER, BG);
+        c.fill(x + radius, y + 1, x + w - radius, y + 2,
+                focused ? 0x7AB58AFF : 0x47513A68);
     }
 
     public static void card(DrawContext c, int x, int y, int w, int h, boolean active, boolean hover) {
-        int fill = active ? 0xE62C54C7 : hover ? SURFACE_HOVER : SURFACE;
-        int border = active ? 0xCC6B9BFF : hover ? 0x8D516CB2 : BORDER_SOFT;
-        CincoDraw.bubble(c, x, y, x + w, y + h, 8, border, fill);
+        int fill = active ? 0xE31A1026 : hover ? SURFACE_HOVER : SURFACE;
+        int border = active ? 0xDA9A68FF : hover ? 0x8C6D507E : BORDER_SOFT;
+        CincoDraw.bubble(c, x, y, x + w, y + h, 7, border, fill);
     }
 
     public static void divider(DrawContext c, int x1, int y, int x2) {
-        c.fill(x1, y, x2, y + 1, 0x4A43527A);
+        c.fill(x1, y, x2, y + 1, 0x534D395D);
     }
 
     public static void accentRail(DrawContext c, int x, int y, int h) {
-        CincoDraw.rounded(c, x, y, x + 3, y + h, 2, BLUE_HI);
+        CincoDraw.rounded(c, x, y, x + 2, y + h, 1, PURPLE_HI);
     }
 
     public static void toggle(DrawContext c, int x, int y, boolean enabled, float progress) {
         float t = Math.max(0f, Math.min(1f, progress));
-        int track = mix(0xFF28324D, PURPLE, t);
-        CincoDraw.rounded(c, x, y, x + 28, y + 14, 7, track);
-        int knobX = x + 3 + Math.round(t * 14f);
-        CincoDraw.rounded(c, knobX, y + 3, knobX + 8, y + 11, 5, enabled ? 0xFFFFFFFF : 0xFFD7DDEF);
+        int track = mix(0xFF3B3641, PURPLE, t);
+        CincoDraw.rounded(c, x, y, x + 24, y + 12, 6, track);
+        int knobX = x + 2 + Math.round(t * 12f);
+        CincoDraw.rounded(c, knobX, y + 2, knobX + 8, y + 10, 5, 0xFFFFFFFF);
+    }
+
+    public static void miniToggle(DrawContext c, int x, int y, boolean enabled, float progress) {
+        float t = Math.max(0f, Math.min(1f, progress));
+        int track = mix(0xFF4A444F, PURPLE, t);
+        CincoDraw.rounded(c, x, y, x + 20, y + 10, 5, track);
+        int knobX = x + 2 + Math.round(t * 10f);
+        CincoDraw.rounded(c, knobX, y + 2, knobX + 6, y + 8, 4, 0xFFFFFFFF);
     }
 
     public static void slider(DrawContext c, int x, int y, int w, double fraction) {
         double f = Math.max(0.0, Math.min(1.0, fraction));
-        CincoDraw.rounded(c, x, y, x + w, y + 3, 2, TRACK);
+        CincoDraw.rounded(c, x, y, x + w, y + 3, 2, 0xFF4A444F);
         int px = x + (int)Math.round(w * f);
         if (px > x) CincoDraw.rounded(c, x, y, px, y + 3, 2, PURPLE);
-        CincoDraw.rounded(c, px - 3, y - 3, px + 4, y + 6, 4, PURPLE_HI);
+        CincoDraw.rounded(c, px - 3, y - 3, px + 4, y + 6, 4, 0xFFFFFFFF);
     }
 
     public static void searchBox(DrawContext c, TextRenderer tr, int x, int y, int w, String text, boolean focused) {
-        CincoDraw.bubble(c, x, y, x + w, y + 28, 8,
-                focused ? 0xB06D8FFF : 0x73516A9F, 0xD80A1020);
-        c.drawText(tr, StarFonts.text("⌕", true), x + 9, y + 9, focused ? BLUE_HI : DIM, false);
-        c.drawText(tr, StarFonts.text(text, false), x + 25, y + 9,
-                text.startsWith("Search") ? DIM : TEXT, false);
+        int border = focused ? 0xD49E72FF : 0xB8FFFFFF;
+        CincoDraw.bubble(c, x, y, x + w, y + 26, 7, border, 0xE308080D);
+        c.drawText(tr, StarFonts.text("⌕", true), x + 8, y + 8, focused ? PURPLE_HI : TEXT, false);
+        c.drawText(tr, StarFonts.text(text, false), x + 23, y + 8,
+                text.startsWith("Search") ? 0xFFCFC8D5 : TEXT, false);
     }
 
     public static Text label(String s, boolean bold) {

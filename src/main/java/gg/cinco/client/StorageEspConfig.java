@@ -48,7 +48,8 @@ public final class StorageEspConfig {
             0xFF62FF9A, 0xFFA9FF68, 0xFFFFFFFF, 0xFFA9C7FF
     };
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("cinco-storage-esp.json");
+    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("star-storage-esp.json");
+    private static final Path LEGACY_FILE = FabricLoader.getInstance().getConfigDir().resolve("cinco-storage-esp.json");
     private static final Map<String, Entry> SETTINGS = new LinkedHashMap<>();
 
     static { resetDefaults(false); }
@@ -84,14 +85,11 @@ public final class StorageEspConfig {
         save();
     }
 
-    public static void resetDefaults() {
-        resetDefaults(true);
-    }
+    public static void resetDefaults() { resetDefaults(true); }
 
     private static void resetDefaults(boolean save) {
         SETTINGS.clear();
         for (TypeKey type : TypeKey.values()) SETTINGS.put(type.name(), new Entry(type.defaultColor));
-        // Spawners are useful enough to trace by default without cluttering every chest.
         SETTINGS.get(TypeKey.SPAWNERS.name()).tracer = true;
         if (save) save();
     }
@@ -104,10 +102,11 @@ public final class StorageEspConfig {
     }
 
     public static void load() {
-        if (!Files.exists(FILE)) return;
+        Path source = Files.exists(FILE) ? FILE : LEGACY_FILE;
+        if (!Files.exists(source)) return;
         try {
             Type type = new TypeToken<Map<String, Entry>>() {}.getType();
-            Map<String, Entry> loaded = GSON.fromJson(Files.readString(FILE), type);
+            Map<String, Entry> loaded = GSON.fromJson(Files.readString(source), type);
             if (loaded == null) return;
             for (TypeKey key : TypeKey.values()) {
                 Entry incoming = loaded.get(key.name());
@@ -115,6 +114,7 @@ public final class StorageEspConfig {
                 if ((incoming.color >>> 24) == 0) incoming.color = 0xFF000000 | (incoming.color & 0x00FFFFFF);
                 SETTINGS.put(key.name(), incoming);
             }
+            if (!source.equals(FILE)) save();
         } catch (Exception ignored) {}
     }
 }

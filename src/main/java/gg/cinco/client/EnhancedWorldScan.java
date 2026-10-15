@@ -15,20 +15,22 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Loaded-world-only scanners. Nothing here requests unloaded chunks or talks to a server outside
- * normal Minecraft chunk data. The suspicious-chunk score is an original heuristic based on
- * player-utility density and underground block-light, rather than a copy of another client's code.
+ * Loaded-world-only scanners. Nothing here requests unloaded chunks. Expensive scans are spread
+ * across ticks and Light Finder uses a pending buffer so results do not flicker while rescanning.
  */
 public final class EnhancedWorldScan {
     public record SusChunk(int chunkX, int chunkZ, int score, int storageCount, int lightSamples) {}
 
     private static final List<BlockPos> storage = new ArrayList<>();
     private static final List<BlockPos> lightHotspots = new ArrayList<>();
+    private static final List<BlockPos> lightPending = new ArrayList<>();
     private static final List<SusChunk> susChunks = new ArrayList<>();
 
     private static int tick;
     private static long worldIdentity;
     private static int lightCenterX, lightCenterY, lightCenterZ, lightRange, lightCursor;
+    private static int lightScanCompletedAt;
+    private static boolean lightScanning;
 
     private EnhancedWorldScan() {}
 
@@ -43,7 +45,8 @@ public final class EnhancedWorldScan {
             worldIdentity = id;
         }
 
-        if (++tick % 8 == 0) refreshStorage(client);
+        tick++;
+        if (tick % 8 == 0) refreshStorage(client);
         scanLightIncremental(client);
         if (tick % 20 == 0) refreshSusChunks(client);
     }
@@ -92,7 +95,9 @@ public final class EnhancedWorldScan {
         ClientModule module = CincoClient.findModule("Light Finder");
         if (module == null || !module.enabled) {
             lightHotspots.clear();
+            lightPending.clear();
             lightCursor = 0;
+            lightScanning = false;
             return;
         }
 
@@ -100,21 +105,37 @@ public final class EnhancedWorldScan {
         int px = client.player.getBlockX();
         int py = client.player.getBlockY();
         int pz = client.player.getBlockZ();
-        if (lightCursor == 0 || Math.abs(px - lightCenterX) > 8 || Math.abs(py - lightCenterY) > 8
-                || Math.abs(pz - lightCenterZ) > 8 || range != lightRange) {
+        boolean moved = Math.abs(px - lightCenterX) > 8 || Math.abs(py - lightCenterY) > 8
+                || Math.abs(pz - lightCenterZ) > 8;
+        boolean stale = !lightScanning && tick - lightScanCompletedAt >= 120;
+
+        if (!lightScanning && (lightCursor == 0 || moved || range != lightRange || stale)) {
             lightCenterX = px;
             lightCenterY = py;
             lightCenterZ = pz;
             lightRange = range;
             lightCursor = 0;
-            lightHotspots.clear();
+            lightPending.clear();
+            lightScanning = true;
+        } else if (lightScanning && (moved || range != lightRange)) {
+            lightCenterX = px;
+            lightCenterY = py;
+            lightCenterZ = pz;
+            lightRange = range;
+            lightCursor = 0;
+            lightPending.clear();
         }
 
-        final int step = 2;
+        if (!lightScanning) return;
+        // Scan every other client tick. Higher ranges use a coarser grid so 96 blocks does not
+        // become a million-position frame-time spike.
+        if ((tick & 1) != 0) return;
+
+        final int step = range > 64 ? 3 : 2;
         int width = range * 2 / step + 1;
         int height = range * 2 / step + 1;
         int volume = width * width * height;
-        int budget = 4500;
+        int budget = 2200;
 
         for (int i = 0; i < budget && lightCursor < volume; i++, lightCursor++) {
             int layer = lightCursor / (width * width);
@@ -133,8 +154,25 @@ public final class EnhancedWorldScan {
             if (block < 8 || sky > 3) continue;
             BlockState state = client.world.getBlockState(pos);
             if (state.isOf(Blocks.LAVA) || state.isOf(Blocks.FIRE) || state.isOf(Blocks.SOUL_FIRE)) continue;
-            if (nearExisting(lightHotspots, pos, 5.0)) continue;
-            if (lightHotspots.size() < 180) lightHotspots.add(pos.toImmutable());
+            if (nearExisting(lightPending, pos, 4.75)) continue;
+            if (lightPending.size() < 144) lightPending.add(pos.toImmutable());
+        }
+
+        // On the very first scan, expose partial results so the module feels immediate. Later
+        // rescans keep the last complete set visible until the replacement set is ready.
+        if (lightHotspots.isEmpty() && tick % 10 == 0 && !lightPending.isEmpty()) {
+            lightHotspots.clear();
+            lightHotspots.addAll(lightPending);
+        }
+
+        if (lightCursor >= volume) {
+            lightPending.sort(Comparator.comparingDouble(p -> client.player.squaredDistanceTo(
+                    p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5)));
+            lightHotspots.clear();
+            lightHotspots.addAll(lightPending);
+            lightPending.clear();
+            lightScanning = false;
+            lightScanCompletedAt = tick;
         }
     }
 
@@ -171,7 +209,6 @@ public final class EnhancedWorldScan {
                 int lightSamples = 0;
                 int bottom = client.world.getBottomY() + 4;
                 int top = client.world.getTopY() - 4;
-                // Sparse light probing catches underground player-lit rooms without a full chunk block scan.
                 for (int ox = 2; ox < 16; ox += 4) {
                     for (int oz = 2; oz < 16; oz += 4) {
                         for (int y = bottom; y < top; y += 16) {
@@ -203,7 +240,6 @@ public final class EnhancedWorldScan {
         if (state.isOf(Blocks.BREWING_STAND)) return 5;
         if (state.isOf(Blocks.FURNACE) || state.isOf(Blocks.BLAST_FURNACE) || state.isOf(Blocks.SMOKER)) return 3;
         if (state.isOf(Blocks.BEACON)) return 20;
-        // Spawners are often natural, so they are intentionally not treated as strong base evidence.
         return 0;
     }
 
@@ -262,9 +298,12 @@ public final class EnhancedWorldScan {
     public static void reset() {
         storage.clear();
         lightHotspots.clear();
+        lightPending.clear();
         susChunks.clear();
         tick = 0;
         lightCursor = 0;
+        lightScanCompletedAt = 0;
+        lightScanning = false;
         worldIdentity = 0;
     }
 }

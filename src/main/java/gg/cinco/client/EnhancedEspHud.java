@@ -6,12 +6,11 @@ import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Locale;
 
-/** HUD-side ESP extras. Storage ESP itself is now rendered as 3D world wireframes. */
+/** Minimal HUD extras. The actual ESP geometry is rendered in world space. */
 public final class EnhancedEspHud {
     private record Point(int x, int y, double depth) {}
 
@@ -19,61 +18,24 @@ public final class EnhancedEspHud {
 
     public static void render(DrawContext ctx, MinecraftClient client) {
         if (client == null || client.player == null || client.world == null || client.currentScreen != null) return;
-        drawPlayerExtras(ctx, client);
-        drawLightFinder(ctx, client);
+        drawPlayerNames(ctx, client);
         drawSusChunks(ctx, client);
         drawFreeCamStatus(ctx, client);
     }
 
-    /**
-     * Player ESP's actual through-wall highlight comes from EntityGlowMixin. This HUD pass only
-     * adds an optional small name/distance label and the separate Tracers module.
-     */
-    private static void drawPlayerExtras(DrawContext ctx, MinecraftClient client) {
+    /** Optional small player label; boxes, glow and tracers are handled by world renderers. */
+    private static void drawPlayerNames(DrawContext ctx, MinecraftClient client) {
         ClientModule esp = CincoClient.findModule("Player ESP");
-        ClientModule tracers = CincoClient.findModule("Tracers");
-        boolean espOn = esp != null && esp.enabled;
-        boolean tracerOn = tracers != null && tracers.enabled;
-        if (!espOn && !tracerOn) return;
-
-        double range = espOn ? esp.setting : tracers.setting;
-        if (espOn && tracerOn) range = Math.max(esp.setting, tracers.setting);
-        double r2 = range * range;
-        int sw = client.getWindow().getScaledWidth();
-        int sh = client.getWindow().getScaledHeight();
+        if (esp == null || !esp.enabled || esp.setting2 < 0.5) return;
+        double r2 = esp.setting * esp.setting;
 
         for (PlayerEntity player : client.world.getPlayers()) {
             if (player == client.player || !player.isAlive() || client.player.squaredDistanceTo(player) > r2) continue;
-            Point feet = project(client, new Vec3d(player.getX(), player.getY(), player.getZ()));
             Point head = project(client, new Vec3d(player.getX(), player.getY() + player.getHeight() + 0.14, player.getZ()));
-            if (feet == null || head == null) continue;
-
-            if (tracerOn) CincoDraw.line(ctx, sw / 2, sh - 3, feet.x, feet.y, 0xCCFF70FF, 1);
-            if (espOn && esp.setting2 >= 0.5) {
-                String label = player.getName().getString() + "  •  "
-                        + String.format(Locale.ROOT, "%.1fm", client.player.distanceTo(player));
-                smallTag(ctx, client, label, head.x, head.y - 8, 0xFFFF78FF, 0.66f);
-            }
-        }
-    }
-
-    private static void drawLightFinder(DrawContext ctx, MinecraftClient client) {
-        ClientModule module = CincoClient.findModule("Light Finder");
-        if (module == null || !module.enabled) return;
-        int shown = 0;
-        for (BlockPos pos : EnhancedWorldScan.lightHotspots()) {
-            if (shown++ >= 80) break;
-            Point p = project(client, Vec3d.ofCenter(pos));
-            if (p == null) continue;
-            int color = 0xFFFFE45F;
-            CincoDraw.line(ctx, p.x - 5, p.y, p.x, p.y - 5, color, 1);
-            CincoDraw.line(ctx, p.x, p.y - 5, p.x + 5, p.y, color, 1);
-            CincoDraw.line(ctx, p.x + 5, p.y, p.x, p.y + 5, color, 1);
-            CincoDraw.line(ctx, p.x, p.y + 5, p.x - 5, p.y, color, 1);
-            if (shown <= 20) {
-                int level = client.world.getLightLevel(net.minecraft.world.LightType.BLOCK, pos);
-                smallTag(ctx, client, "LIGHT " + level, p.x, p.y - 10, color, 0.62f);
-            }
+            if (head == null) continue;
+            String label = player.getName().getString() + "  "
+                    + String.format(Locale.ROOT, "%.1fm", client.player.distanceTo(player));
+            smallTag(ctx, client, label, head.x, head.y - 7, CincoTheme.accentLight(), 0.58f);
         }
     }
 
@@ -102,8 +64,8 @@ public final class EnhancedEspHud {
 
     private static void drawFreeCamStatus(DrawContext ctx, MinecraftClient client) {
         if (!FreeCamController.isActive()) return;
-        smallTag(ctx, client, "FREE CAM  •  C TO EXIT  •  SPRINT = BOOST",
-                client.getWindow().getScaledWidth() / 2, 58, 0xFF77F8FF, 0.70f);
+        smallTag(ctx, client, "FREE CAM  •  SPRINT = BOOST",
+                client.getWindow().getScaledWidth() / 2, 58, 0xFF77F8FF, 0.64f);
     }
 
     private static void smallTag(DrawContext ctx, MinecraftClient client, String text,
@@ -114,7 +76,7 @@ public final class EnhancedEspHud {
         matrices.scale(scale, scale, 1.0f);
         int tw = client.textRenderer.getWidth(text);
         CincoDraw.bubble(ctx, -tw / 2 - 5, -3, tw / 2 + 5, 12, 7,
-                (0xFF000000 | (color & 0x00FFFFFF)), 0xE00A0810);
+                (0xFF000000 | (color & 0x00FFFFFF)), 0xD80A0810);
         ctx.drawText(client.textRenderer, Text.literal(text), -tw / 2, 1, color, true);
         matrices.pop();
     }

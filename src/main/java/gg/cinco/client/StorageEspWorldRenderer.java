@@ -1,245 +1,82 @@
 package gg.cinco.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
-import org.joml.Matrix4f;
 
-/** Thin Minecraft-style through-wall outlines for storage blocks, with straight or snake tracers. */
+/** Thin storage outlines with straight or snake tracers for Fabric 1.21.11. */
 public final class StorageEspWorldRenderer {
     private StorageEspWorldRenderer() {}
 
     public static void render(WorldRenderContext context) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        ClientModule module = CincoClient.findModule("Storage ESP");
-        if (module == null || !module.enabled || client.player == null || client.world == null) return;
-        MatrixStack matrices = context.matrixStack();
-        if (matrices == null) return;
+        MinecraftClient client=MinecraftClient.getInstance();
+        ClientModule module=CincoClient.findModule("Storage ESP");
+        if(module==null||!module.enabled||client.player==null||client.world==null||context.consumers()==null)return;
 
-        int style = style();
-        Vec3d camera = context.camera().getPos();
-        Vec3d anchor = crosshairAnchor(camera, context.camera().getYaw(), context.camera().getPitch());
-        float anchorX = (float) (anchor.x - camera.x);
-        float anchorY = (float) (anchor.y - camera.y);
-        float anchorZ = (float) (anchor.z - camera.z);
-        double range = module.setting;
-        double rangeSq = range * range;
-        double snakeTime = System.nanoTime() / 1_000_000_000.0;
+        int style=style();
+        Vec3d camera=context.worldState().cameraRenderState.pos;
+        float yaw=client.gameRenderer.getCamera().getYaw(),pitch=client.gameRenderer.getCamera().getPitch();
+        Vec3d anchor=crosshairAnchor(camera,yaw,pitch);
+        float anchorX=(float)(anchor.x-camera.x),anchorY=(float)(anchor.y-camera.y),anchorZ=(float)(anchor.z-camera.z);
+        double range=module.setting,rangeSq=range*range,snakeTime=System.nanoTime()/1_000_000_000.0;
+        float width=switch(style){case 2->2.05F;case 3->1.0F;case 4->2.45F;default->1.35F;};
+        VertexConsumer buffer=context.consumers().getBuffer(RenderLayers.linesTranslucent());
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.disableCull();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.lineWidth(switch (style) {
-            case 2 -> 2.05F;
-            case 3 -> 1.0F;
-            case 4 -> 2.45F;
-            default -> 1.35F;
-        });
+        int rendered=0,renderCap=StarPerformance.storageRenderCap(client);
+        for(BlockPos pos:EnhancedWorldScan.storage()){
+            if(rendered>=renderCap)break;
+            double cx=pos.getX()+0.5,cy=pos.getY()+0.5,cz=pos.getZ()+0.5;
+            double dx=cx-camera.x,dy=cy-camera.y,dz=cz-camera.z;
+            double playerDistanceSq=client.player.squaredDistanceTo(cx,cy,cz);
+            if(playerDistanceSq>rangeSq)continue;
+            BlockState state=client.world.getBlockState(pos);
+            StorageEspConfig.TypeKey type=StorageEspConfig.typeOf(state); if(type==null)continue;
+            StorageEspConfig.Entry setting=StorageEspConfig.get(type); if(!setting.highlight&&!setting.tracer)continue;
 
-        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-        Matrix4f matrix = matrices.peek().getPositionMatrix();
-
-        int rendered = 0;
-        final int renderCap = StarPerformance.storageRenderCap(client);
-        for (BlockPos pos : EnhancedWorldScan.storage()) {
-            if (rendered >= renderCap) break;
-            double cx = pos.getX() + 0.5;
-            double cy = pos.getY() + 0.5;
-            double cz = pos.getZ() + 0.5;
-            double dx = cx - camera.x;
-            double dy = cy - camera.y;
-            double dz = cz - camera.z;
-            double playerDistanceSq = client.player.squaredDistanceTo(cx, cy, cz);
-            if (playerDistanceSq > rangeSq) continue;
-
-            BlockState state = client.world.getBlockState(pos);
-            StorageEspConfig.TypeKey type = StorageEspConfig.typeOf(state);
-            if (type == null) continue;
-            StorageEspConfig.Entry setting = StorageEspConfig.get(type);
-            if (!setting.highlight && !setting.tracer) continue;
-
-            float x0 = (float) (pos.getX() - camera.x - 0.0025);
-            float y0 = (float) (pos.getY() - camera.y - 0.0025);
-            float z0 = (float) (pos.getZ() - camera.z - 0.0025);
-            float x1 = x0 + 1.005F;
-            float y1 = y0 + 1.005F;
-            float z1 = z0 + 1.005F;
-
-            int farAlpha = style == 3 ? 70 : style == 2 ? 135 : 105;
-            int nearAlpha = style == 3 ? 180 : 245;
-            int outline = distanceFade(setting.color, Math.sqrt(playerDistanceSq), range, farAlpha, nearAlpha);
-            if (setting.highlight) {
-                if (style == 3) emitCornerBox(buffer, matrix, x0, y0, z0, x1, y1, z1, outline, 0.28F);
-                else emitBox(buffer, matrix, x0, y0, z0, x1, y1, z1, outline);
-            }
-            if (setting.tracer) {
-                int tracerAlpha = style == 3 ? 82 : style == 2 ? 175 : 135;
-                int tracer = withAlpha(setting.color, Math.min(tracerAlpha, (outline >>> 24) & 0xFF));
-                if (setting.snakeTracer) {
-                    emitSnake(buffer, matrix,
-                            (float) dx, (float) dy, (float) dz,
-                            anchorX, anchorY, anchorZ,
-                            tracer, pos.asLong(), snakeTime);
-                } else {
-                    // Static block center -> one shared camera-forward endpoint. This keeps every tracer
-                    // converging at the crosshair instead of wobbling toward the player's feet/eye.
-                    emitLine(buffer, matrix, (float) dx, (float) dy, (float) dz,
-                            anchorX, anchorY, anchorZ, tracer);
-                }
+            float x0=(float)(pos.getX()-camera.x-0.0025),y0=(float)(pos.getY()-camera.y-0.0025),z0=(float)(pos.getZ()-camera.z-0.0025);
+            float x1=x0+1.005F,y1=y0+1.005F,z1=z0+1.005F;
+            int farAlpha=style==3?70:style==2?135:105,nearAlpha=style==3?180:245;
+            int outline=distanceFade(setting.color,Math.sqrt(playerDistanceSq),range,farAlpha,nearAlpha);
+            if(setting.highlight){if(style==3)emitCornerBox(buffer,x0,y0,z0,x1,y1,z1,outline,0.28F,width);else emitBox(buffer,x0,y0,z0,x1,y1,z1,outline,width);}
+            if(setting.tracer){
+                int tracerAlpha=style==3?82:style==2?175:135;
+                int tracer=withAlpha(setting.color,Math.min(tracerAlpha,(outline>>>24)&0xFF));
+                if(setting.snakeTracer)emitSnake(buffer,(float)dx,(float)dy,(float)dz,anchorX,anchorY,anchorZ,tracer,pos.asLong(),snakeTime,width);
+                else emitLine(buffer,(float)dx,(float)dy,(float)dz,anchorX,anchorY,anchorZ,tracer,width);
             }
             rendered++;
         }
-
-        try {
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
-        } catch (IllegalStateException ignored) {}
-
-        RenderSystem.lineWidth(1.0F);
-        RenderSystem.enableCull();
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
     }
 
-    private static Vec3d crosshairAnchor(Vec3d camera, float yawDegrees, float pitchDegrees) {
-        double yaw = Math.toRadians(yawDegrees);
-        double pitch = Math.toRadians(pitchDegrees);
-        double cosPitch = Math.cos(pitch);
-        Vec3d forward = new Vec3d(
-                -Math.sin(yaw) * cosPitch,
-                -Math.sin(pitch),
-                Math.cos(yaw) * cosPitch);
-        return camera.add(forward.multiply(0.34));
+    private static Vec3d crosshairAnchor(Vec3d camera,float yawDegrees,float pitchDegrees){double yaw=Math.toRadians(yawDegrees),pitch=Math.toRadians(pitchDegrees),cp=Math.cos(pitch);return camera.add(new Vec3d(-Math.sin(yaw)*cp,-Math.sin(pitch),Math.cos(yaw)*cp).multiply(0.34));}
+
+    private static void emitSnake(VertexConsumer b,float x0,float y0,float z0,float x1,float y1,float z1,int color,long seed,double time,float width){
+        double dx=x1-x0,dy=y1-y0,dz=z1-z0,length=Math.sqrt(dx*dx+dy*dy+dz*dz);if(length<0.001)return;
+        double nx=dx/length,ny=dy/length,nz=dz/length,px=-nz,py=0,pz=nx,plen=Math.sqrt(px*px+pz*pz);
+        if(plen<0.08){px=0;py=nz;pz=-ny;plen=Math.sqrt(py*py+pz*pz);}if(plen<0.001)return;px/=plen;py/=plen;pz/=plen;
+        double qx=ny*pz-nz*py,qy=nz*px-nx*pz,qz=nx*py-ny*px;
+        int segments=Math.max(12,Math.min(28,(int)Math.round(length*1.35)));double amplitude=Math.min(0.30,0.075+length*0.0065),phase=time*4.8+(seed&0xFFFFL)*0.0017;
+        float lx=x0,ly=y0,lz=z0;int baseAlpha=(color>>>24)&255;
+        for(int i=1;i<=segments;i++){double t=i/(double)segments,taper=Math.sin(Math.PI*t),wave=Math.sin(t*Math.PI*8-phase)*amplitude*taper,curl=Math.cos(t*Math.PI*4-phase*0.72)*amplitude*0.34*taper;
+            float cx=(float)(x0+dx*t+px*wave+qx*curl),cy=(float)(y0+dy*t+py*wave+qy*curl),cz=(float)(z0+dz*t+pz*wave+qz*curl);
+            int a=Math.max(28,Math.min(255,(int)Math.round(baseAlpha*(0.78+0.22*Math.sin(phase+t*Math.PI*6)))));emitLine(b,lx,ly,lz,cx,cy,cz,withAlpha(color,a),width);lx=cx;ly=cy;lz=cz;}
     }
 
-    /**
-     * Builds a smooth animated tracer that bends like a snake.io body while still ending exactly
-     * at the crosshair anchor. The wave tapers to zero at both ends so storage blocks and the
-     * crosshair stay visually locked instead of shaking.
-     */
-    private static void emitSnake(BufferBuilder b, Matrix4f m,
-                                  float x0, float y0, float z0,
-                                  float x1, float y1, float z1,
-                                  int color, long seed, double time) {
-        double dx = x1 - x0;
-        double dy = y1 - y0;
-        double dz = z1 - z0;
-        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (length < 0.001) return;
+    private static int style(){ClientModule m=CincoClient.findModule("ESP Style");return m==null?1:Math.max(1,Math.min(4,(int)Math.round(m.setting)));}
+    private static int distanceFade(int color,double distance,double range,int farAlpha,int nearAlpha){double t=range<=0.001?0:Math.max(0,Math.min(1,distance/range));return withAlpha(color,(int)Math.round(nearAlpha+(farAlpha-nearAlpha)*t));}
+    private static int withAlpha(int color,int alpha){return(Math.max(0,Math.min(255,alpha))<<24)|(color&0x00FFFFFF);}
 
-        double nx = dx / length;
-        double ny = dy / length;
-        double nz = dz / length;
-
-        // First perpendicular basis vector. Horizontal lines use world-up; near-vertical lines
-        // switch basis so the cross product never collapses.
-        double px = -nz;
-        double py = 0.0;
-        double pz = nx;
-        double plen = Math.sqrt(px * px + pz * pz);
-        if (plen < 0.08) {
-            px = 0.0;
-            py = nz;
-            pz = -ny;
-            plen = Math.sqrt(py * py + pz * pz);
-        }
-        if (plen < 0.001) return;
-        px /= plen;
-        py /= plen;
-        pz /= plen;
-
-        // Second perpendicular gives the snake a tiny 3-D corkscrew instead of a flat sine wave.
-        double qx = ny * pz - nz * py;
-        double qy = nz * px - nx * pz;
-        double qz = nx * py - ny * px;
-
-        int segments = Math.max(12, Math.min(28, (int) Math.round(length * 1.35)));
-        double amplitude = Math.min(0.30, 0.075 + length * 0.0065);
-        double phase = time * 4.8 + (seed & 0xFFFFL) * 0.0017;
-
-        float lastX = x0;
-        float lastY = y0;
-        float lastZ = z0;
-        int baseAlpha = (color >>> 24) & 0xFF;
-        for (int i = 1; i <= segments; i++) {
-            double t = i / (double) segments;
-            double taper = Math.sin(Math.PI * t);
-            double wave = Math.sin(t * Math.PI * 8.0 - phase) * amplitude * taper;
-            double curl = Math.cos(t * Math.PI * 4.0 - phase * 0.72) * amplitude * 0.34 * taper;
-
-            float cx = (float) (x0 + dx * t + px * wave + qx * curl);
-            float cy = (float) (y0 + dy * t + py * wave + qy * curl);
-            float cz = (float) (z0 + dz * t + pz * wave + qz * curl);
-
-            double pulse = 0.78 + 0.22 * Math.sin(phase + t * Math.PI * 6.0);
-            int segAlpha = Math.max(28, Math.min(255, (int) Math.round(baseAlpha * pulse)));
-            int segmentColor = withAlpha(color, segAlpha);
-            emitLine(b, m, lastX, lastY, lastZ, cx, cy, cz, segmentColor);
-            lastX = cx;
-            lastY = cy;
-            lastZ = cz;
-        }
+    private static void emitBox(VertexConsumer b,float x0,float y0,float z0,float x1,float y1,float z1,int c,float w){
+        emitLine(b,x0,y0,z0,x1,y0,z0,c,w);emitLine(b,x1,y0,z0,x1,y0,z1,c,w);emitLine(b,x1,y0,z1,x0,y0,z1,c,w);emitLine(b,x0,y0,z1,x0,y0,z0,c,w);
+        emitLine(b,x0,y1,z0,x1,y1,z0,c,w);emitLine(b,x1,y1,z0,x1,y1,z1,c,w);emitLine(b,x1,y1,z1,x0,y1,z1,c,w);emitLine(b,x0,y1,z1,x0,y1,z0,c,w);
+        emitLine(b,x0,y0,z0,x0,y1,z0,c,w);emitLine(b,x1,y0,z0,x1,y1,z0,c,w);emitLine(b,x1,y0,z1,x1,y1,z1,c,w);emitLine(b,x0,y0,z1,x0,y1,z1,c,w);
     }
-
-    private static int style() {
-        ClientModule module = CincoClient.findModule("ESP Style");
-        return module == null ? 1 : Math.max(1, Math.min(4, (int) Math.round(module.setting)));
-    }
-
-    private static int distanceFade(int color, double distance, double range, int farAlpha, int nearAlpha) {
-        double t = range <= 0.001 ? 0.0 : Math.max(0.0, Math.min(1.0, distance / range));
-        int alpha = (int) Math.round(nearAlpha + (farAlpha - nearAlpha) * t);
-        return withAlpha(color, alpha);
-    }
-
-    private static int withAlpha(int color, int alpha) {
-        return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0x00FFFFFF);
-    }
-
-    private static void emitBox(BufferBuilder b, Matrix4f m,
-                                float x0, float y0, float z0, float x1, float y1, float z1, int c) {
-        emitLine(b,m,x0,y0,z0,x1,y0,z0,c); emitLine(b,m,x1,y0,z0,x1,y0,z1,c);
-        emitLine(b,m,x1,y0,z1,x0,y0,z1,c); emitLine(b,m,x0,y0,z1,x0,y0,z0,c);
-        emitLine(b,m,x0,y1,z0,x1,y1,z0,c); emitLine(b,m,x1,y1,z0,x1,y1,z1,c);
-        emitLine(b,m,x1,y1,z1,x0,y1,z1,c); emitLine(b,m,x0,y1,z1,x0,y1,z0,c);
-        emitLine(b,m,x0,y0,z0,x0,y1,z0,c); emitLine(b,m,x1,y0,z0,x1,y1,z0,c);
-        emitLine(b,m,x1,y0,z1,x1,y1,z1,c); emitLine(b,m,x0,y0,z1,x0,y1,z1,c);
-    }
-
-    private static void emitCornerBox(BufferBuilder b, Matrix4f m,
-                                      float x0, float y0, float z0, float x1, float y1, float z1,
-                                      int c, float fraction) {
-        corner(b,m,x0,y0,z0,x1,y0,z0,c,fraction); corner(b,m,x1,y0,z0,x1,y0,z1,c,fraction);
-        corner(b,m,x1,y0,z1,x0,y0,z1,c,fraction); corner(b,m,x0,y0,z1,x0,y0,z0,c,fraction);
-        corner(b,m,x0,y1,z0,x1,y1,z0,c,fraction); corner(b,m,x1,y1,z0,x1,y1,z1,c,fraction);
-        corner(b,m,x1,y1,z1,x0,y1,z1,c,fraction); corner(b,m,x0,y1,z1,x0,y1,z0,c,fraction);
-        corner(b,m,x0,y0,z0,x0,y1,z0,c,fraction); corner(b,m,x1,y0,z0,x1,y1,z0,c,fraction);
-        corner(b,m,x1,y0,z1,x1,y1,z1,c,fraction); corner(b,m,x0,y0,z1,x0,y1,z1,c,fraction);
-    }
-
-    private static void corner(BufferBuilder b, Matrix4f m, float ax,float ay,float az,float bx,float by,float bz,
-                               int c,float f) {
-        float dx=bx-ax, dy=by-ay, dz=bz-az;
-        emitLine(b,m,ax,ay,az,ax+dx*f,ay+dy*f,az+dz*f,c);
-        emitLine(b,m,bx-dx*f,by-dy*f,bz-dz*f,bx,by,bz,c);
-    }
-
-    private static void emitLine(BufferBuilder b, Matrix4f m,
-                                 float x0, float y0, float z0, float x1, float y1, float z1, int color) {
-        b.vertex(m, x0, y0, z0).color(color);
-        b.vertex(m, x1, y1, z1).color(color);
-    }
+    private static void emitCornerBox(VertexConsumer b,float x0,float y0,float z0,float x1,float y1,float z1,int c,float f,float w){corner(b,x0,y0,z0,x1,y0,z0,c,f,w);corner(b,x1,y0,z0,x1,y0,z1,c,f,w);corner(b,x1,y0,z1,x0,y0,z1,c,f,w);corner(b,x0,y0,z1,x0,y0,z0,c,f,w);corner(b,x0,y1,z0,x1,y1,z0,c,f,w);corner(b,x1,y1,z0,x1,y1,z1,c,f,w);corner(b,x1,y1,z1,x0,y1,z1,c,f,w);corner(b,x0,y1,z1,x0,y1,z0,c,f,w);corner(b,x0,y0,z0,x0,y1,z0,c,f,w);corner(b,x1,y0,z0,x1,y1,z0,c,f,w);corner(b,x1,y0,z1,x1,y1,z1,c,f,w);corner(b,x0,y0,z1,x0,y1,z1,c,f,w);}
+    private static void corner(VertexConsumer b,float ax,float ay,float az,float bx,float by,float bz,int c,float f,float w){float dx=bx-ax,dy=by-ay,dz=bz-az;emitLine(b,ax,ay,az,ax+dx*f,ay+dy*f,az+dz*f,c,w);emitLine(b,bx-dx*f,by-dy*f,bz-dz*f,bx,by,bz,c,w);}
+    private static void emitLine(VertexConsumer b,float x0,float y0,float z0,float x1,float y1,float z1,int c,float w){vertex(b,x0,y0,z0,c,w);vertex(b,x1,y1,z1,c,w);}
+    private static void vertex(VertexConsumer b,float x,float y,float z,int c,float w){b.vertex(x,y,z).color(c).normal(0,1,0).lineWidth(w);}
 }

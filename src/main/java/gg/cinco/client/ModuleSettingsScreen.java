@@ -82,7 +82,7 @@ public final class ModuleSettingsScreen extends Screen {
         if (glow == null || !glow.enabled) return;
         double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
         double pulse = (Math.sin(System.currentTimeMillis() / (170.0 / speed)) + 1.0) * 0.5;
-        int strength = (int) (65 + 150 * Math.max(0.2, Math.min(1.0, glow.setting) * pulse);
+        int strength = (int) (65 + 150 * Math.max(0.2, Math.min(1.0, glow.setting) * pulse));
         int width = Math.max(1, Math.min(4, (int) glow.setting3));
         int rgb = CincoTheme.accent() & 0x00FFFFFF;
         for (int layer = width; layer >= 1; layer--) {

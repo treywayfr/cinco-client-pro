@@ -1,6 +1,12 @@
 package gg.cinco.client;
 
-/** Shared high-contrast neon palette driven by SETTINGS > Color Wheel. */
+/**
+ * Star Client's Nebula Luxe palette.
+ *
+ * The user's Color Wheel still controls the primary hue, while secondary hues are derived from it
+ * so the interface keeps the same violet/magenta/cyan luxury look without hard-coding every panel.
+ * The very dark surfaces are intentionally cheap alpha layers rather than real-time blur.
+ */
 public final class CincoTheme {
     private CincoTheme() {}
 
@@ -8,12 +14,12 @@ public final class CincoTheme {
 
     private static float hue() {
         ClientModule m = wheel();
-        return (float) (((m == null ? 28.0 : m.setting) % 360.0 + 360.0) % 360.0) / 360.0f;
+        return (float) (((m == null ? 286.0 : m.setting) % 360.0 + 360.0) % 360.0) / 360.0f;
     }
 
     private static float saturation() {
         ClientModule m = wheel();
-        return (float) Math.max(0.10, Math.min(1.0, m == null ? 0.94 : m.setting2));
+        return (float) Math.max(0.10, Math.min(1.0, m == null ? 0.86 : m.setting2));
     }
 
     private static float brightness() {
@@ -40,44 +46,68 @@ public final class CincoTheme {
         return 0xFF000000 | (ri << 16) | (gi << 8) | bi;
     }
 
+    private static float shifted(float amount) {
+        return (hue() + amount + 1.0f) % 1.0f;
+    }
+
+    private static int tinted(float h, float saturationScale, float value) {
+        return hsv(h, Math.max(0.0f, Math.min(1.0f, saturation() * saturationScale)), value);
+    }
+
     private static int tinted(float saturationScale, float value) {
-        return hsv(hue(), Math.max(0.0f, Math.min(1.0f, saturation() * saturationScale)), value);
+        return tinted(hue(), saturationScale, value);
     }
 
     private static float accentStrength() {
         ClientModule glow = CincoClient.findModule("Accent Glow");
-        return glow == null || !glow.enabled ? 0.82f : (float) Math.max(0.35, Math.min(1.0, glow.setting));
+        return glow == null || !glow.enabled ? 0.80f : (float) Math.max(0.30, Math.min(1.0, glow.setting));
     }
 
-    // Brighter neon accent while keeping the panels dark enough to make it pop.
-    public static int accent() { return tinted(1.0f, Math.min(1.0f, 0.90f + 0.10f * accentStrength())); }
-    public static int accentLight() { return tinted(0.42f, 1.0f); }
-    public static int accentMuted() { return tinted(0.88f, Math.min(0.88f, 0.70f + 0.12f * accentStrength())); }
-    public static int accentDark() { return tinted(0.95f, 0.38f); }
+    // Nebula Luxe accent family: primary violet, magenta edge, cool cyan highlight, tiny gold detail.
+    public static int accent() {
+        return tinted(1.0f, Math.min(1.0f, 0.90f + 0.10f * accentStrength()));
+    }
+
+    public static int accentMuted() {
+        return tinted(shifted(0.095f), 0.88f, Math.min(0.92f, 0.72f + 0.16f * accentStrength()));
+    }
+
+    public static int accentLight() {
+        return tinted(shifted(0.225f), 0.46f, 1.0f);
+    }
+
+    public static int accentDark() {
+        return tinted(0.96f, 0.30f + 0.08f * accentStrength());
+    }
+
+    public static int magenta() { return tinted(shifted(0.095f), 0.92f, 0.98f); }
+    public static int cyan() { return tinted(shifted(0.225f), 0.70f, 1.0f); }
+    public static int starGold() { return 0xFFFFD66B; }
 
     private static int withPanelOpacity(int color) {
         ClientModule opacity = CincoClient.findModule("Panel Opacity");
-        double setting = opacity == null ? 1.0 : opacity.setting;
-        int alpha = (int) Math.round(Math.max(0.78, Math.min(1.0, setting)) * 255.0);
+        double setting = opacity == null ? 0.96 : opacity.setting;
+        int alpha = (int) Math.round(Math.max(0.74, Math.min(1.0, setting)) * 255.0);
         return (alpha << 24) | (color & 0x00FFFFFF);
     }
 
-    public static int background() { return tinted(0.30f, 0.030f); }
-    public static int panel() { return withPanelOpacity(tinted(0.34f, 0.070f)); }
-    public static int sidebar() { return withPanelOpacity(tinted(0.40f, 0.095f)); }
-    public static int card() { return withPanelOpacity(tinted(0.46f, 0.135f)); }
-    public static int cardHover() { return withPanelOpacity(tinted(0.70f, 0.255f)); }
-    public static int line() { return tinted(0.82f, 0.52f); }
-    public static int sliderTrack() { return tinted(0.70f, 0.32f); }
-    public static int enabled() { return tinted(1.0f, 0.86f); }
-    public static int disabled() { return tinted(0.34f, 0.26f); }
+    // Near-black translucent depth. These fake the premium glass feel without an expensive blur pass.
+    public static int background() { return 0xFF05040A; }
+    public static int panel() { return withPanelOpacity(tinted(0.28f, 0.055f)); }
+    public static int sidebar() { return withPanelOpacity(tinted(0.38f, 0.078f)); }
+    public static int card() { return withPanelOpacity(tinted(0.42f, 0.115f)); }
+    public static int cardHover() { return withPanelOpacity(tinted(shifted(0.045f), 0.62f, 0.205f)); }
+    public static int line() { return tinted(shifted(0.10f), 0.76f, 0.54f); }
+    public static int sliderTrack() { return tinted(0.42f, 0.25f); }
+    public static int enabled() { return tinted(shifted(0.07f), 0.92f, 0.96f); }
+    public static int disabled() { return tinted(0.22f, 0.22f); }
 
     public static int primaryText() {
-        return hsv(hue(), Math.min(0.22f, saturation() * 0.26f), 1.0f);
+        return hsv(shifted(0.01f), Math.min(0.16f, saturation() * 0.20f), 1.0f);
     }
 
     public static int secondaryText() {
-        return hsv(hue(), Math.min(0.58f, saturation() * 0.64f), Math.max(0.82f, brightness() * 0.96f));
+        return hsv(shifted(0.03f), Math.min(0.34f, saturation() * 0.44f), Math.max(0.78f, brightness() * 0.92f));
     }
 
     public static int textColor(int original) {

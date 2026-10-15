@@ -5,6 +5,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.MathHelper;
+import org.lwjgl.glfw.GLFW;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -33,11 +34,11 @@ public final class FreeCamController {
         if (!active || camera == null || activeWorld != client.world) enable(client);
         if (!active || camera == null) return;
 
-        // Never touch the real player's position. The movement mixin only suppresses local input
-        // while this detached camera is active, so the server-side player remains exactly where it is.
+        // Keep the actual player anchored to the exact orientation it had when Free Cam started.
         client.player.setYaw(savedYaw);
         client.player.setPitch(savedPitch);
         client.player.setHeadYaw(savedYaw);
+        client.player.setVelocity(0.0, 0.0, 0.0);
 
         camera.noClip = true;
         camera.setNoGravity(true);
@@ -46,16 +47,21 @@ public final class FreeCamController {
         camera.setPitch(freePitch);
         camera.setHeadYaw(freeYaw);
         if (client.getCameraEntity() != camera) client.setCameraEntity(camera);
-        if (client.currentScreen != null) return;
+        if (client.currentScreen != null || client.getWindow() == null) return;
 
+        // Read physical keys directly. This keeps Free Cam controls independent from the frozen
+        // real-player movement path and fixes the old case where movement input could be swallowed.
+        long window = client.getWindow().getHandle();
         double base = Math.max(0.05, module.setting) * 0.24;
-        double speed = client.options.sprintKey.isPressed() ? base * 3.0 : base;
-        double forward = (client.options.forwardKey.isPressed() ? 1.0 : 0.0)
-                - (client.options.backKey.isPressed() ? 1.0 : 0.0);
-        double strafe = (client.options.rightKey.isPressed() ? 1.0 : 0.0)
-                - (client.options.leftKey.isPressed() ? 1.0 : 0.0);
-        double vertical = (client.options.jumpKey.isPressed() ? 1.0 : 0.0)
-                - (client.options.sneakKey.isPressed() ? 1.0 : 0.0);
+        boolean sprint = down(window, GLFW.GLFW_KEY_LEFT_CONTROL)
+                || down(window, GLFW.GLFW_KEY_RIGHT_CONTROL);
+        double speed = sprint ? base * 3.0 : base;
+        double forward = (down(window, GLFW.GLFW_KEY_W) ? 1.0 : 0.0)
+                - (down(window, GLFW.GLFW_KEY_S) ? 1.0 : 0.0);
+        double strafe = (down(window, GLFW.GLFW_KEY_D) ? 1.0 : 0.0)
+                - (down(window, GLFW.GLFW_KEY_A) ? 1.0 : 0.0);
+        double vertical = (down(window, GLFW.GLFW_KEY_SPACE) ? 1.0 : 0.0)
+                - ((down(window, GLFW.GLFW_KEY_LEFT_SHIFT) || down(window, GLFW.GLFW_KEY_RIGHT_SHIFT)) ? 1.0 : 0.0);
 
         double yaw = Math.toRadians(freeYaw);
         double dx = -Math.sin(yaw) * forward + Math.cos(yaw) * strafe;
@@ -68,27 +74,48 @@ public final class FreeCamController {
         camera.prevX = camera.getX();
         camera.prevY = camera.getY();
         camera.prevZ = camera.getZ();
-        camera.prevYaw = freeYaw;
-        camera.prevPitch = freePitch;
+        camera.prevYaw = camera.getYaw();
+        camera.prevPitch = camera.getPitch();
         camera.setPosition(camera.getX() + dx * speed,
                 camera.getY() + vertical * speed,
                 camera.getZ() + dz * speed);
     }
 
-    /** Capture vanilla mouse deltas without allowing them to rotate the real player. */
+    private static boolean down(long window, int key) {
+        return GLFW.glfwGetKey(window, key) == GLFW.GLFW_PRESS;
+    }
+
+    /**
+     * Capture the camera entity's vanilla mouse rotation without ever allowing that rotation to
+     * become the real player's server-facing look direction.
+     */
     public static void syncMouseLook(MinecraftClient client) {
         if (!active || camera == null || client == null || client.player == null) return;
-        float yawDelta = MathHelper.wrapDegrees(client.player.getYaw() - savedYaw);
-        float pitchDelta = client.player.getPitch() - savedPitch;
-        if (Math.abs(yawDelta) > 0.00001F || Math.abs(pitchDelta) > 0.00001F) {
-            freeYaw = MathHelper.wrapDegrees(freeYaw + yawDelta);
-            freePitch = MathHelper.clamp(freePitch + pitchDelta, -90.0F, 90.0F);
-            camera.prevYaw = freeYaw;
-            camera.prevPitch = freePitch;
-            camera.setYaw(freeYaw);
-            camera.setPitch(freePitch);
-            camera.setHeadYaw(freeYaw);
+
+        // In modern Minecraft Mouse rotates the active camera entity. The previous implementation
+        // read the real player's yaw instead, so freeYaw stayed stale and tick() snapped the camera
+        // back every frame. That is the shake/seizure bug this path fixes.
+        float cameraYaw = camera.getYaw();
+        float cameraPitch = camera.getPitch();
+        float cameraYawDelta = MathHelper.wrapDegrees(cameraYaw - freeYaw);
+        float cameraPitchDelta = cameraPitch - freePitch;
+
+        if (Math.abs(cameraYawDelta) > 0.00001F || Math.abs(cameraPitchDelta) > 0.00001F) {
+            freeYaw = MathHelper.wrapDegrees(cameraYaw);
+            freePitch = MathHelper.clamp(cameraPitch, -90.0F, 90.0F);
+        } else {
+            // Fallback for mappings/versions where Mouse still rotates the local player directly.
+            float playerYawDelta = MathHelper.wrapDegrees(client.player.getYaw() - savedYaw);
+            float playerPitchDelta = client.player.getPitch() - savedPitch;
+            if (Math.abs(playerYawDelta) > 0.00001F || Math.abs(playerPitchDelta) > 0.00001F) {
+                freeYaw = MathHelper.wrapDegrees(freeYaw + playerYawDelta);
+                freePitch = MathHelper.clamp(freePitch + playerPitchDelta, -90.0F, 90.0F);
+                camera.setYaw(freeYaw);
+                camera.setPitch(freePitch);
+                camera.setHeadYaw(freeYaw);
+            }
         }
+
         client.player.setYaw(savedYaw);
         client.player.setPitch(savedPitch);
         client.player.setHeadYaw(savedYaw);
@@ -105,9 +132,7 @@ public final class FreeCamController {
 
         UUID id = UUID.nameUUIDFromBytes("star-free-camera".getBytes(StandardCharsets.UTF_8));
         camera = new OtherClientPlayerEntity(client.world, new GameProfile(id, "StarFreeCam"));
-        // The render Camera adds this entity's normal eye height itself, so seed the detached
-        // entity at the player's feet rather than at eyeY. Starting at eyeY would double-add the
-        // eye height and make toggling Free Cam jump upward by roughly a block and a half.
+        // Camera entity starts at the player's feet; vanilla Camera adds eye height itself.
         camera.setPosition(client.player.getX(), client.player.getY(), client.player.getZ());
         camera.prevX = camera.getX();
         camera.prevY = camera.getY();
@@ -131,6 +156,7 @@ public final class FreeCamController {
             client.player.setYaw(savedYaw);
             client.player.setPitch(savedPitch);
             client.player.setHeadYaw(savedYaw);
+            client.player.setVelocity(0.0, 0.0, 0.0);
         }
         camera = null;
         activeWorld = null;

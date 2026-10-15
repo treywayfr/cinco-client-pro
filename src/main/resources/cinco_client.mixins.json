@@ -12,7 +12,8 @@
     "LightmapFullbrightMixin",
     "GameRendererFullbrightMixin",
     "SimpleOptionAccessor",
-    "PlayerChangerAliasMixin"
+    "PlayerChangerAliasMixin",
+    "ModuleSettingsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

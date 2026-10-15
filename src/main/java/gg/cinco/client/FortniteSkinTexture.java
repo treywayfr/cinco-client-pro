@@ -18,7 +18,7 @@ public final class FortniteSkinTexture {
     private FortniteSkinTexture() {}
 
     public static Identifier getTexture() {
-        ClientModule styleModule = CincoClient.findModule("Fortnite Style");
+        ClientModule styleModule = CincoClient.findModule("GTA Skin Changer");
         int outfit = styleModule == null ? 1 : (int) Math.round(styleModule.setting);
         int palette = styleModule == null ? 1 : (int) Math.round(styleModule.setting2);
         int visor = styleModule == null ? 1 : (int) Math.round(styleModule.setting3);
@@ -33,14 +33,14 @@ public final class FortniteSkinTexture {
         fill(image, 0, 0, 64, 64, 0x00000000);
 
         int[][] palettes = {
-                {0xFF172944, 0xFF2D5F94, 0xFFCE8A32, 0xFF111722},
-                {0xFF351D25, 0xFF9A303E, 0xFFFFB347, 0xFF191316},
-                {0xFF103738, 0xFF1C8A82, 0xFFE6C56C, 0xFF101D22},
-                {0xFF29203F, 0xFF7250A4, 0xFF65D7F0, 0xFF171421}
+                {0xFF173C28, 0xFF277548, 0xFFF4F0D9, 0xFF182620},
+                {0xFF20252D, 0xFFEDF0F2, 0xFF28313A, 0xFF151A20},
+                {0xFF303030, 0xFF4A4A4A, 0xFFE5E5E5, 0xFF151515},
+                {0xFF183657, 0xFF336EA3, 0xFFFFFFFF, 0xFF162334}
         };
         int[] p = palettes[Math.floorMod(palette - 1 + outfit - 1, palettes.length)];
         int dark = p[0], main = p[1], trim = p[2], shadow = p[3];
-        int skin = 0xFFD6A17D, hair = 0xFF211815, white = 0xFFEAF4FF;
+        int skin = 0xFF875438, hair = 0xFF161211, white = 0xFFEAF4FF;
 
         // Head base: helmet, face, sides and rear.
         rect(image, 8, 0, 8, 8, shadow);       // head top
@@ -49,21 +49,20 @@ public final class FortniteSkinTexture {
         rect(image, 8, 8, 8, 8, skin);         // face
         rect(image, 16, 8, 8, 8, skin);        // left side
         rect(image, 24, 8, 8, 8, hair);        // back of head
-        rect(image, 8, 8, 8, 2, hair);         // hairline
+        rect(image, 8, 8, 8, 2, hair);
+        rect(image, 8, 10, 1, 2, hair);
+        rect(image, 15, 10, 1, 2, hair);         // hairline
         rect(image, 9, 11, 2, 1, white);       // eyes
         rect(image, 13, 11, 2, 1, white);
         rect(image, 9, 12, 2, 1, trim);
         rect(image, 13, 12, 2, 1, trim);
-        rect(image, 11, 14, 2, 1, 0xFF985E4E); // mouth
-        // Helmet overlay. A clear visor stripe makes the face look more like a hero skin.
-        rect(image, 40, 0, 8, 8, main);
-        rect(image, 48, 0, 8, 8, shadow);
-        rect(image, 32, 8, 8, 8, dark);
-        rect(image, 40, 8, 8, 8, main);
-        rect(image, 48, 8, 8, 8, dark);
-        rect(image, 56, 8, 8, 8, shadow);
-        rect(image, 40, 10, 8, 3, visor == 1 ? trim : shadow);
-        rect(image, 42, 10, 4, 1, white);
+        rect(image, 10, 13, 4, 1, 0xFF493023); // short beard
+        rect(image, 11, 14, 2, 1, 0xFF36231C); // mouth
+        // No helmet: keep the face visible, with a subtle hair and beard overlay.
+        rect(image, 40, 8, 8, 2, hair);
+        rect(image, 40, 12, 1, 3, hair);
+        rect(image, 47, 12, 1, 3, hair);
+        rect(image, 42, 15, 4, 1, 0xFF2A1B18);
 
         // Torso base: armored front, back, side panels and belt.
         rect(image, 20, 16, 8, 4, dark);
@@ -72,9 +71,9 @@ public final class FortniteSkinTexture {
         rect(image, 20, 20, 8, 12, main);
         rect(image, 28, 20, 4, 12, dark);
         rect(image, 32, 20, 8, 12, shadow);
-        rect(image, 20, 20, 8, 3, trim);
-        rect(image, 21, 24, 2, 5, dark);
-        rect(image, 25, 24, 2, 5, dark);
+        rect(image, 20, 20, 8, 3, main);
+        rect(image, 21, 24, 2, 5, main);
+        rect(image, 25, 24, 2, 5, main);
         rect(image, 20, 29, 8, 3, shadow);
         rect(image, 22, 29, 4, 1, trim);
         // Jacket / shoulder-pad overlay.
@@ -84,7 +83,7 @@ public final class FortniteSkinTexture {
         rect(image, 20, 40, 8, 8, main);
         rect(image, 28, 40, 4, 8, dark);
         rect(image, 32, 40, 8, 8, shadow);
-        rect(image, 20, 40, 8, 2, trim);
+        rect(image, 20, 40, 8, 2, main);
         rect(image, 23, 43, 2, 3, trim);
 
         // Right arm base and sleeve.
@@ -131,7 +130,7 @@ public final class FortniteSkinTexture {
         rect(image, 20, 48, 4, 1, trim);
         rect(image, 24, 40, 2, 2, trim);
 
-        textureId = client.getTextureManager().registerDynamicTexture("cinco_fortnite_style", new NativeImageBackedTexture(image));
+        textureId = client.getTextureManager().registerDynamicTexture("cinco_gta_franklin_local", new NativeImageBackedTexture(image));
         previousOutfit = outfit;
         previousPalette = palette;
         previousVisor = visor;

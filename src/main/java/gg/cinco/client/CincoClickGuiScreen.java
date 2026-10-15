@@ -14,14 +14,14 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Star Client GUI inspired by the supplied two-mode concept.
- * Orbit HUD = compact floating draggable/resizable windows.
- * Nebula ClickGUI = one polished sidebar/list/settings workspace.
+ * Star Client's two-mode interface.
+ * Orbit HUD = compact floating draggable/resizable windows with movement passthrough.
+ * Nebula ClickGUI = black/purple sidebar, module list and detailed settings workspace.
  */
 public final class CincoClickGuiScreen extends Screen {
     private static final long SESSION_START = System.currentTimeMillis();
     private static final int MODE_W = 286;
-    private static final int MODE_H = 34;
+    private static final int MODE_H = 32;
 
     private StarGuiModeStore.Mode mode = StarGuiModeStore.get();
     private ClientModule.Category selectedCategory = CincoClient.selectedCategory;
@@ -62,13 +62,13 @@ public final class CincoClickGuiScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
-        if (mode == StarGuiModeStore.Mode.ORBIT) updateOrbitMovement();
+        if (mode == StarGuiModeStore.Mode.ORBIT && !searchFocused) updateOrbitMovement();
         else releaseOrbitMovement();
     }
 
     private void updateOrbitMovement() {
         MinecraftClient c = MinecraftClient.getInstance();
-        if (c.player == null || c.getWindow() == null || searchFocused) return;
+        if (c.player == null || c.getWindow() == null) return;
         long window = c.getWindow().getHandle();
         c.options.forwardKey.setPressed(key(window, GLFW.GLFW_KEY_W));
         c.options.backKey.setPressed(key(window, GLFW.GLFW_KEY_S));
@@ -98,24 +98,21 @@ public final class CincoClickGuiScreen extends Screen {
     @Override
     public void render(DrawContext c, int mx, int my, float delta) {
         super.render(c, mx, my, delta);
-        drawBackdrop(c);
+        drawBackdrop(c, delta);
         if (mode == StarGuiModeStore.Mode.ORBIT) renderOrbit(c, mx, my);
         else renderNebula(c, mx, my);
-        renderModeSelector(c, mx, my);
+        renderModeSelector(c);
     }
 
-    private void drawBackdrop(DrawContext c) {
-        // Keep the world visible under Orbit like the reference; Nebula gets a slightly darker veil.
-        c.fill(0, 0, width, height, mode == StarGuiModeStore.Mode.ORBIT ? 0x72040710 : 0xB9040711);
-        long now = System.currentTimeMillis();
-        int stars = Math.min(54, Math.max(18, StarPerformance.guiStarCap(MinecraftClient.getInstance())));
-        for (int i = 0; i < stars; i++) {
-            int x = Math.floorMod(41 + i * 137, Math.max(1, width));
-            int y = Math.floorMod(17 + i * 79, Math.max(1, height));
-            int alpha = 30 + (int)((Math.sin(now / 900.0 + i * 0.73) + 1.0) * 26.0);
-            int rgb = (i % 4 == 0 ? StarCrispUi.PURPLE_HI : StarCrispUi.BLUE_HI) & 0x00FFFFFF;
-            c.fill(x, y, x + 1, y + 1, (alpha << 24) | rgb);
-        }
+    /** Right-shift GUI backdrop: solid black with the persistent animated purple star field. */
+    private void drawBackdrop(DrawContext c, float delta) {
+        c.fill(0, 0, width, height, 0xFF020204);
+        StarBackground.render(c, width, height, delta);
+        // Very faint center haze keeps the panels readable while staying black/purple only.
+        int cx = width / 2;
+        int cy = height / 2;
+        CincoDraw.rounded(c, cx - Math.min(430, width / 3), cy - 2,
+                cx + Math.min(430, width / 3), cy + 2, 2, 0x182D1240);
     }
 
     // ------------------------------------------------------------
@@ -124,48 +121,53 @@ public final class CincoClickGuiScreen extends Screen {
 
     private void renderOrbit(DrawContext c, int mx, int my) {
         for (OrbitPanel panel : orbitPanels()) renderOrbitPanel(c, panel, mx, my);
-        c.drawText(textRenderer, StarFonts.text("ORBIT HUD   drag headers  •  resize corners  •  RMB settings  •  WASD movement", false),
-                12, height - 16, 0x9CB2BDD8, false);
+        c.drawText(textRenderer,
+                StarFonts.text("ORBIT HUD   drag headers  •  resize corners  •  RMB settings  •  WASD movement", false),
+                12, height - 15, 0xCCFFFFFF, false);
     }
 
     private List<OrbitPanel> orbitPanels() {
-        int gap = 10;
-        int x0 = 20;
-        int y0 = 22;
-        int w = 176;
+        int gap = 8;
+        int x0 = 18;
+        int y0 = 20;
+        int w = 158;
         List<OrbitPanel> out = new ArrayList<>();
-        out.add(new OrbitPanel("render", "Render", "◉", x0, y0, w, 218));
-        out.add(new OrbitPanel("combat", "Combat", "⚔", x0 + w + gap, y0 + 8, w, 224));
-        out.add(new OrbitPanel("search", "Search", "⌕", x0 + (w + gap) * 2, y0 + 3, 184, 116));
-        out.add(new OrbitPanel("visuals", "Visuals", "◈", x0 + (w + gap) * 3, y0 + 12, w, 224));
-        out.add(new OrbitPanel("keys", "Keybinds", "⌨", x0, y0 + 238, 186, 142));
-        out.add(new OrbitPanel("session", "Session Info", "▥", x0 + 196, y0 + 246, 180, 142));
-        out.add(new OrbitPanel("hud", "HUD Elements", "▦", x0 + 386, y0 + 150, 176, 206));
-        out.add(new OrbitPanel("movement", "Movement", "↗", x0 + 572, y0 + 248, 176, 180));
-        out.add(new OrbitPanel("base", "Base Finding", "⌖", x0 + 758, y0 + 236, 176, 194));
-        out.add(new OrbitPanel("macro", "Macro", "M", x0 + 572, y0 + 32, 176, 184));
-        out.add(new OrbitPanel("misc", "Misc", "⋯", x0 + 758, y0 + 20, 176, 188));
-        out.add(new OrbitPanel("active", "Active Modules", "✦", 20, Math.max(396, height - 138), 320, 98));
-        out.add(new OrbitPanel("coords", "Coordinates", "⌖", 352, Math.max(396, height - 132), 242, 92));
+        out.add(new OrbitPanel("render", "Render", "◉", x0, y0, w, 190));
+        out.add(new OrbitPanel("combat", "Combat", "⚔", x0 + w + gap, y0 + 7, w, 196));
+        out.add(new OrbitPanel("search", "Search", "⌕", x0 + (w + gap) * 2, y0 + 2, 170, 106));
+        out.add(new OrbitPanel("visuals", "Visuals", "◈", x0 + (w + gap) * 3 + 4, y0 + 10, w, 196));
+        out.add(new OrbitPanel("macro", "Macro", "M", x0 + (w + gap) * 4 + 4, y0 + 24, w, 166));
+        out.add(new OrbitPanel("misc", "Misc", "⋯", x0 + (w + gap) * 5 + 4, y0 + 14, w, 172));
+
+        out.add(new OrbitPanel("keys", "Keybinds", "⌨", x0, y0 + 208, 172, 126));
+        out.add(new OrbitPanel("session", "Session Info", "▥", x0 + 180, y0 + 214, 168, 126));
+        out.add(new OrbitPanel("hud", "HUD Elements", "▦", x0 + 356, y0 + 132, 158, 184));
+        out.add(new OrbitPanel("movement", "Movement", "↗", x0 + 522, y0 + 216, 158, 160));
+        out.add(new OrbitPanel("base", "Base Finding", "⌖", x0 + 688, y0 + 210, 158, 170));
+
+        out.add(new OrbitPanel("active", "Active Modules", "✦", 18, Math.max(350, height - 122), 304, 84));
+        out.add(new OrbitPanel("coords", "Coordinates", "⌖", 334, Math.max(350, height - 116), 226, 78));
         return out;
     }
 
     private void renderOrbitPanel(DrawContext c, OrbitPanel p, int mx, int my) {
         OrbitLayoutStore.State s = OrbitLayoutStore.get(p.id(), p.x(), p.y(), p.w(), p.h());
-        int header = 28;
+        int header = 24;
         int renderH = s.collapsed ? header : s.h;
         s.x = clamp(s.x, 2, Math.max(2, width - s.w - 2));
         s.y = clamp(s.y, 2, Math.max(2, height - renderH - 2));
-        boolean focused = inside(mx, my, s.x, s.y, s.w, renderH);
+        boolean selected = p.id().equals(draggingPanel) || p.id().equals(resizingPanel);
 
-        StarCrispUi.panel(c, s.x, s.y, s.w, renderH, 10, focused);
-        c.fill(s.x + 1, s.y + header - 1, s.x + s.w - 1, s.y + header, 0x573B4B7B);
+        StarCrispUi.panel(c, s.x, s.y, s.w, renderH, 9, selected);
+        StarCrispUi.divider(c, s.x + 1, s.y + header - 1, s.x + s.w - 1);
 
-        // Compact concept-like header: icon, title, ellipsis, collapse arrow.
-        c.drawText(textRenderer, StarFonts.text(p.icon(), true), s.x + 9, s.y + 10, StarCrispUi.BLUE_HI, false);
-        c.drawText(textRenderer, StarFonts.text(p.title(), true), s.x + 27, s.y + 9, StarCrispUi.TEXT, false);
-        c.drawText(textRenderer, Text.literal("⋮"), s.x + s.w - 27, s.y + 8, StarCrispUi.DIM, false);
-        c.drawText(textRenderer, Text.literal(s.collapsed ? "⌄" : "⌃"), s.x + s.w - 14, s.y + 9, StarCrispUi.MUTED, false);
+        int iconColor = selected ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT;
+        int titleColor = selected ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT;
+        c.drawText(textRenderer, StarFonts.text(p.icon(), true), s.x + 8, s.y + 8, iconColor, false);
+        c.drawText(textRenderer, StarFonts.text(p.title(), true), s.x + 24, s.y + 8, titleColor, false);
+        c.drawText(textRenderer, Text.literal("⋮"), s.x + s.w - 25, s.y + 6, StarCrispUi.TEXT, false);
+        c.drawText(textRenderer, Text.literal(s.collapsed ? "⌄" : "⌃"), s.x + s.w - 13, s.y + 7,
+                s.collapsed ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT, false);
 
         if (s.collapsed) return;
 
@@ -178,62 +180,59 @@ public final class CincoClickGuiScreen extends Screen {
             default -> renderOrbitModules(c, p.id(), s, mx, my);
         }
 
-        // Minimal resize handle instead of a chunky corner control.
-        c.fill(s.x + s.w - 10, s.y + s.h - 4, s.x + s.w - 3, s.y + s.h - 3, 0x965E7DCE);
-        c.fill(s.x + s.w - 7, s.y + s.h - 7, s.x + s.w - 3, s.y + s.h - 6, 0xA57657FF);
+        c.fill(s.x + s.w - 9, s.y + s.h - 3, s.x + s.w - 3, s.y + s.h - 2, 0xC6FFFFFF);
+        c.fill(s.x + s.w - 6, s.y + s.h - 6, s.x + s.w - 3, s.y + s.h - 5, 0xC6B58AFF);
     }
 
     private void renderOrbitSearch(DrawContext c, OrbitLayoutStore.State s, int mx, int my) {
-        int x = s.x + 8;
-        int y = s.y + 36;
-        int w = s.w - 16;
+        int x = s.x + 7;
+        int y = s.y + 31;
+        int w = s.w - 14;
         StarCrispUi.searchBox(c, textRenderer, x, y, w,
                 search.isEmpty() ? "Search modules..." : search + (searchFocused ? " _" : ""), searchFocused);
         if (search.isBlank()) return;
-        int yy = y + 34;
+        int yy = y + 31;
         int shown = 0;
         for (ClientModule m : CincoClient.MODULES) {
             if (!matches(m, search)) continue;
-            if (yy + 21 > s.y + s.h - 7 || shown++ >= 3) break;
+            if (yy + 17 > s.y + s.h - 6 || shown++ >= 3) break;
             drawOrbitModuleRow(c, m, x, yy, w, mx, my);
-            yy += 22;
+            yy += 19;
         }
     }
 
     private void renderOrbitModules(DrawContext c, String id, OrbitLayoutStore.State s, int mx, int my) {
         List<ClientModule> modules = orbitModules(id);
-        int rowH = 22;
-        int visible = Math.max(1, (s.h - 36) / rowH);
+        int rowPitch = 19;
+        int visible = Math.max(1, (s.h - 31) / rowPitch);
         int maxScroll = Math.max(0, modules.size() - visible);
         int scroll = clamp(orbitScroll.getOrDefault(id, 0), 0, maxScroll);
         orbitScroll.put(id, scroll);
-        int y = s.y + 33;
+        int y = s.y + 29;
         for (int i = scroll; i < modules.size() && i < scroll + visible; i++) {
-            drawOrbitModuleRow(c, modules.get(i), s.x + 7, y, s.w - 14, mx, my);
-            y += rowH;
+            drawOrbitModuleRow(c, modules.get(i), s.x + 6, y, s.w - 12, mx, my);
+            y += rowPitch;
         }
         if (maxScroll > 0) {
             String count = (scroll + 1) + "/" + (maxScroll + 1);
-            c.drawText(textRenderer, Text.literal(count), s.x + s.w - textRenderer.getWidth(count) - 7, s.y + s.h - 11,
-                    0x997180A6, false);
+            c.drawText(textRenderer, Text.literal(count), s.x + s.w - textRenderer.getWidth(count) - 6,
+                    s.y + s.h - 10, 0xBFFFFFFF, false);
         }
     }
 
+    /** Smaller Orbit module bar: 16px high, compact toggle and no bulky card treatment. */
     private void drawOrbitModuleRow(DrawContext c, ClientModule m, int x, int y, int w, int mx, int my) {
-        boolean hov = inside(mx, my, x, y, w, 20);
-        float hv = track(hover, "orbit-hover:" + m.name, hov ? 1f : 0f, hov ? 105 : 155);
-        float en = track(toggle, "orbit-toggle:" + m.name, m.enabled ? 1f : 0f, 155);
+        boolean hov = inside(mx, my, x, y, w, 16);
+        float en = track(toggle, "orbit-toggle:" + m.name, m.enabled ? 1f : 0f, 140);
 
-        // Reference look: enabled rows are a strong clean blue bar; disabled rows stay almost flat.
-        int fill = m.enabled
-                ? StarCrispUi.mix(0xDD285AD8, 0xEF3F7BFF, hv * 0.55f)
-                : StarCrispUi.mix(0x17141B2C, 0x84192238, hv);
-        CincoDraw.rounded(c, x, y, x + w, y + 20, 6, fill);
-        if (m.enabled) c.fill(x + 1, y + 3, x + 2, y + 17, 0xB9A7C4FF);
+        int fill = m.enabled ? 0xE77945E8 : (hov ? 0xD315111A : 0xB808080C);
+        int border = m.enabled ? 0xE6A77BFF : (hov ? 0x8AFFFFFF : 0x384A3E50);
+        CincoDraw.bubble(c, x, y, x + w, y + 16, 5, border, fill);
+        if (m.enabled) StarCrispUi.accentRail(c, x + 1, y + 3, 10);
 
-        c.drawText(textRenderer, StarFonts.text(trim(m.name, 19), false), x + 7, y + 7,
-                m.enabled ? 0xFFFFFFFF : StarCrispUi.mix(StarCrispUi.MUTED, StarCrispUi.TEXT, hv), false);
-        StarCrispUi.toggle(c, x + w - 31, y + 3, m.enabled, en);
+        c.drawText(textRenderer, StarFonts.text(trim(m.name, 18), false), x + 6, y + 5,
+                m.enabled ? 0xFFFFFFFF : StarCrispUi.TEXT, false);
+        StarCrispUi.miniToggle(c, x + w - 25, y + 3, m.enabled, en);
     }
 
     private List<ClientModule> orbitModules(String id) {
@@ -266,59 +265,61 @@ public final class CincoClickGuiScreen extends Screen {
 
     private void renderOrbitSession(DrawContext c, OrbitLayoutStore.State s) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        int ping = ping(mc);
         long sec = Math.max(0, (System.currentTimeMillis() - SESSION_START) / 1000);
-        int y = s.y + 39;
-        orbitValueLine(c, s, y, "◷  Play Time", String.format(Locale.ROOT, "%02d:%02d", sec / 60, sec % 60)); y += 19;
-        orbitValueLine(c, s, y, "▥  FPS", Integer.toString(mc.getCurrentFps())); y += 19;
-        orbitValueLine(c, s, y, "⌁  Ping", ping + " ms"); y += 19;
+        int y = s.y + 33;
+        orbitValueLine(c, s, y, "◷  Play Time", String.format(Locale.ROOT, "%02d:%02d", sec / 60, sec % 60)); y += 18;
+        orbitValueLine(c, s, y, "▥  FPS", Integer.toString(mc.getCurrentFps())); y += 18;
+        orbitValueLine(c, s, y, "⌁  Ping", ping(mc) + " ms"); y += 18;
         orbitValueLine(c, s, y, "✦  Active", Integer.toString((int)CincoClient.MODULES.stream().filter(m -> m.enabled).count()));
     }
 
     private void orbitValueLine(DrawContext c, OrbitLayoutStore.State s, int y, String left, String right) {
-        c.drawText(textRenderer, StarFonts.text(left, false), s.x + 10, y, StarCrispUi.MUTED, false);
+        c.drawText(textRenderer, StarFonts.text(left, false), s.x + 9, y, StarCrispUi.TEXT, false);
         int tw = textRenderer.getWidth(right);
-        c.drawText(textRenderer, StarFonts.text(right, true), s.x + s.w - 10 - tw, y, StarCrispUi.BLUE_HI, false);
+        c.drawText(textRenderer, StarFonts.text(right, true), s.x + s.w - 9 - tw, y,
+                StarCrispUi.PURPLE_HI, false);
     }
 
     private void renderOrbitCoords(DrawContext c, OrbitLayoutStore.State s) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
-        int y = s.y + 40;
+        int y = s.y + 34;
         String xyz = "X: " + (int)mc.player.getX() + "   Y: " + (int)mc.player.getY() + "   Z: " + (int)mc.player.getZ();
-        c.drawText(textRenderer, StarFonts.text(xyz, false), s.x + 11, y, StarCrispUi.TEXT, false);
+        c.drawText(textRenderer, StarFonts.text(xyz, false), s.x + 10, y, StarCrispUi.TEXT, false);
         c.drawText(textRenderer, StarFonts.text("Facing  " + mc.player.getHorizontalFacing().asString().toUpperCase(Locale.ROOT), false),
-                s.x + 11, y + 20, StarCrispUi.MUTED, false);
+                s.x + 10, y + 18, StarCrispUi.TEXT, false);
     }
 
     private void renderOrbitKeys(DrawContext c, OrbitLayoutStore.State s) {
-        int y = s.y + 38;
+        int y = s.y + 33;
         int shown = 0;
         for (ClientModule m : CincoClient.MODULES) {
             if (m.keyCode < 0) continue;
-            if (shown++ >= 5 || y + 18 > s.y + s.h - 7) break;
-            c.drawText(textRenderer, StarFonts.text(trim(m.name, 16), false), s.x + 10, y, StarCrispUi.MUTED, false);
+            if (shown++ >= 5 || y + 17 > s.y + s.h - 6) break;
+            c.drawText(textRenderer, StarFonts.text(trim(m.name, 15), false), s.x + 9, y, StarCrispUi.TEXT, false);
             String key = ModuleSettingsScreen.keyName(m.keyCode);
-            int kw = Math.max(20, textRenderer.getWidth(key) + 10);
-            CincoDraw.rounded(c, s.x + s.w - kw - 9, y - 4, s.x + s.w - 9, y + 13, 5, 0xA5222C48);
-            c.drawCenteredTextWithShadow(textRenderer, StarFonts.text(key, true), s.x + s.w - kw / 2 - 9, y, StarCrispUi.TEXT);
-            y += 19;
+            int kw = Math.max(18, textRenderer.getWidth(key) + 8);
+            CincoDraw.bubble(c, s.x + s.w - kw - 8, y - 3, s.x + s.w - 8, y + 12, 5,
+                    0xBFFFFFFF, 0xD608080D);
+            c.drawCenteredTextWithShadow(textRenderer, StarFonts.text(key, true),
+                    s.x + s.w - kw / 2 - 8, y, StarCrispUi.TEXT);
+            y += 18;
         }
     }
 
     private void renderOrbitActive(DrawContext c, OrbitLayoutStore.State s) {
-        int startX = s.x + 10;
+        int startX = s.x + 9;
         int x = startX;
-        int y = s.y + 38;
+        int y = s.y + 33;
         for (ClientModule m : CincoClient.MODULES) {
             if (!m.enabled) continue;
             String name = trim(m.name, 12);
-            int w = textRenderer.getWidth(name) + 16;
-            if (x + w > s.x + s.w - 9) { x = startX; y += 23; }
-            if (y + 19 > s.y + s.h - 6) break;
-            CincoDraw.rounded(c, x, y, x + w, y + 19, 6, 0xE33971F0);
-            c.drawText(textRenderer, StarFonts.text(name, false), x + 8, y + 6, 0xFFFFFFFF, false);
-            x += w + 6;
+            int w = textRenderer.getWidth(name) + 14;
+            if (x + w > s.x + s.w - 8) { x = startX; y += 20; }
+            if (y + 17 > s.y + s.h - 5) break;
+            CincoDraw.rounded(c, x, y, x + w, y + 17, 5, 0xE67945E8);
+            c.drawText(textRenderer, StarFonts.text(name, false), x + 7, y + 5, 0xFFFFFFFF, false);
+            x += w + 5;
         }
     }
 
@@ -327,137 +328,139 @@ public final class CincoClickGuiScreen extends Screen {
     // ------------------------------------------------------------
 
     private void renderNebula(DrawContext c, int mx, int my) {
-        int w = Math.min(960, Math.max(760, width - 76));
-        int h = Math.min(590, Math.max(450, height - 78));
+        int w = Math.min(950, Math.max(750, width - 82));
+        int h = Math.min(580, Math.max(440, height - 84));
         int x = (width - w) / 2;
         int y = (height - h) / 2;
-        int side = 174;
-        int top = 70;
+        int side = 170;
+        int top = 68;
 
-        StarCrispUi.panel(c, x, y, w, h, 14, true);
-        CincoDraw.rounded(c, x + 7, y + 7, x + side, y + h - 7, 11, 0xF0080D1B);
-        c.fill(x + side, y + 1, x + side + 1, y + h - 1, 0x5D455887);
+        StarCrispUi.panel(c, x, y, w, h, 13, false);
+        CincoDraw.rounded(c, x + 7, y + 7, x + side, y + h - 7, 10, 0xF6040408);
+        StarCrispUi.divider(c, x + side, y + 8, x + side + 1);
 
-        // Sidebar brand matches the concept: compact mark + two-line identity.
-        c.drawCenteredTextWithShadow(textRenderer, Text.literal("✦"), x + 31, y + 26, StarCrispUi.BLUE_HI);
-        c.drawText(textRenderer, StarFonts.text("STAR CLIENT", true), x + 50, y + 18, StarCrispUi.TEXT, false);
-        c.drawText(textRenderer, StarFonts.text("CRISP NEBULA", false), x + 50, y + 34, StarCrispUi.DIM, false);
-        c.drawText(textRenderer, StarFonts.text("MODULES", true), x + 18, y + 67, 0xFF68779F, false);
+        c.drawCenteredTextWithShadow(textRenderer, Text.literal("✦"), x + 29, y + 24, StarCrispUi.PURPLE_HI);
+        c.drawText(textRenderer, StarFonts.text("STAR CLIENT", true), x + 48, y + 17, StarCrispUi.TEXT, false);
+        c.drawText(textRenderer, StarFonts.text("Cinco", false), x + 48, y + 33, StarCrispUi.PURPLE_HI, false);
+        c.drawText(textRenderer, StarFonts.text("MODULES", true), x + 17, y + 65, 0xFFCFC7D5, false);
 
-        int catY = y + 82;
+        int catY = y + 80;
         for (ClientModule.Category cat : ClientModule.Category.values()) {
-            int rowY = catY + cat.ordinal() * 34;
+            int rowY = catY + cat.ordinal() * 33;
             boolean active = cat == selectedCategory;
-            boolean hov = inside(mx, my, x + 12, rowY, side - 24, 27);
-            float a = track(hover, "neb-cat:" + cat.name(), active ? 1f : hov ? 0.45f : 0f, active ? 145 : 105);
-            if (a > 0.01f) CincoDraw.rounded(c, x + 12, rowY, x + side - 12, rowY + 27, 7,
-                    StarCrispUi.mix(0x00131A30, 0xC7392EB0, a));
-            if (active) StarCrispUi.accentRail(c, x + 15, rowY + 7, 13);
-            c.drawText(textRenderer, StarFonts.text(categoryIcon(cat), true), x + 25, rowY + 9,
-                    active ? StarCrispUi.BLUE_HI : StarCrispUi.DIM, false);
-            c.drawText(textRenderer, StarFonts.text(nebulaCategoryName(cat), active), x + 44, rowY + 9,
-                    active ? StarCrispUi.TEXT : StarCrispUi.MUTED, false);
+            boolean hov = inside(mx, my, x + 11, rowY, side - 22, 26);
+            int fill = active ? 0xD1261239 : hov ? 0xB70C0A10 : 0x00000000;
+            if (fill != 0) CincoDraw.rounded(c, x + 11, rowY, x + side - 11, rowY + 26, 7, fill);
+            if (active) StarCrispUi.accentRail(c, x + 14, rowY + 6, 14);
+
+            int stateColor = active ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT;
+            c.drawText(textRenderer, StarFonts.text(categoryIcon(cat), true), x + 24, rowY + 8, stateColor, false);
+            c.drawText(textRenderer, StarFonts.text(nebulaCategoryName(cat), active), x + 42, rowY + 8, stateColor, false);
             String count = Integer.toString(categoryCount(cat));
-            c.drawText(textRenderer, Text.literal(count), x + side - 21 - textRenderer.getWidth(count), rowY + 9,
-                    active ? StarCrispUi.BLUE_HI : 0xFF627095, false);
+            c.drawText(textRenderer, Text.literal(count), x + side - 19 - textRenderer.getWidth(count), rowY + 8, stateColor, false);
         }
 
-        StarCrispUi.divider(c, x + 18, y + h - 104, x + side - 18);
-        c.drawText(textRenderer, StarFonts.text("GENERAL", true), x + 18, y + h - 88, 0xFF68779F, false);
-        c.drawText(textRenderer, StarFonts.text("⚙  Settings", false), x + 20, y + h - 65, StarCrispUi.MUTED, false);
-        c.drawText(textRenderer, StarFonts.text("⌨  Keybinds", false), x + 20, y + h - 42, StarCrispUi.MUTED, false);
+        StarCrispUi.divider(c, x + 17, y + h - 100, x + side - 17);
+        c.drawText(textRenderer, StarFonts.text("GENERAL", true), x + 17, y + h - 84, 0xFFCFC7D5, false);
+        c.drawText(textRenderer, StarFonts.text("⚙  Settings", false), x + 19, y + h - 61, StarCrispUi.TEXT, false);
+        c.drawText(textRenderer, StarFonts.text("⌨  Keybinds", false), x + 19, y + h - 39, StarCrispUi.TEXT, false);
 
-        int contentX = x + side + 17;
-        int contentRight = x + w - 17;
-        c.drawText(textRenderer, StarFonts.text(nebulaCategoryName(selectedCategory) + " Modules", true), contentX, y + 20, StarCrispUi.TEXT, false);
-        int enabled = enabledCount(selectedCategory);
-        c.drawText(textRenderer, StarFonts.text(categoryCount(selectedCategory) + " modules  •  " + enabled + " enabled", false),
-                contentX, y + 39, StarCrispUi.MUTED, false);
+        int contentX = x + side + 16;
+        int contentRight = x + w - 16;
+        c.drawText(textRenderer, StarFonts.text(nebulaCategoryName(selectedCategory) + " Modules", true),
+                contentX, y + 19, StarCrispUi.TEXT, false);
+        c.drawText(textRenderer,
+                StarFonts.text(categoryCount(selectedCategory) + " modules  •  " + enabledCount(selectedCategory) + " enabled", false),
+                contentX, y + 38, StarCrispUi.TEXT, false);
 
-        int searchW = 225;
-        int sx = contentRight - searchW;
-        int sy = y + 17;
-        StarCrispUi.searchBox(c, textRenderer, sx, sy, searchW,
+        int searchW = 220;
+        int searchX = contentRight - searchW;
+        int searchY = y + 16;
+        StarCrispUi.searchBox(c, textRenderer, searchX, searchY, searchW,
                 search.isEmpty() ? "Search modules..." : search + (searchFocused ? " _" : ""), searchFocused);
 
         int listY = y + top;
-        int bodyH = h - top - 16;
-        int listW = Math.min(264, Math.max(226, (contentRight - contentX) / 3));
-        int detailX = contentX + listW + 12;
+        int bodyH = h - top - 15;
+        int listW = Math.min(254, Math.max(218, (contentRight - contentX) / 3));
+        int detailX = contentX + listW + 11;
         int detailW = contentRight - detailX;
 
-        StarCrispUi.panel(c, contentX, listY, listW, bodyH, 10, false);
+        StarCrispUi.panel(c, contentX, listY, listW, bodyH, 9, false);
         renderNebulaList(c, contentX, listY, listW, bodyH, mx, my);
-        StarCrispUi.panel(c, detailX, listY, detailW, bodyH, 10, false);
-        renderNebulaDetails(c, detailX, listY, detailW, bodyH, mx, my);
+        StarCrispUi.panel(c, detailX, listY, detailW, bodyH, 9, false);
+        renderNebulaDetails(c, detailX, listY, detailW, bodyH);
     }
 
     private void renderNebulaList(DrawContext c, int x, int y, int w, int h, int mx, int my) {
         List<ClientModule> modules = nebulaModules();
-        int rowH = 48;
-        int visible = Math.max(1, (h - 12) / rowH);
+        int rowPitch = 44;
+        int visible = Math.max(1, (h - 10) / rowPitch);
         int maxScroll = Math.max(0, modules.size() - visible);
         nebulaScroll = clamp(nebulaScroll, 0, maxScroll);
-        int yy = y + 6;
+        int yy = y + 5;
+
         for (int i = nebulaScroll; i < modules.size() && i < nebulaScroll + visible; i++) {
             ClientModule m = modules.get(i);
             boolean selected = m == selectedModule;
-            boolean hov = inside(mx, my, x + 6, yy, w - 12, 41);
-            float hv = track(hover, "neb-row:" + m.name, (selected || hov) ? 1f : 0f, hov ? 105 : 150);
-            StarCrispUi.card(c, x + 6, yy, w - 12, 41, selected, hov);
-            if (selected) StarCrispUi.accentRail(c, x + 8, yy + 8, 25);
+            boolean hov = inside(mx, my, x + 5, yy, w - 10, 37);
+            StarCrispUi.card(c, x + 5, yy, w - 10, 37, selected, hov);
+            if (selected) StarCrispUi.accentRail(c, x + 7, yy + 7, 23);
 
-            c.drawText(textRenderer, StarFonts.text(trim(m.name, 22), true), x + 16, yy + 8,
-                    selected ? 0xFFFFFFFF : StarCrispUi.mix(StarCrispUi.MUTED, StarCrispUi.TEXT, hv), false);
-            c.drawText(textRenderer, StarFonts.text(trim(m.description, 28), false), x + 16, yy + 24,
-                    selected ? 0xFFC6D1EC : StarCrispUi.DIM, false);
-            float en = track(toggle, "neb-toggle:" + m.name, m.enabled ? 1f : 0f, 150);
-            StarCrispUi.toggle(c, x + w - 39, yy + 7, m.enabled, en);
-            yy += rowH;
+            int nameColor = selected ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT;
+            c.drawText(textRenderer, StarFonts.text(trim(m.name, 21), true), x + 14, yy + 7, nameColor, false);
+            c.drawText(textRenderer, StarFonts.text(trim(m.description, 27), false), x + 14, yy + 22,
+                    selected ? 0xFFE6D7F2 : 0xFFD2CBD8, false);
+
+            float en = track(toggle, "neb-toggle:" + m.name, m.enabled ? 1f : 0f, 140);
+            StarCrispUi.toggle(c, x + w - 34, yy + 6, m.enabled, en);
+            yy += rowPitch;
         }
     }
 
-    private void renderNebulaDetails(DrawContext c, int x, int y, int w, int h, int mx, int my) {
+    private void renderNebulaDetails(DrawContext c, int x, int y, int w, int h) {
         ClientModule m = selectedModule;
         if (m == null || m.category != selectedCategory || (!search.isBlank() && !matches(m, search))) {
             List<ClientModule> list = nebulaModules();
             if (!list.isEmpty()) { m = list.get(0); selectedModule = m; }
         }
         if (m == null) {
-            c.drawCenteredTextWithShadow(textRenderer, StarFonts.text("No matching modules", true), x + w / 2, y + h / 2, StarCrispUi.MUTED);
+            c.drawCenteredTextWithShadow(textRenderer, StarFonts.text("No matching modules", true),
+                    x + w / 2, y + h / 2, StarCrispUi.TEXT);
             return;
         }
 
-        c.drawText(textRenderer, StarFonts.text(m.name, true), x + 16, y + 15, StarCrispUi.TEXT, false);
-        c.drawText(textRenderer, StarFonts.text(trim(m.description, Math.max(30, (w - 86) / 6)), false),
-                x + 16, y + 32, StarCrispUi.MUTED, false);
-        float en = track(toggle, "neb-detail-toggle:" + m.name, m.enabled ? 1f : 0f, 150);
-        StarCrispUi.toggle(c, x + w - 47, y + 14, m.enabled, en);
+        c.drawText(textRenderer, StarFonts.text(m.name, true), x + 15, y + 14, StarCrispUi.PURPLE_HI, false);
+        c.drawText(textRenderer, StarFonts.text(trim(m.description, Math.max(28, (w - 84) / 6)), false),
+                x + 15, y + 31, StarCrispUi.TEXT, false);
+        float en = track(toggle, "neb-detail-toggle:" + m.name, m.enabled ? 1f : 0f, 140);
+        StarCrispUi.toggle(c, x + w - 43, y + 13, m.enabled, en);
 
-        // Segmented tabs from the concept. General is the live settings page in this build.
-        int tabsY = y + 56;
-        CincoDraw.rounded(c, x + 14, tabsY, x + w - 14, tabsY + 30, 7, 0xBA0D1427);
+        int tabsY = y + 54;
+        CincoDraw.rounded(c, x + 13, tabsY, x + w - 13, tabsY + 28, 7, 0xDC08080D);
         String[] tabs = {"General", "Render", "Keybind"};
-        int tabW = (w - 36) / 3;
+        int tabW = (w - 34) / 3;
         for (int i = 0; i < tabs.length; i++) {
-            int bx = x + 18 + i * tabW;
-            if (i == 0) CincoDraw.rounded(c, bx, tabsY + 4, bx + tabW - 5, tabsY + 26, 6, 0xD54234B2);
+            int bx = x + 17 + i * tabW;
+            if (i == 0) CincoDraw.rounded(c, bx, tabsY + 4, bx + tabW - 5, tabsY + 24, 6, 0xBE32184F);
             c.drawCenteredTextWithShadow(textRenderer, StarFonts.text(tabs[i], i == 0),
-                    bx + (tabW - 5) / 2, tabsY + 10, i == 0 ? StarCrispUi.TEXT : StarCrispUi.MUTED);
+                    bx + (tabW - 5) / 2, tabsY + 9,
+                    i == 0 ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT);
         }
 
-        int rowY = tabsY + 44;
-        drawSettingRow(c, m, 0, x + 16, rowY, w - 32); rowY += 63;
-        drawSettingRow(c, m, 1, x + 16, rowY, w - 32); rowY += 63;
-        drawSettingRow(c, m, 2, x + 16, rowY, w - 32);
+        int rowY = tabsY + 42;
+        drawSettingRow(c, m, 0, x + 15, rowY, w - 30); rowY += 61;
+        drawSettingRow(c, m, 1, x + 15, rowY, w - 30); rowY += 61;
+        drawSettingRow(c, m, 2, x + 15, rowY, w - 30);
 
-        int keyY = y + h - 43;
-        StarCrispUi.divider(c, x + 16, keyY - 9, x + w - 16);
-        c.drawText(textRenderer, StarFonts.text("KEYBIND", true), x + 16, keyY + 4, StarCrispUi.DIM, false);
+        int keyY = y + h - 41;
+        StarCrispUi.divider(c, x + 15, keyY - 8, x + w - 15);
+        c.drawText(textRenderer, StarFonts.text("KEYBIND", true), x + 15, keyY + 4, StarCrispUi.TEXT, false);
         String key = ModuleSettingsScreen.keyName(m.keyCode);
-        int kw = Math.max(62, textRenderer.getWidth(key) + 20);
-        CincoDraw.bubble(c, x + w - kw - 16, keyY - 2, x + w - 16, keyY + 25, 7, 0x7A5367A1, 0xCA12192B);
-        c.drawCenteredTextWithShadow(textRenderer, StarFonts.text(key, true), x + w - kw / 2 - 16, keyY + 7, StarCrispUi.BLUE_HI);
+        int kw = Math.max(58, textRenderer.getWidth(key) + 18);
+        CincoDraw.bubble(c, x + w - kw - 15, keyY - 2, x + w - 15, keyY + 24, 6,
+                0xBFFFFFFF, 0xE308080D);
+        c.drawCenteredTextWithShadow(textRenderer, StarFonts.text(key, true),
+                x + w - kw / 2 - 15, keyY + 7, StarCrispUi.TEXT);
     }
 
     private void drawSettingRow(DrawContext c, ClientModule m, int which, int x, int y, int w) {
@@ -465,14 +468,19 @@ public final class CincoClickGuiScreen extends Screen {
         double value = settingValue(m, which);
         double min = settingMin(m, which);
         double max = settingMax(m, which);
+
         c.drawText(textRenderer, StarFonts.text(label, true), x, y, StarCrispUi.TEXT, false);
-        c.drawText(textRenderer, StarFonts.text("Adjust " + label.toLowerCase(Locale.ROOT), false), x, y + 15, StarCrispUi.DIM, false);
+        c.drawText(textRenderer, StarFonts.text("Adjust " + label.toLowerCase(Locale.ROOT), false),
+                x, y + 14, 0xFFCFC8D5, false);
+
         String valueText = format(value);
-        int boxW = Math.max(50, textRenderer.getWidth(valueText) + 18);
-        int trackW = Math.max(42, w - boxW - 16);
-        StarCrispUi.slider(c, x, y + 38, trackW, (value - min) / Math.max(0.000001, max - min));
-        CincoDraw.bubble(c, x + w - boxW, y + 27, x + w, y + 51, 6, 0x72495D93, 0xCA12192B);
-        c.drawCenteredTextWithShadow(textRenderer, StarFonts.text(valueText, false), x + w - boxW / 2, y + 35, StarCrispUi.MUTED);
+        int boxW = Math.max(48, textRenderer.getWidth(valueText) + 16);
+        int trackW = Math.max(40, w - boxW - 14);
+        StarCrispUi.slider(c, x, y + 36, trackW, (value - min) / Math.max(0.000001, max - min));
+        CincoDraw.bubble(c, x + w - boxW, y + 25, x + w, y + 49, 6,
+                0x98FFFFFF, 0xE308080D);
+        c.drawCenteredTextWithShadow(textRenderer, StarFonts.text(valueText, false),
+                x + w - boxW / 2, y + 33, StarCrispUi.TEXT);
     }
 
     // ------------------------------------------------------------
@@ -491,49 +499,54 @@ public final class CincoClickGuiScreen extends Screen {
         for (int i = panels.size() - 1; i >= 0; i--) {
             OrbitPanel p = panels.get(i);
             OrbitLayoutStore.State s = OrbitLayoutStore.get(p.id(), p.x(), p.y(), p.w(), p.h());
-            int renderH = s.collapsed ? 28 : s.h;
+            int renderH = s.collapsed ? 24 : s.h;
             if (!inside(mx, my, s.x, s.y, s.w, renderH)) continue;
 
-            if (button == 0 && inside(mx, my, s.x + s.w - 18, s.y + 3, 17, 23)) {
+            if (button == 0 && inside(mx, my, s.x + s.w - 17, s.y + 2, 16, 20)) {
                 s.collapsed = !s.collapsed;
                 OrbitLayoutStore.save();
                 return true;
             }
-            if (button == 0 && inside(mx, my, s.x + s.w - 34, s.y + 3, 15, 23)) {
-                s.w = p.w(); s.h = p.h();
+            if (button == 0 && inside(mx, my, s.x + s.w - 31, s.y + 2, 13, 20)) {
+                s.w = p.w();
+                s.h = p.h();
                 OrbitLayoutStore.save();
                 return true;
             }
-            if (!s.collapsed && button == 0 && inside(mx, my, s.x + s.w - 14, s.y + s.h - 14, 14, 14)) {
+            if (!s.collapsed && button == 0 && inside(mx, my, s.x + s.w - 13, s.y + s.h - 13, 13, 13)) {
                 resizingPanel = p.id();
-                resizeStartX = mx; resizeStartY = my;
-                resizeStartW = s.w; resizeStartH = s.h;
+                resizeStartX = mx;
+                resizeStartY = my;
+                resizeStartW = s.w;
+                resizeStartH = s.h;
                 return true;
             }
-            if (button == 0 && inside(mx, my, s.x, s.y, s.w - 36, 28)) {
+            if (button == 0 && inside(mx, my, s.x, s.y, s.w - 32, 24)) {
                 draggingPanel = p.id();
-                dragOffX = mx - s.x; dragOffY = my - s.y;
+                dragOffX = mx - s.x;
+                dragOffY = my - s.y;
                 return true;
             }
             if (s.collapsed) return true;
 
             if (p.id().equals("search")) {
-                if (button == 0 && inside(mx, my, s.x + 8, s.y + 36, s.w - 16, 28)) {
+                if (button == 0 && inside(mx, my, s.x + 7, s.y + 31, s.w - 14, 26)) {
                     searchFocused = true;
+                    releaseOrbitMovement();
                     return true;
                 }
                 if (!search.isBlank()) {
-                    int yy = s.y + 70;
+                    int yy = s.y + 62;
                     int shown = 0;
                     for (ClientModule m : CincoClient.MODULES) {
                         if (!matches(m, search)) continue;
-                        if (yy + 20 > s.y + s.h - 7 || shown++ >= 3) break;
-                        if (inside(mx, my, s.x + 8, yy, s.w - 16, 20)) {
+                        if (yy + 16 > s.y + s.h - 6 || shown++ >= 3) break;
+                        if (inside(mx, my, s.x + 7, yy, s.w - 14, 16)) {
                             if (button == 0) toggle(m);
                             else if (button == 1) MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(m));
                             return true;
                         }
-                        yy += 22;
+                        yy += 19;
                     }
                 }
                 return true;
@@ -541,17 +554,17 @@ public final class CincoClickGuiScreen extends Screen {
 
             List<ClientModule> modules = orbitModules(p.id());
             if (!modules.isEmpty()) {
-                int visible = Math.max(1, (s.h - 36) / 22);
+                int visible = Math.max(1, (s.h - 31) / 19);
                 int scroll = clamp(orbitScroll.getOrDefault(p.id(), 0), 0, Math.max(0, modules.size() - visible));
-                int yy = s.y + 33;
+                int yy = s.y + 29;
                 for (int idx = scroll; idx < modules.size() && idx < scroll + visible; idx++) {
                     ClientModule m = modules.get(idx);
-                    if (inside(mx, my, s.x + 7, yy, s.w - 14, 20)) {
+                    if (inside(mx, my, s.x + 6, yy, s.w - 12, 16)) {
                         if (button == 0) toggle(m);
                         else if (button == 1) MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(m));
                         return true;
                     }
-                    yy += 22;
+                    yy += 19;
                 }
             }
             return true;
@@ -561,19 +574,19 @@ public final class CincoClickGuiScreen extends Screen {
     }
 
     private boolean nebulaClick(double mx, double my, int button) {
-        int w = Math.min(960, Math.max(760, width - 76));
-        int h = Math.min(590, Math.max(450, height - 78));
+        int w = Math.min(950, Math.max(750, width - 82));
+        int h = Math.min(580, Math.max(440, height - 84));
         int x = (width - w) / 2;
         int y = (height - h) / 2;
-        int side = 174;
-        int top = 70;
-        int contentX = x + side + 17;
-        int contentRight = x + w - 17;
+        int side = 170;
+        int top = 68;
+        int contentX = x + side + 16;
+        int contentRight = x + w - 16;
 
-        int catY = y + 82;
+        int catY = y + 80;
         for (ClientModule.Category cat : ClientModule.Category.values()) {
-            int rowY = catY + cat.ordinal() * 34;
-            if (button == 0 && inside(mx, my, x + 12, rowY, side - 24, 27)) {
+            int rowY = catY + cat.ordinal() * 33;
+            if (button == 0 && inside(mx, my, x + 11, rowY, side - 22, 26)) {
                 selectedCategory = cat;
                 CincoClient.selectedCategory = cat;
                 selectedModule = null;
@@ -583,34 +596,34 @@ public final class CincoClickGuiScreen extends Screen {
             }
         }
 
-        int searchW = 225;
-        int sx = contentRight - searchW;
-        int sy = y + 17;
-        if (button == 0 && inside(mx, my, sx, sy, searchW, 28)) {
+        int searchW = 220;
+        int searchX = contentRight - searchW;
+        int searchY = y + 16;
+        if (button == 0 && inside(mx, my, searchX, searchY, searchW, 26)) {
             searchFocused = true;
             return true;
         }
 
         int listY = y + top;
-        int bodyH = h - top - 16;
-        int listW = Math.min(264, Math.max(226, (contentRight - contentX) / 3));
-        int detailX = contentX + listW + 12;
+        int bodyH = h - top - 15;
+        int listW = Math.min(254, Math.max(218, (contentRight - contentX) / 3));
+        int detailX = contentX + listW + 11;
         int detailW = contentRight - detailX;
 
         List<ClientModule> modules = nebulaModules();
-        int visible = Math.max(1, (bodyH - 12) / 48);
+        int visible = Math.max(1, (bodyH - 10) / 44);
         nebulaScroll = clamp(nebulaScroll, 0, Math.max(0, modules.size() - visible));
-        int yy = listY + 6;
+        int yy = listY + 5;
         for (int i = nebulaScroll; i < modules.size() && i < nebulaScroll + visible; i++) {
             ClientModule m = modules.get(i);
-            if (inside(mx, my, contentX + 6, yy, listW - 12, 41)) {
-                if (button == 0 && mx >= contentX + listW - 45) toggle(m);
+            if (inside(mx, my, contentX + 5, yy, listW - 10, 37)) {
+                if (button == 0 && mx >= contentX + listW - 40) toggle(m);
                 else if (button == 0) selectedModule = m;
                 else if (button == 1) MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(m));
                 searchFocused = false;
                 return true;
             }
-            yy += 48;
+            yy += 44;
         }
 
         ClientModule m = selectedModule;
@@ -618,34 +631,36 @@ public final class CincoClickGuiScreen extends Screen {
             if (!modules.isEmpty()) { m = modules.get(0); selectedModule = m; }
         }
         if (m != null) {
-            if (button == 0 && inside(mx, my, detailX + detailW - 47, listY + 14, 28, 14)) {
-                toggle(m); return true;
+            if (button == 0 && inside(mx, my, detailX + detailW - 43, listY + 13, 24, 12)) {
+                toggle(m);
+                return true;
             }
-            int rowY = listY + 56 + 44;
-            for (int which = 0; which < 3; which++, rowY += 63) {
-                int rowW = detailW - 32;
+
+            int rowY = listY + 54 + 42;
+            for (int which = 0; which < 3; which++, rowY += 61) {
+                int rowW = detailW - 30;
                 double value = settingValue(m, which);
                 double min = settingMin(m, which);
                 double max = settingMax(m, which);
                 String valueText = format(value);
-                int boxW = Math.max(50, textRenderer.getWidth(valueText) + 18);
-                int sw = Math.max(42, rowW - boxW - 16);
-                int sx2 = detailX + 16;
-                int sy2 = rowY + 38;
-                if (button == 0 && inside(mx, my, sx2 - 4, sy2 - 8, sw + 8, 18)) {
+                int boxW = Math.max(48, textRenderer.getWidth(valueText) + 16);
+                int sw = Math.max(40, rowW - boxW - 14);
+                int sx = detailX + 15;
+                int sy = rowY + 36;
+                if (button == 0 && inside(mx, my, sx - 4, sy - 8, sw + 8, 18)) {
                     draggingSlider = m;
                     draggingSetting = which;
-                    sliderX = sx2;
+                    sliderX = sx;
                     sliderW = sw;
                     updateSlider(mx);
                     return true;
                 }
             }
-            int keyY = listY + bodyH - 43;
-            int key = m.keyCode;
-            String keyName = ModuleSettingsScreen.keyName(key);
-            int kw = Math.max(62, textRenderer.getWidth(keyName) + 20);
-            if (button == 0 && inside(mx, my, detailX + detailW - kw - 16, keyY - 2, kw, 27)) {
+
+            int keyY = listY + bodyH - 41;
+            String keyName = ModuleSettingsScreen.keyName(m.keyCode);
+            int kw = Math.max(58, textRenderer.getWidth(keyName) + 18);
+            if (button == 0 && inside(mx, my, detailX + detailW - kw - 15, keyY - 2, kw, 26)) {
                 MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(m));
                 return true;
             }
@@ -671,8 +686,8 @@ public final class CincoClickGuiScreen extends Screen {
                 OrbitPanel p = findOrbitPanel(resizingPanel);
                 if (p != null) {
                     OrbitLayoutStore.State s = OrbitLayoutStore.get(p.id(), p.x(), p.y(), p.w(), p.h());
-                    s.w = clamp(resizeStartW + (int)Math.round(mx - resizeStartX), 132, 360);
-                    s.h = clamp(resizeStartH + (int)Math.round(my - resizeStartY), 64, 520);
+                    s.w = clamp(resizeStartW + (int)Math.round(mx - resizeStartX), 126, 340);
+                    s.h = clamp(resizeStartH + (int)Math.round(my - resizeStartY), 54, 500);
                 }
                 return true;
             }
@@ -708,7 +723,7 @@ public final class CincoClickGuiScreen extends Screen {
                 if (s.collapsed || !inside(mx, my, s.x, s.y, s.w, s.h)) continue;
                 List<ClientModule> modules = orbitModules(p.id());
                 if (modules.isEmpty()) return true;
-                int visible = Math.max(1, (s.h - 36) / 22);
+                int visible = Math.max(1, (s.h - 31) / 19);
                 int max = Math.max(0, modules.size() - visible);
                 int value = orbitScroll.getOrDefault(p.id(), 0) + (vertical < 0 ? 1 : -1);
                 orbitScroll.put(p.id(), clamp(value, 0, max));
@@ -716,10 +731,9 @@ public final class CincoClickGuiScreen extends Screen {
             }
         } else {
             List<ClientModule> modules = nebulaModules();
-            int w = Math.min(960, Math.max(760, width - 76));
-            int h = Math.min(590, Math.max(450, height - 78));
-            int bodyH = h - 70 - 16;
-            int visible = Math.max(1, (bodyH - 12) / 48);
+            int h = Math.min(580, Math.max(440, height - 84));
+            int bodyH = h - 68 - 15;
+            int visible = Math.max(1, (bodyH - 10) / 44);
             nebulaScroll = clamp(nebulaScroll + (vertical < 0 ? 1 : -1), 0, Math.max(0, modules.size() - visible));
             return true;
         }
@@ -749,7 +763,10 @@ public final class CincoClickGuiScreen extends Screen {
                 return true;
             }
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-                if (!search.isEmpty()) { search = ""; return true; }
+                if (!search.isEmpty()) {
+                    search = "";
+                    return true;
+                }
                 searchFocused = false;
                 return true;
             }
@@ -767,28 +784,32 @@ public final class CincoClickGuiScreen extends Screen {
     }
 
     // ------------------------------------------------------------
-    // MODE SWITCH / HELPERS
+    // MODE SELECTOR / HELPERS
     // ------------------------------------------------------------
 
-    private void renderModeSelector(DrawContext c, int mx, int my) {
+    private void renderModeSelector(DrawContext c) {
         int x = (width - MODE_W) / 2;
-        int y = height - 47;
-        CincoDraw.bubble(c, x, y, x + MODE_W, y + MODE_H, 12, 0xAA5D7DE0, 0xEE080E1D);
+        int y = height - 45;
+        CincoDraw.bubble(c, x, y, x + MODE_W, y + MODE_H, 11, 0xAFFFFFFF, 0xF208080D);
         int half = MODE_W / 2;
-        if (mode == StarGuiModeStore.Mode.ORBIT)
-            CincoDraw.rounded(c, x + 4, y + 4, x + half - 2, y + MODE_H - 4, 9, 0xE73A73F2);
-        else
-            CincoDraw.rounded(c, x + half + 2, y + 4, x + MODE_W - 4, y + MODE_H - 4, 9, 0xE75038C3);
+        if (mode == StarGuiModeStore.Mode.ORBIT) {
+            CincoDraw.rounded(c, x + 4, y + 4, x + half - 2, y + MODE_H - 4, 8, 0xD632184F);
+        } else {
+            CincoDraw.rounded(c, x + half + 2, y + 4, x + MODE_W - 4, y + MODE_H - 4, 8, 0xD632184F);
+        }
+
         c.drawCenteredTextWithShadow(textRenderer, StarFonts.text("▣  Orbit HUD", mode == StarGuiModeStore.Mode.ORBIT),
-                x + half / 2, y + 12, mode == StarGuiModeStore.Mode.ORBIT ? 0xFFFFFFFF : StarCrispUi.MUTED);
+                x + half / 2, y + 11,
+                mode == StarGuiModeStore.Mode.ORBIT ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT);
         c.drawCenteredTextWithShadow(textRenderer, StarFonts.text("▤  Nebula ClickGUI", mode == StarGuiModeStore.Mode.NEBULA),
-                x + half + half / 2, y + 12, mode == StarGuiModeStore.Mode.NEBULA ? 0xFFFFFFFF : StarCrispUi.MUTED);
+                x + half + half / 2, y + 11,
+                mode == StarGuiModeStore.Mode.NEBULA ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT);
     }
 
     private boolean handleModeSelector(double mx, double my, int button) {
         if (button != 0) return false;
         int x = (width - MODE_W) / 2;
-        int y = height - 47;
+        int y = height - 45;
         if (!inside(mx, my, x, y, MODE_W, MODE_H)) return false;
         StarGuiModeStore.Mode next = mx < x + MODE_W / 2 ? StarGuiModeStore.Mode.ORBIT : StarGuiModeStore.Mode.NEBULA;
         if (next != mode) {
@@ -918,8 +939,13 @@ public final class CincoClickGuiScreen extends Screen {
         return String.format(Locale.ROOT, "%.2f", v).replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
-    private int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
-    private double clamp01(double v) { return Math.max(0.0, Math.min(1.0, v)); }
+    private int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
+    }
+
+    private double clamp01(double v) {
+        return Math.max(0.0, Math.min(1.0, v));
+    }
 
     @Override
     public void close() {

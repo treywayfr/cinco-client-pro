@@ -3,8 +3,8 @@ package gg.cinco.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Text;
 import net.minecraft.text.Style;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
@@ -12,16 +12,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/** Compact modern ClickGUI with anti-aliased cards and denser module sizing. */
 public final class CincoClickGuiScreen extends Screen {
-    private static final int W = 680, H = 430, SIDE = 132, ROW = 55;
+    private static final int W = 620;
+    private static final int H = 388;
+    private static final int SIDE = 112;
+    private static final int ROW = 44;
 
     private int scroll;
-    private final long openedAt = System.currentTimeMillis();
-    private final List<Star> stars = new ArrayList<>();
     private String search = "";
     private boolean searchFocused;
     private boolean draggingSlider;
     private ClientModule draggingModule;
+    private final long openedAt = System.currentTimeMillis();
+    private final List<Star> stars = new ArrayList<>();
 
     private static final class Star {
         final double x, speed, phase;
@@ -33,263 +37,232 @@ public final class CincoClickGuiScreen extends Screen {
 
     public CincoClickGuiScreen() {
         super(Text.literal("Cinco Client"));
-        for (int i = 0; i < 150; i++) {
-            stars.add(new Star(i * 73.37 % 1600, i * 47.19 % 1000, .15 + (i % 7) * .055, (i % 13) * .43));
-        }
+        for (int i = 0; i < 125; i++)
+            stars.add(new Star(i * 73.37 % 1600, i * 47.19 % 1000,
+                    0.12 + (i % 7) * 0.045, (i % 13) * 0.43));
     }
 
     private int left() { return (width - W) / 2; }
     private int top() { return (height - H) / 2; }
 
+    private Text ui(String value, boolean bold) {
+        ClientModule typography = CincoClient.findModule("Bold Typeface");
+        boolean strong = bold || (typography != null && typography.enabled);
+        return Text.literal(value).setStyle(Style.EMPTY
+                .withFont(Identifier.of("minecraft", "uniform"))
+                .withBold(strong));
+    }
+
     @Override
     public void render(DrawContext c, int mx, int my, float delta) {
-        // Paint vanilla's background first. Never draw it over the custom controls.
         super.render(c, mx, my, delta);
         long now = System.currentTimeMillis();
         c.fill(0, 0, width, height, CincoTheme.background());
         drawStars(c, now, delta);
 
         int l = left(), t = top();
-        ClientModule animationModule = CincoClient.findModule("GUI Animation");
-        double duration = animationModule == null || !animationModule.enabled ? 1.0 : animationModule.setting;
-        double animation = animationModule == null || !animationModule.enabled ? 1.0 : Math.min(1.0, (now - openedAt) / duration);
-        double animationAmount = animationModule == null || !animationModule.enabled
-                ? 1.0 : Math.max(0.0, Math.min(2.0, animationModule.setting3));
-        int lift = (int) ((1.0 - animation) * 10 * animationAmount);
-        int panelY = t + lift;
+        ClientModule anim = CincoClient.findModule("GUI Animation");
+        double duration = anim == null || !anim.enabled ? 1.0 : Math.max(80.0, anim.setting);
+        double progress = anim == null || !anim.enabled ? 1.0 : Math.min(1.0, (now - openedAt) / duration);
+        int lift = (int) ((1.0 - progress) * 8.0);
+        int py = t + lift;
 
-        // Opaque surfaces deliberately prevent the world and stars showing through text and cards.
-        CincoDraw.rounded(c, l - 2, panelY - 2, l + W + 2, panelY + H + 2, 16, CincoTheme.accent());
-        CincoDraw.rounded(c, l, panelY, l + W, panelY + H, 14, CincoTheme.panel());
-        c.fill(l, panelY, l + W, panelY + 3, CincoTheme.accent());
-        CincoDraw.rounded(c, l + 4, panelY + 5, l + SIDE + 6, panelY + H - 5, 11, CincoTheme.sidebar());
-        c.fill(l + SIDE, panelY + 3, l + SIDE + 1, panelY + H, CincoTheme.line());
+        CincoDraw.softShadow(c, l, py, l + W, py + H, 16, CincoTheme.accent(), 80);
+        CincoDraw.bubble(c, l, py, l + W, py + H, 16, CincoTheme.accent(), CincoTheme.panel());
+        CincoDraw.rounded(c, l + 6, py + 6, l + SIDE - 4, py + H - 6, 12, CincoTheme.sidebar());
 
-        // Brand header
-        c.fill(l + 12, panelY + 11, l + 15, panelY + 39, CincoTheme.accent());
-        c.drawText(textRenderer, uiText("CINCO CLIENT"), l + 23, panelY + 12, uiColor(CincoTheme.primaryText()), false);
-        c.drawText(textRenderer, uiText("PURPLE NEBULA  /  v2.3"), l + 23, panelY + 27, uiColor(CincoTheme.accent()), false);
-        CincoDraw.rounded(c, l + W - 111, panelY + 11, l + W - 14, panelY + 36, 12, CincoTheme.card());
-        drawCenteredTextSharp(c, uiText("SHARP UI  •  READY"), l + W - 62, panelY + 20, CincoTheme.primaryText());
+        // Compact brand / category rail.
+        CincoDraw.rounded(c, l + 14, py + 14, l + 34, py + 34, 10, CincoTheme.accent());
+        c.drawText(textRenderer, ui("C", true), l + 21, py + 20, 0xFFFFFFFF, false);
+        c.drawText(textRenderer, ui("CINCO", true), l + 42, py + 15, CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, ui("CLIENT 2.3", false), l + 42, py + 27, CincoTheme.secondaryText(), false);
 
-        int catY = panelY + 58;
+        int catTop = py + 54;
         for (ClientModule.Category category : ClientModule.Category.values()) {
-            int y = catY + category.ordinal() * 34;
+            int y = catTop + category.ordinal() * 30;
             boolean selected = category == CincoClient.selectedCategory;
             if (selected) {
-                CincoDraw.rounded(c, l + 8, y - 5, l + SIDE - 8, y + 22, 8, CincoTheme.accentDark());
-                c.fill(l + 8, y - 5, l + 11, y + 22, CincoTheme.accent());
-            } else {
-                c.fill(l + 14, y + 7, l + 17, y + 10, CincoTheme.accentMuted());
+                CincoDraw.rounded(c, l + 10, y, l + SIDE - 10, y + 23, 9, CincoTheme.accentDark());
+                CincoDraw.rounded(c, l + 13, y + 6, l + 17, y + 17, 2, CincoTheme.accent());
             }
-            c.drawText(textRenderer, uiText(category.label), l + 24, y + 3, uiColor(selected ? CincoTheme.primaryText() : CincoTheme.secondaryText()), false);
+            c.drawText(textRenderer, ui(category.label, selected), l + 24, y + 7,
+                    selected ? CincoTheme.primaryText() : CincoTheme.secondaryText(), false);
         }
 
         int enabled = (int) CincoClient.MODULES.stream().filter(m -> m.enabled).count();
-        c.fill(l + 12, panelY + H - 58, l + SIDE - 12, panelY + H - 57, CincoTheme.accentDark());
-        c.drawText(textRenderer, uiText("CLIENT STATUS"), l + 15, panelY + H - 46, uiColor(0xFFE88736), false);
-        c.drawText(textRenderer, uiText(enabled + " modules enabled"), l + 15, panelY + H - 31, uiColor(CincoTheme.primaryText()), false);
-        c.drawText(textRenderer, uiText("RIGHT SHIFT  /  ESC"), l + 15, panelY + H - 17, uiColor(0xFF9F8ABF), false);
+        CincoDraw.rounded(c, l + 10, py + H - 49, l + SIDE - 10, py + H - 12, 10, CincoTheme.card());
+        c.drawText(textRenderer, ui("ACTIVE", true), l + 18, py + H - 41, CincoTheme.secondaryText(), false);
+        c.drawText(textRenderer, ui(enabled + " MODULES", true), l + 18, py + H - 27, CincoTheme.accentLight(), false);
 
-        int contentX = l + SIDE + 16;
-        c.drawText(textRenderer, uiText(CincoClient.selectedCategory.label + " MODULES"),
-                contentX, panelY + 13, uiColor(CincoTheme.primaryText()), false);
-        c.drawText(textRenderer, uiText("CLICK COLOR WHEEL TO PICK  •  RIGHT CLICK: MODULE SETTINGS"),
-                contentX, panelY + 28, uiColor(CincoTheme.secondaryText()), false);
+        int contentX = l + SIDE + 13;
+        int contentRight = l + W - 12;
+        c.drawText(textRenderer, ui(CincoClient.selectedCategory.label, true), contentX, py + 16,
+                CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, ui("LEFT CLICK TOGGLE  •  RIGHT CLICK SETTINGS", false), contentX, py + 30,
+                CincoTheme.secondaryText(), false);
 
-        int searchX = l + W - 213, searchY = panelY + 10;
-        CincoDraw.rounded(c, searchX, searchY, searchX + 194, searchY + 23, 9, panelColor(searchFocused ? CincoTheme.cardHover() : CincoTheme.panel()));
-        c.fill(searchX, searchY, searchX + 2, searchY + 23, searchFocused ? CincoTheme.accent() : CincoTheme.accentMuted());
-        c.drawText(textRenderer, uiText((search.isEmpty() ? "SEARCH MODULES" : search.toUpperCase(Locale.ROOT))
-                + (searchFocused ? " _" : "")), searchX + 9, searchY + 7, uiColor(CincoTheme.primaryText()), false);
+        int searchW = 165, searchX = contentRight - searchW, searchY = py + 11;
+        CincoDraw.bubble(c, searchX, searchY, contentRight, searchY + 25, 10,
+                searchFocused ? CincoTheme.accent() : CincoTheme.line(),
+                searchFocused ? CincoTheme.cardHover() : CincoTheme.card());
+        String searchText = search.isEmpty() ? "SEARCH /" : search.toUpperCase(Locale.ROOT) + (searchFocused ? " _" : "");
+        c.drawText(textRenderer, ui(searchText, false), searchX + 9, searchY + 8, CincoTheme.primaryText(), false);
 
         List<ClientModule> list = filteredModules();
-        int viewportTop = panelY + 47, viewportBottom = panelY + H - 15;
+        int viewportTop = py + 52;
+        int viewportBottom = py + H - 12;
         int visibleHeight = viewportBottom - viewportTop;
         int maxScroll = Math.max(0, list.size() * ROW - visibleHeight);
         scroll = Math.max(0, Math.min(scroll, maxScroll));
 
-        c.enableScissor(contentX, viewportTop, l + W - 13, viewportBottom);
+        c.enableScissor(contentX, viewportTop, contentRight + 1, viewportBottom);
         for (int i = 0; i < list.size(); i++) {
             ClientModule module = list.get(i);
             int y = viewportTop + i * ROW - scroll;
             if (y + ROW < viewportTop || y > viewportBottom) continue;
-            boolean hovered = mx >= contentX && mx <= l + W - 13 && my >= y && my <= y + ROW - 5;
-            int cardRight = l + W - 13;
-            int cardBottom = y + ROW - 5;
-            CincoDraw.rounded(c, contentX, y, cardRight, cardBottom, 9, hovered ? CincoTheme.cardHover() : CincoTheme.card());
-            if (hovered) drawHoverGlow(c, contentX, y, cardRight, cardBottom, now);
-            c.fill(contentX, y, contentX + 3, cardBottom, module.enabled ? CincoTheme.accent() : CincoTheme.disabled());
-            c.drawText(textRenderer, uiText(module.name), contentX + 11, y + 6, uiColor(module.enabled ? CincoTheme.primaryText() : CincoTheme.secondaryText()), false);
-            c.drawText(textRenderer, uiText(module.description), contentX + 11, y + 20, uiColor(CincoTheme.secondaryText()), false);
+            int bottom = y + ROW - 5;
+            boolean hover = mx >= contentX && mx <= contentRight && my >= y && my <= bottom;
 
-            int sliderX = l + W - 285, sliderWidth = 78, sliderY = y + 39;
-            c.fill(sliderX, sliderY, sliderX + sliderWidth, sliderY + 3, CincoTheme.sliderTrack());
-            double fraction = (module.setting - module.min) / Math.max(.0001, module.max - module.min);
-            int knob = sliderX + (int) (Math.max(0, Math.min(1, fraction)) * sliderWidth);
-            c.fill(sliderX, sliderY, knob, sliderY + 3, CincoTheme.accent());
-            c.fill(knob - 2, sliderY - 2, knob + 3, sliderY + 5, 0xFFFFFFFF);
-            c.drawText(textRenderer, uiText(module.settingLabel + ": " + format(module.setting)),
-                    sliderX + sliderWidth + 8, y + 35, uiColor(CincoTheme.secondaryText()), false);
+            if (hover) CincoDraw.softShadow(c, contentX, y, contentRight, bottom, 10, CincoTheme.accent(), 55);
+            CincoDraw.bubble(c, contentX, y, contentRight, bottom, 10,
+                    hover ? CincoTheme.accentMuted() : CincoTheme.line(),
+                    hover ? CincoTheme.cardHover() : CincoTheme.card());
 
-            int toggleX = l + W - 79;
-            CincoDraw.rounded(c, toggleX, y + 8, toggleX + 57, y + 27, 9, module.enabled ? CincoTheme.enabled() : CincoTheme.disabled());
-            drawCenteredTextSharp(c, uiText(module.enabled ? "ON" : "OFF"), toggleX + 28, y + 14, CincoTheme.primaryText());
+            CincoDraw.rounded(c, contentX + 7, y + 7, contentX + 11, bottom - 7, 2,
+                    module.enabled ? CincoTheme.accent() : CincoTheme.disabled());
+            c.drawText(textRenderer, ui(module.name.toUpperCase(Locale.ROOT), true),
+                    contentX + 18, y + 6,
+                    module.enabled ? CincoTheme.primaryText() : CincoTheme.secondaryText(), false);
+            c.drawText(textRenderer, ui(trim(module.description, 51), false),
+                    contentX + 18, y + 18, CincoTheme.secondaryText(), false);
+
+            int toggleW = 46, toggleX = contentRight - toggleW - 8;
+            CincoDraw.rounded(c, toggleX, y + 7, toggleX + toggleW, y + 23, 8,
+                    module.enabled ? CincoTheme.enabled() : CincoTheme.disabled());
+            String state = module.enabled ? "ON" : "OFF";
+            int tw = textRenderer.getWidth(state);
+            c.drawText(textRenderer, ui(state, true), toggleX + toggleW / 2 - tw / 2,
+                    y + 12, 0xFFFFFFFF, false);
+
+            int sliderX = contentRight - 196, sliderY = y + 31, sliderW = 100;
+            CincoDraw.rounded(c, sliderX, sliderY, sliderX + sliderW, sliderY + 4, 2, CincoTheme.sliderTrack());
+            double fraction = (module.setting - module.min) / Math.max(0.0001, module.max - module.min);
+            int knob = sliderX + (int) Math.round(Math.max(0, Math.min(1, fraction)) * sliderW);
+            CincoDraw.rounded(c, sliderX, sliderY, knob, sliderY + 4, 2, CincoTheme.accent());
+            CincoDraw.rounded(c, knob - 3, sliderY - 2, knob + 4, sliderY + 6, 4, CincoTheme.accentLight());
+            String setting = module.settingLabel + " " + format(module.setting);
+            c.drawText(textRenderer, ui(setting.toUpperCase(Locale.ROOT), false), sliderX - 105, y + 29,
+                    CincoTheme.secondaryText(), false);
         }
         c.disableScissor();
-
-        // Animated accent glint is kept to the border so it never crosses text.
-        int glintX = l + 8 + (int) ((now / (animationModule == null || !animationModule.enabled ? 12L : Math.max(2L, (long) animationModule.setting / 8L))) % (W - 16));
-        c.fill(glintX, panelY, Math.min(l + W, glintX + 28), panelY + 3, 0xFFFFFFFF);
     }
 
-
-    private Text uiText(String value) {
-        ClientModule typography = CincoClient.findModule("Bold Typeface");
-        if (typography != null && typography.enabled) {
-            return Text.literal(value).setStyle(Style.EMPTY.withBold(true).withFont(Identifier.of("minecraft", "uniform")));
-        }
-        return Text.literal(value).setStyle(Style.EMPTY.withFont(Identifier.of("minecraft", "default")));
-    }
-
-    private int uiColor(int original) {
-        return CincoTheme.textColor(original);
-    }
-
-    private int panelColor(int rgb) {
-        ClientModule opacity = CincoClient.findModule("Panel Opacity");
-        int alpha = opacity == null || !opacity.enabled ? 255 : (int) (Math.max(0.75, Math.min(1.0, opacity.setting)) * 255);
-        return (alpha << 24) | (rgb & 0x00FFFFFF);
-    }
-
-    private void drawCenteredTextSharp(DrawContext context, Text value, int centerX, int y, int color) {
-        context.drawText(textRenderer, value, centerX - textRenderer.getWidth(value) / 2, y, uiColor(color), false);
-    }
-
-    private void drawHoverGlow(DrawContext c, int x, int y, int right, int bottom, long now) {
-        ClientModule glow = CincoClient.findModule("Hover Glow");
-        if (glow == null || !glow.enabled) return;
-        double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
-        double pulse = (Math.sin(now / (170.0 / speed)) + 1.0) * 0.5;
-        int strength = (int) (80 + 130 * Math.max(0.2, Math.min(1.0, glow.setting)) * pulse);
-        int width = Math.max(1, Math.min(4, (int) glow.setting3));
-        int rgb = CincoTheme.accent() & 0x00FFFFFF;
-        for (int layer = width; layer >= 1; layer--) {
-            int alpha = Math.max(18, strength / (layer + 1));
-            int color = (alpha << 24) | rgb;
-            c.fill(x - layer, y - layer, right + layer, y - layer + 1, color);
-            c.fill(x - layer, bottom + layer - 1, right + layer, bottom + layer, color);
-            c.fill(x - layer, y, x - layer + 1, bottom, color);
-            c.fill(right + layer - 1, y, right + layer, bottom, color);
-        }
+    private String trim(String value, int max) {
+        return value.length() <= max ? value : value.substring(0, Math.max(0, max - 1)) + "…";
     }
 
     private void drawStars(DrawContext c, long now, float delta) {
         ClientModule density = CincoClient.findModule("Purple Stars");
-        int amount = density == null ? stars.size()
-                : (!density.enabled ? 0 : (int) (stars.size() * density.setting / 3.0));
+        int amount = density == null ? stars.size() : (!density.enabled ? 0 : (int) (stars.size() * density.setting / 3.0));
         amount = Math.max(0, Math.min(stars.size(), amount));
         for (int i = 0; i < amount; i++) {
             Star star = stars.get(i);
-            star.y += star.speed * (.8 + delta * .2);
+            star.y += star.speed * (0.8 + delta * 0.2);
             if (star.y > height) star.y = 0;
-            double twinkle = (Math.sin(now / 370.0 + star.phase) + 1.0) / 2.0;
-            int alpha = 95 + (int) (twinkle * 160);
-            int size = i % 5 == 0 ? 2 : 1;
+            double pulse = (Math.sin(now / 390.0 + star.phase) + 1.0) * 0.5;
+            int alpha = 55 + (int) (pulse * 135);
             int x = (int) (star.x % Math.max(1, width)), y = (int) star.y;
-            c.fill(x, y, x + size, y + size, (alpha << 24) | 0x00C49AFF);
-            if (twinkle > .84) c.fill(x - 2, y, x + size + 3, y + 1, 0x887C4DFF);
+            c.fill(x, y, x + 1, y + 1, (alpha << 24) | (CincoTheme.accent() & 0x00FFFFFF));
         }
     }
 
     private List<ClientModule> filteredModules() {
         List<ClientModule> out = new ArrayList<>();
-        String query = search.trim().toLowerCase(Locale.ROOT);
+        String q = search.trim().toLowerCase(Locale.ROOT);
         for (ClientModule module : CincoClient.MODULES) {
             if (module.category != CincoClient.selectedCategory) continue;
-            if (!query.isEmpty() && !module.name.toLowerCase(Locale.ROOT).contains(query)
-                    && !module.description.toLowerCase(Locale.ROOT).contains(query)) continue;
+            if (!q.isEmpty() && !module.name.toLowerCase(Locale.ROOT).contains(q)
+                    && !module.description.toLowerCase(Locale.ROOT).contains(q)) continue;
             out.add(module);
         }
         return out;
     }
 
     private String format(double value) {
-        return Math.abs(value - Math.round(value)) < .0001 ? Integer.toString((int) Math.round(value))
+        return Math.abs(value - Math.round(value)) < 0.0001
+                ? Integer.toString((int) Math.round(value))
                 : String.format(Locale.ROOT, "%.1f", value);
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         int l = left(), t = top();
-        int searchX = l + W - 213, searchY = t + 10;
-        if (button == 0 && mx >= searchX && mx <= searchX + 194 && my >= searchY && my <= searchY + 23) {
+        int contentX = l + SIDE + 13, contentRight = l + W - 12;
+        int searchW = 165, searchX = contentRight - searchW, searchY = t + 11;
+        if (button == 0 && mx >= searchX && mx <= contentRight && my >= searchY && my <= searchY + 25) {
             searchFocused = true;
             return true;
         }
         if (button == 0) searchFocused = false;
 
-        if (button == 1) {
-            int contentX = l + SIDE + 16, viewportTop = t + 47;
-            List<ClientModule> list = filteredModules();
-            for (int i = 0; i < list.size(); i++) {
-                ClientModule module = list.get(i);
-                int y = viewportTop + i * ROW - scroll;
-                if (mx >= contentX && mx <= l + W - 13 && my >= y && my <= y + ROW - 5) {
-                    MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(module));
-                    return true;
-                }
-            }
-        }
-
-        if (button == 0) {
-            for (ClientModule.Category category : ClientModule.Category.values()) {
-                int y = t + 58 + category.ordinal() * 34;
-                if (mx >= l + 8 && mx <= l + SIDE - 8 && my >= y - 5 && my <= y + 22) {
-                    CincoClient.selectedCategory = category;
-                    scroll = 0;
-                    return true;
-                }
-            }
-
-            int contentX = l + SIDE + 16, viewportTop = t + 47;
-            List<ClientModule> list = filteredModules();
-            for (int i = 0; i < list.size(); i++) {
-                ClientModule module = list.get(i);
-                int y = viewportTop + i * ROW - scroll;
-                if (my < y || my > y + ROW - 5 || mx < contentX || mx > l + W - 13) continue;
-                if (module.name.equals("Color Wheel")) {
-                    MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(module, this));
-                    return true;
-                }
-                if (module.name.equals("Open GUI") || module.name.equals("Toggle HUD")) {
-                    MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(module));
-                    return true;
-                }
-                int sliderX = l + W - 285, sliderY = y + 36;
-                if (mx >= sliderX - 3 && mx <= sliderX + 81 && my >= sliderY && my <= y + ROW - 3) {
-                    draggingSlider = true;
-                    draggingModule = module;
-                    setFromMouse(module, mx, sliderX, 78);
-                    return true;
-                }
-                module.enabled = !module.enabled;
-                if (module.name.equals("Sprint Assist")) CincoClient.sprintAssistEnabled = module.enabled;
-                if (module.name.equals("Client HUD")) CincoClient.hudEnabled = module.enabled;
-                if (module.name.equals("Container Finder")) {
-                    ClientModule base = CincoClient.findModule("Base Finder");
-                    if (base != null) base.enabled = module.enabled;
-                }
-                if (module.name.equals("Base Finder")) {
-                    ClientModule containers = CincoClient.findModule("Container Finder");
-                    if (containers != null) containers.enabled = module.enabled;
-                    if (!module.enabled) BaseScanner.reset();
-                }
-                ConfigStore.save();
+        for (ClientModule.Category category : ClientModule.Category.values()) {
+            int y = t + 54 + category.ordinal() * 30;
+            if (button == 0 && mx >= l + 10 && mx <= l + SIDE - 10 && my >= y && my <= y + 23) {
+                CincoClient.selectedCategory = category;
+                scroll = 0;
                 return true;
             }
         }
+
+        List<ClientModule> list = filteredModules();
+        int viewportTop = t + 52;
+        for (int i = 0; i < list.size(); i++) {
+            ClientModule module = list.get(i);
+            int y = viewportTop + i * ROW - scroll;
+            if (mx < contentX || mx > contentRight || my < y || my > y + ROW - 5) continue;
+
+            if (button == 1) {
+                if (module.name.equals("Storage ESP")) MinecraftClient.getInstance().setScreen(new StorageEspSettingsScreen(module));
+                else MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(module));
+                return true;
+            }
+            if (button != 0) continue;
+
+            if (module.name.equals("Color Wheel")) {
+                MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(module, this));
+                return true;
+            }
+            int sliderX = contentRight - 196, sliderY = y + 28;
+            if (mx >= sliderX - 4 && mx <= sliderX + 104 && my >= sliderY && my <= sliderY + 12) {
+                draggingSlider = true;
+                draggingModule = module;
+                setFromMouse(module, mx, sliderX, 100);
+                return true;
+            }
+            toggle(module);
+            return true;
+        }
         return super.mouseClicked(mx, my, button);
+    }
+
+    private void toggle(ClientModule module) {
+        if (module.name.equals("Open GUI") || module.name.equals("Toggle HUD")) {
+            MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(module));
+            return;
+        }
+        module.enabled = !module.enabled;
+        if (module.name.equals("Sprint Assist")) CincoClient.sprintAssistEnabled = module.enabled;
+        if (module.name.equals("Client HUD")) CincoClient.hudEnabled = module.enabled;
+        if (module.name.equals("Container Finder")) {
+            ClientModule base = CincoClient.findModule("Base Finder");
+            if (base != null) base.enabled = module.enabled;
+        }
+        if (module.name.equals("Base Finder")) {
+            ClientModule containers = CincoClient.findModule("Container Finder");
+            if (containers != null) containers.enabled = module.enabled;
+            if (!module.enabled) BaseScanner.reset();
+        }
+        ConfigStore.save();
     }
 
     private void setFromMouse(ClientModule module, double mouseX, int sliderX, int sliderWidth) {
@@ -300,7 +273,8 @@ public final class CincoClickGuiScreen extends Screen {
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
         if (draggingSlider && draggingModule != null) {
-            setFromMouse(draggingModule, mx, left() + W - 285, 78);
+            int contentRight = left() + W - 12;
+            setFromMouse(draggingModule, mx, contentRight - 196, 100);
             return true;
         }
         return super.mouseDragged(mx, my, button, dx, dy);
@@ -336,6 +310,10 @@ public final class CincoClickGuiScreen extends Screen {
             scroll = 0;
             return true;
         }
+        if (key == GLFW.GLFW_KEY_SLASH) {
+            searchFocused = true;
+            return true;
+        }
         if (key == GLFW.GLFW_KEY_RIGHT_SHIFT || key == GLFW.GLFW_KEY_ESCAPE) {
             if (searchFocused && !search.isEmpty()) {
                 search = "";
@@ -343,10 +321,6 @@ public final class CincoClickGuiScreen extends Screen {
                 return true;
             }
             close();
-            return true;
-        }
-        if (key == GLFW.GLFW_KEY_SLASH) {
-            searchFocused = true;
             return true;
         }
         return super.keyPressed(key, scan, modifiers);

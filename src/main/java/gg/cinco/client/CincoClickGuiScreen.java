@@ -241,6 +241,10 @@ public final class CincoClickGuiScreen extends Screen {
                     MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(module));
                     return true;
                 }
+                if (module.name.equals("Open GUI") || module.name.equals("Toggle HUD")) {
+                    MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(module));
+                    return true;
+                }
                 int sliderX = l + W - 285, sliderY = y + 36;
                 if (mx >= sliderX - 3 && mx <= sliderX + 81 && my >= sliderY && my <= y + ROW - 3) {
                     draggingSlider = true;

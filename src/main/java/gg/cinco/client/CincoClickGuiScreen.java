@@ -94,7 +94,7 @@ public final class CincoClickGuiScreen extends Screen {
         int contentX = l + SIDE + 16;
         c.drawText(textRenderer, uiText(CincoClient.selectedCategory.label + " MODULES"),
                 contentX, panelY + 13, uiColor(CincoTheme.primaryText()), false);
-        c.drawText(textRenderer, uiText("LEFT CLICK: TOGGLE  •  RIGHT CLICK: FULL SETTINGS"),
+        c.drawText(textRenderer, uiText("CLICK COLOR WHEEL TO PICK  •  RIGHT CLICK: MODULE SETTINGS"),
                 contentX, panelY + 28, uiColor(CincoTheme.secondaryText()), false);
 
         int searchX = l + W - 213, searchY = panelY + 10;
@@ -237,6 +237,10 @@ public final class CincoClickGuiScreen extends Screen {
                 ClientModule module = list.get(i);
                 int y = viewportTop + i * ROW - scroll;
                 if (my < y || my > y + ROW - 5 || mx < contentX || mx > l + W - 13) continue;
+                if (module.name.equals("Color Wheel")) {
+                    MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(module));
+                    return true;
+                }
                 int sliderX = l + W - 285, sliderY = y + 36;
                 if (mx >= sliderX - 3 && mx <= sliderX + 81 && my >= sliderY && my <= y + ROW - 3) {
                     draggingSlider = true;

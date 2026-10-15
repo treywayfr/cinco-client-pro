@@ -180,7 +180,6 @@ public final class CincoClient implements ClientModInitializer {
         // SETTINGS — these options actually drive GUI typography, animation, and palette.
         add("Color Wheel", "Open the full hue and saturation color picker for the entire client", ClientModule.Category.SETTINGS, true, "Hue", 28, 0, 355, 5);
         add("Bold Typeface", "Use Minecraft's clean uniform font with bold weight", ClientModule.Category.SETTINGS, true, "Weight", 1, 1, 1, 1);
-        add("Text Palette", "1 Orange, 2 Amber Gold, 3 Violet", ClientModule.Category.SETTINGS, true, "Palette", 1, 1, 3, 1);
         add("GUI Animation", "Animate the panel entrance and border sweep", ClientModule.Category.SETTINGS, true, "Speed", 220, 100, 500, 40);
         add("Panel Opacity", "Adjust how opaque the main panels appear", ClientModule.Category.SETTINGS, true, "Opacity", 1.0, 0.75, 1.0, 0.05);
     }

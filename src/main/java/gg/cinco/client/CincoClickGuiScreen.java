@@ -40,7 +40,7 @@ public final class CincoClickGuiScreen extends Screen {
     }
 
     public CincoClickGuiScreen() {
-        super(uiText("Cinco Client"));
+        super(Text.literal("Cinco Client"));
         for (int i = 0; i < 150; i++) {
             stars.add(new Star(i * 73.37 % 1600, i * 47.19 % 1000, .15 + (i % 7) * .055, (i % 13) * .43));
         }

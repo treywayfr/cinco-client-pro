@@ -2,11 +2,8 @@ package gg.cinco.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
@@ -20,8 +17,6 @@ public final class CincoClient implements ClientModInitializer {
     public static ClientModule.Category selectedCategory = ClientModule.Category.COMBAT;
     public static boolean hudEnabled = true;
     public static boolean sprintAssistEnabled = false;
-    private KeyBinding guiKey;
-    private KeyBinding hudKey;
     private final Map<String, Boolean> lastModuleKeyStates = new HashMap<>();
     private int tickCounter;
 
@@ -32,20 +27,7 @@ public final class CincoClient implements ClientModInitializer {
         hudEnabled = isEnabled("Client HUD", true);
         sprintAssistEnabled = isEnabled("Sprint Assist", false);
 
-        guiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.cinco_client.open_gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, "category.cinco_client"));
-        hudKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.cinco_client.toggle_hud", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_H, "category.cinco_client"));
-
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (guiKey.wasPressed()) client.setScreen(new CincoClickGuiScreen());
-            while (hudKey.wasPressed()) {
-                hudEnabled = !hudEnabled;
-                ClientModule master = findModule("Client HUD");
-                if (master != null) master.enabled = hudEnabled;
-                if (client.player != null) client.player.sendMessage(Text.literal("Cinco HUD " + (hudEnabled ? "enabled" : "disabled")), true);
-                ConfigStore.save();
-            }
             pollModuleKeybinds(client);
 
             if (sprintAssistEnabled && client.player != null && client.options.forwardKey.isPressed()) client.player.setSprinting(true);
@@ -72,6 +54,18 @@ public final class CincoClient implements ClientModInitializer {
             lastModuleKeyStates.put(module.name, down);
 
             if (screenOpen || !down || wasDown) continue;
+            if (module.name.equals("Open GUI")) {
+                client.setScreen(new CincoClickGuiScreen());
+                continue;
+            }
+            if (module.name.equals("Toggle HUD")) {
+                hudEnabled = !hudEnabled;
+                ClientModule master = findModule("Client HUD");
+                if (master != null) master.enabled = hudEnabled;
+                if (client.player != null) client.player.sendMessage(Text.literal("Cinco HUD " + (hudEnabled ? "enabled" : "disabled")), true);
+                ConfigStore.save();
+                continue;
+            }
             if (module.name.equals("Anchor Macro")) {
                 if (!module.enabled) {
                     module.enabled = true;
@@ -179,6 +173,8 @@ public final class CincoClient implements ClientModInitializer {
 
         // SETTINGS — these options actually drive GUI typography, animation, and palette.
         add("Color Wheel", "Open the full hue and saturation color picker for the entire client", ClientModule.Category.SETTINGS, true, "Hue", 28, 0, 355, 5);
+        add("Open GUI", "Open the Cinco Client interface using your chosen key", ClientModule.Category.SETTINGS, true, "Unused", 1, 1, 1, 1);
+        add("Toggle HUD", "Toggle the in-game top status bar using your chosen key", ClientModule.Category.SETTINGS, true, "Unused", 1, 1, 1, 1);
         add("Bold Typeface", "Use Minecraft's clean uniform font with bold weight", ClientModule.Category.SETTINGS, true, "Weight", 1, 1, 1, 1);
         add("GUI Animation", "Animate the panel entrance and border sweep", ClientModule.Category.SETTINGS, true, "Speed", 220, 100, 500, 40);
         add("Panel Opacity", "Adjust how opaque the main panels appear", ClientModule.Category.SETTINGS, true, "Opacity", 1.0, 0.75, 1.0, 0.05);

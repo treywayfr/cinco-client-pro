@@ -5,4 +5,4 @@ pluginManagement {
         mavenCentral()
     }
 }
-rootProject.name = 'cinco-client-pro'
+rootProject.name = 'star-client'

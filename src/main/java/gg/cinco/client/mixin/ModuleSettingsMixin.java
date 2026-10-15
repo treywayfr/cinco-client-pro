@@ -81,14 +81,14 @@ public abstract class ModuleSettingsMixin {
         }
         if (module.name.equals("Sky Changer") && which == 0) {
             cir.setReturnValue(switch (selected) {
-                case 2 -> "Purple Nebula";
-                case 3 -> "Electric Violet";
-                case 4 -> "Aurora Flow";
-                case 5 -> "Crimson Storm";
-                case 6 -> "Ice Plasma";
-                case 7 -> "Emerald Flux";
-                case 8 -> "Rainbow Void";
-                default -> "Liquid Gold";
+                case 2 -> "Blue Galaxy";
+                case 3 -> "Violet Nebula";
+                case 4 -> "Rose Nebula";
+                case 5 -> "Ice Cosmos";
+                case 6 -> "Emerald Cosmos";
+                case 7 -> "Midnight Void";
+                case 8 -> "Prismatic Galaxy";
+                default -> "Deep Space";
             });
             return;
         }
@@ -108,9 +108,9 @@ public abstract class ModuleSettingsMixin {
         if (module.name.equals("Custom Accessory") && which == 0) {
             cir.setReturnValue(switch (selected) {
                 case 2 -> "Demon Wings";
-                case 3 -> "Halo";
+                case 3 -> "Solid Halo";
                 case 4 -> "Star Crown";
-                case 5 -> "Orbit Stars";
+                case 5 -> "Orbit Crystals";
                 case 6 -> "Nebula Horns";
                 case 7 -> "Energy Ring";
                 case 8 -> "Nebula Cape";

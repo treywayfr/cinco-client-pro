@@ -33,6 +33,7 @@ public final class CincoClient implements ClientModInitializer {
             if (sprintAssistEnabled && client.player != null && client.options.forwardKey.isPressed()) client.player.setSprinting(true);
             ClickRateTracker.tick(client);
             CombatModules.tick(client);
+            VisualModules.tick(client);
             if (++tickCounter % 100 == 0) {
                 ClientModule autoSave = findModule("Config Auto-Save");
                 if (autoSave != null && autoSave.enabled) ConfigStore.save();
@@ -67,13 +68,13 @@ public final class CincoClient implements ClientModInitializer {
                 continue;
             }
             if (module.name.equals("Anchor Macro")) {
-                if (!module.enabled) {
-                    module.enabled = true;
-                    if (client.player != null) client.player.sendMessage(Text.literal("Cinco Anchor Macro armed — press its key again to run."), true);
-                } else {
-                    CombatModules.triggerAnchorMacro(client);
-                }
-                ConfigStore.save();
+                if (module.enabled) CombatModules.triggerAnchorMacro(client);
+                else if (client.player != null) client.player.sendMessage(Text.literal("Enable Anchor Macro in the GUI first."), true);
+                continue;
+            }
+            if (module.name.equals("Key Pearl")) {
+                if (module.enabled) CombatModules.triggerPearl(client);
+                else if (client.player != null) client.player.sendMessage(Text.literal("Enable Key Pearl in the GUI first."), true);
                 continue;
             }
 
@@ -109,8 +110,9 @@ public final class CincoClient implements ClientModInitializer {
     private static void registerModules() {
         MODULES.clear();
         // COMBAT — keep automation explicit and off by default.
-        add("Auto Crystal", "Attack nearby crystals and attempt a nearby crystal placement", ClientModule.Category.COMBAT, false, "Range", 4.0, 2.0, 6.0, 0.5);
-        add("Anchor Macro", "Configured key: charge a targeted anchor, then activate with a totem", ClientModule.Category.COMBAT, false, "Delay", 1, 1, 5, 1);
+        add("Auto Crystal", "While right-clicking with crystals: place on the targeted base and rapidly break nearby crystals", ClientModule.Category.COMBAT, false, "Action delay", 0, 0, 4, 1);
+        add("Anchor Macro", "One key: place an anchor, charge with glowstone, then activate using a totem", ClientModule.Category.COMBAT, false, "Step delay", 1, 0, 5, 1);
+        add("Key Pearl", "Press its key to select a hotbar pearl and throw it instantly", ClientModule.Category.COMBAT, false, "Throw delay", 0, 0, 4, 1);
         add("Auto Safe Anchor", "During an anchor macro, place glowstone at your feet when looking down", ClientModule.Category.COMBAT, false, "Look Angle", 70, 50, 85, 5);
         add("Auto Totem", "Move a totem into the offhand when health reaches the threshold", ClientModule.Category.COMBAT, false, "Health", 12, 4, 20, 2);
         add("Auto Eat", "Eat a hotbar food when hunger falls below the threshold", ClientModule.Category.COMBAT, false, "Hunger", 8, 2, 18, 2);
@@ -140,6 +142,10 @@ public final class CincoClient implements ClientModInitializer {
         add("Accent Glow", "Control the interface accent intensity", ClientModule.Category.RENDER, true, "Intensity", 0.8, 0.2, 1.0, 0.2);
         add("Compact HUD", "Use tighter HUD spacing", ClientModule.Category.RENDER, false, "Padding", 4, 2, 10, 2);
         add("Crosshair Guide", "Draw a simple crosshair guide", ClientModule.Category.RENDER, false, "Size", 5, 3, 11, 2);
+        add("Hover Glow", "Subtle animated glow around hovered module cards and settings", ClientModule.Category.RENDER, true, "Intensity", 0.8, 0.2, 1.0, 0.2);
+        add("FOV Changer", "Set a custom field of view while enabled", ClientModule.Category.RENDER, false, "FOV", 100, 70, 110, 1);
+        add("Sky Changer", "Change sky and cloud colors with animated presets", ClientModule.Category.RENDER, false, "Style", 1, 1, 5, 1);
+        add("Fortnite Style", "Swap the local player skin texture to a custom battle-royale-inspired outfit", ClientModule.Category.RENDER, false, "Outfit", 1, 1, 4, 1);
         add("Target HUD", "Show distance to the entity under your crosshair", ClientModule.Category.RENDER, false, "Range", 6, 2, 12, 2);
         add("Ping Display", "Show current player's latency when available", ClientModule.Category.RENDER, false, "Scale", 1, 1, 3, 1);
 

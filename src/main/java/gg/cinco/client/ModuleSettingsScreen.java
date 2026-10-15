@@ -47,17 +47,21 @@ public final class ModuleSettingsScreen extends Screen {
         c.drawText(textRenderer, label("MODULE SETTINGS"), l + 26, t + 29, CincoTheme.secondaryText(), false);
         c.drawText(textRenderer, label(module.description), l + 18, t + 54, CincoTheme.secondaryText(), false);
 
-        drawSlider(c, l, t, 0, module.settingLabel, module.setting, module.min, module.max);
-        drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2);
-        drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3);
+        drawSlider(c, l, t, 0, module.settingLabel, module.setting, module.min, module.max, mouseX, mouseY);
+        drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2, mouseX, mouseY);
+        drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3, mouseX, mouseY);
 
         c.fill(l + 18, t + 212, l + W - 18, t + 237, CincoTheme.card());
+        if (mouseX >= l + 18 && mouseX <= l + W - 18 && mouseY >= t + 212 && mouseY <= t + 237)
+            drawHoverGlow(c, l + 18, t + 212, l + W - 18, t + 237);
         c.fill(l + 18, t + 212, l + 21, t + 237, CincoTheme.accent());
         drawCenteredSharp(c, label("OPEN CLIENT COLOR WHEEL"), l + W / 2, t + 221, CincoTheme.primaryText());
 
         int keyY = t + 244;
         c.drawText(textRenderer, label("MODULE KEYBIND"), l + 18, keyY, CincoTheme.secondaryText(), false);
         c.fill(l + 18, keyY + 17, l + W - 18, keyY + 46, waitingForKey ? CincoTheme.accentDark() : CincoTheme.card());
+        if (waitingForKey || (mouseX >= l + 18 && mouseX <= l + W - 18 && mouseY >= keyY + 17 && mouseY <= keyY + 46))
+            drawHoverGlow(c, l + 18, keyY + 17, l + W - 18, keyY + 46);
         c.fill(l + 18, keyY + 17, l + 21, keyY + 46, CincoTheme.accent());
         String binding = waitingForKey ? "PRESS A KEY  •  DELETE TO CLEAR  •  ESC TO CANCEL" :
                 "CURRENT: " + keyName(module.keyCode) + "     (CLICK TO CHANGE)";
@@ -73,13 +77,32 @@ public final class ModuleSettingsScreen extends Screen {
         c.drawText(textRenderer, text, centerX - textRenderer.getWidth(text) / 2, y, color, false);
     }
 
+    private void drawHoverGlow(DrawContext c, int x, int y, int right, int bottom) {
+        ClientModule glow = CincoClient.findModule("Hover Glow");
+        if (glow == null || !glow.enabled) return;
+        double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
+        double pulse = (Math.sin(System.currentTimeMillis() / (170.0 / speed)) + 1.0) * 0.5;
+        int strength = (int) (65 + 150 * Math.max(0.2, Math.min(1.0, glow.setting) * pulse);
+        int width = Math.max(1, Math.min(4, (int) glow.setting3));
+        int rgb = CincoTheme.accent() & 0x00FFFFFF;
+        for (int layer = width; layer >= 1; layer--) {
+            int color = (Math.max(16, strength / (layer + 1)) << 24) | rgb;
+            c.fill(x - layer, y - layer, right + layer, y - layer + 1, color);
+            c.fill(x - layer, bottom + layer - 1, right + layer, bottom + layer, color);
+            c.fill(x - layer, y, x - layer + 1, bottom, color);
+            c.fill(right + layer - 1, y, right + layer, bottom, color);
+        }
+    }
+
     private void drawSlider(DrawContext c, int l, int t, int which,
-                            String name, double value, double min, double max) {
+                            String name, double value, double min, double max, int mouseX, int mouseY) {
         int rowTop = t + 83 + which * 49;
         c.drawText(textRenderer, label(name), l + 18, rowTop, CincoTheme.primaryText(), false);
         c.drawText(textRenderer, label(format(value)), l + W - 68, rowTop, CincoTheme.primaryText(), false);
         int x = l + 18, y = rowTop + 19, w = W - 36;
         c.fill(x, y, x + w, y + 5, CincoTheme.sliderTrack());
+        if (mouseX >= x - 2 && mouseX <= x + w + 2 && mouseY >= y - 5 && mouseY <= y + 12)
+            drawHoverGlow(c, x, y - 2, x + w, y + 7);
         double fraction = (value - min) / Math.max(0.0001, max - min);
         int knob = x + (int)(Math.max(0, Math.min(1, fraction)) * w);
         c.fill(x, y, knob, y + 5, CincoTheme.accent());

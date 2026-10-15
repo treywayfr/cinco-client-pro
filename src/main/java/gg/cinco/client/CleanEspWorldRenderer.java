@@ -17,10 +17,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.LightType;
 import org.joml.Matrix4f;
 
-/**
- * Clean through-wall world ESP inspired by modern minimal clients: thin corner boxes for players,
- * restrained world tracers, and compact 3D light halos instead of noisy screen-space nameplates.
- */
+/** Clean through-wall player and underground-light ESP with shared Star visual presets. */
 public final class CleanEspWorldRenderer {
     private CleanEspWorldRenderer() {}
 
@@ -40,6 +37,7 @@ public final class CleanEspWorldRenderer {
         if (matrices == null) return;
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         Vec3d camera = context.camera().getPos();
+        int style = style();
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -47,13 +45,18 @@ public final class CleanEspWorldRenderer {
         RenderSystem.depthMask(false);
         RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.lineWidth(1.45F);
+        RenderSystem.lineWidth(switch (style) {
+            case 2 -> 2.05F; // Neon
+            case 3 -> 1.00F; // Minimal
+            case 4 -> 2.40F; // Bold
+            default -> 1.40F; // Clean
+        });
 
         BufferBuilder buffer = Tessellator.getInstance().begin(
                 VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
-        if (drawPlayers || drawTracers) renderPlayers(buffer, matrix, client, camera, playerEsp, tracers);
-        if (drawLights) renderLights(buffer, matrix, client, camera, lightFinder);
+        if (drawPlayers || drawTracers) renderPlayers(buffer, matrix, client, camera, playerEsp, tracers, style);
+        if (drawLights) renderLights(buffer, matrix, client, camera, lightFinder, style);
 
         try {
             BufferRenderer.drawWithGlobalProgram(buffer.end());
@@ -69,49 +72,79 @@ public final class CleanEspWorldRenderer {
     }
 
     private static void renderPlayers(BufferBuilder b, Matrix4f m, MinecraftClient client, Vec3d camera,
-                                      ClientModule esp, ClientModule tracers) {
+                                      ClientModule esp, ClientModule tracers, int style) {
         double range = esp != null && esp.enabled ? esp.setting : 0.0;
         if (tracers != null && tracers.enabled) range = Math.max(range, tracers.setting);
         double rangeSq = range * range;
-        int accent = withAlpha(CincoTheme.accentLight(), 225);
-        int tracerColor = withAlpha(CincoTheme.accent(), 150);
+
+        int outlineAlpha = switch (style) {
+            case 2 -> 250;
+            case 3 -> 165;
+            case 4 -> 255;
+            default -> 225;
+        };
+        int tracerAlpha = switch (style) {
+            case 2 -> 180;
+            case 3 -> 85;
+            case 4 -> 185;
+            default -> 140;
+        };
+        float cornerFraction = switch (style) {
+            case 2 -> 0.33F;
+            case 3 -> 0.20F;
+            case 4 -> 0.40F;
+            default -> 0.27F;
+        };
+        int accent = withAlpha(CincoTheme.accentLight(), outlineAlpha);
+        int tracerColor = withAlpha(CincoTheme.accent(), tracerAlpha);
         int rendered = 0;
+        int cap = StarPerformance.active(client) ? 24 : 48;
+
+        Vec3d eye = client.player.getEyePos();
+        float eyeX = (float) (eye.x - camera.x);
+        float eyeY = (float) (eye.y - camera.y);
+        float eyeZ = (float) (eye.z - camera.z);
 
         for (PlayerEntity player : client.world.getPlayers()) {
-            if (rendered >= 48) break;
+            if (rendered >= cap) break;
             if (player == client.player || !player.isAlive()) continue;
             double distanceSq = client.player.squaredDistanceTo(player);
             if (distanceSq > rangeSq) continue;
 
             if (esp != null && esp.enabled && esp.setting3 >= 0.5) {
-                Box box = player.getBoundingBox().expand(0.035);
+                Box box = player.getBoundingBox().expand(style == 4 ? 0.055 : 0.035);
                 float x0 = (float) (box.minX - camera.x);
                 float y0 = (float) (box.minY - camera.y);
                 float z0 = (float) (box.minZ - camera.z);
                 float x1 = (float) (box.maxX - camera.x);
                 float y1 = (float) (box.maxY - camera.y);
                 float z1 = (float) (box.maxZ - camera.z);
-                emitCornerBox(b, m, x0, y0, z0, x1, y1, z1, accent, 0.27F);
+                if (style == 4) emitFullBox(b, m, x0, y0, z0, x1, y1, z1, accent);
+                else emitCornerBox(b, m, x0, y0, z0, x1, y1, z1, accent, cornerFraction);
             }
 
             if (tracers != null && tracers.enabled && distanceSq <= tracers.setting * tracers.setting) {
                 float tx = (float) (player.getX() - camera.x);
                 float ty = (float) (player.getY() + player.getHeight() * 0.52 - camera.y);
                 float tz = (float) (player.getZ() - camera.z);
-                emitLine(b, m, 0.0F, -0.05F, 0.0F, tx, ty, tz, tracerColor);
+                // Player tracers terminate at the real player's eye just like storage tracers,
+                // which prevents detached Free Cam from making them point at the floor/camera origin.
+                emitLine(b, m, tx, ty, tz, eyeX, eyeY, eyeZ, tracerColor);
             }
             rendered++;
         }
     }
 
     private static void renderLights(BufferBuilder b, Matrix4f m, MinecraftClient client, Vec3d camera,
-                                     ClientModule module) {
+                                     ClientModule module, int style) {
         double rangeSq = module.setting * module.setting;
         float sizeScale = (float) Math.max(0.4, Math.min(1.4, module.setting3));
         int rendered = 0;
+        int cap = StarPerformance.lightRenderCap(client);
+        if (style == 3) cap = Math.max(24, cap * 2 / 3);
 
         for (BlockPos pos : EnhancedWorldScan.lightHotspots()) {
-            if (rendered >= 72) break;
+            if (rendered >= cap) break;
             double cx = pos.getX() + 0.5;
             double cy = pos.getY() + 0.5;
             double cz = pos.getZ() + 0.5;
@@ -121,18 +154,38 @@ public final class CleanEspWorldRenderer {
             if (dx * dx + dy * dy + dz * dz > rangeSq) continue;
 
             int level = client.world.getLightLevel(LightType.BLOCK, pos);
-            int color = level >= 14 ? 0xEFFFF7B0 : level >= 11 ? 0xE8FFD65C : 0xDAFFAA48;
-            float r = (0.34F + Math.max(0, level - 8) * 0.035F) * sizeScale;
+            int base = level >= 14 ? 0x00FFF7B0 : level >= 11 ? 0x00FFD65C : 0x00FFAA48;
+            int alpha = switch (style) {
+                case 2 -> 245;
+                case 3 -> 155;
+                case 4 -> 250;
+                default -> 220;
+            };
+            int color = (alpha << 24) | base;
+            float styleScale = switch (style) {
+                case 2 -> 1.18F;
+                case 3 -> 0.72F;
+                case 4 -> 1.30F;
+                default -> 1.0F;
+            };
+            float r = (0.34F + Math.max(0, level - 8) * 0.035F) * sizeScale * styleScale;
             float x = (float) (cx - camera.x);
             float y = (float) (cy - camera.y);
             float z = (float) (cz - camera.z);
-            emitLightHalo(b, m, x, y, z, r, color);
+            if (style == 3) emitMinimalLight(b, m, x, y, z, r, color);
+            else emitLightHalo(b, m, x, y, z, r, color, style == 2 || style == 4);
             rendered++;
         }
     }
 
-    private static void emitLightHalo(BufferBuilder b, Matrix4f m, float x, float y, float z, float r, int c) {
-        // Octahedral halo: readable through walls without looking like a giant block/name tag.
+    private static void emitMinimalLight(BufferBuilder b, Matrix4f m, float x, float y, float z, float r, int c) {
+        emitLine(b,m,x-r,y,z,x+r,y,z,c);
+        emitLine(b,m,x,y-r,z,x,y+r,z,c);
+        emitLine(b,m,x,y,z-r,x,y,z+r,c);
+    }
+
+    private static void emitLightHalo(BufferBuilder b, Matrix4f m, float x, float y, float z,
+                                      float r, int c, boolean extraRing) {
         float topY = y + r;
         float bottomY = y - r;
         float xr = x + r, xl = x - r, zf = z + r, zb = z - r;
@@ -142,10 +195,17 @@ public final class CleanEspWorldRenderer {
         emitLine(b,m,x,bottomY,z,x,y,zf,c); emitLine(b,m,x,bottomY,z,x,y,zb,c);
         emitLine(b,m,xr,y,z,x,y,zf,c); emitLine(b,m,x,y,zf,xl,y,z,c);
         emitLine(b,m,xl,y,z,x,y,zb,c); emitLine(b,m,x,y,zb,xr,y,z,c);
-        int faint = withAlpha(c, 105);
+        int faint = withAlpha(c, extraRing ? 125 : 92);
         emitLine(b,m,x-r*0.38F,y,z,x+r*0.38F,y,z,faint);
         emitLine(b,m,x,y-r*0.38F,z,x,y+r*0.38F,z,faint);
         emitLine(b,m,x,y,z-r*0.38F,x,y,z+r*0.38F,faint);
+        if (extraRing) {
+            float rr = r * 0.70F;
+            emitLine(b,m,x-rr,y-rr*0.2F,z,x+rr,y-rr*0.2F,z,faint);
+            emitLine(b,m,x+rr,y-rr*0.2F,z,x+rr,y+rr*0.2F,z,faint);
+            emitLine(b,m,x+rr,y+rr*0.2F,z,x-rr,y+rr*0.2F,z,faint);
+            emitLine(b,m,x-rr,y+rr*0.2F,z,x-rr,y-rr*0.2F,z,faint);
+        }
     }
 
     private static void emitCornerBox(BufferBuilder b, Matrix4f m,
@@ -159,12 +219,27 @@ public final class CleanEspWorldRenderer {
         cornerEdge(b,m,x1,y0,z1,x1,y1,z1,c,fraction); cornerEdge(b,m,x0,y0,z1,x0,y1,z1,c,fraction);
     }
 
+    private static void emitFullBox(BufferBuilder b, Matrix4f m,
+                                    float x0, float y0, float z0, float x1, float y1, float z1, int c) {
+        emitLine(b,m,x0,y0,z0,x1,y0,z0,c); emitLine(b,m,x1,y0,z0,x1,y0,z1,c);
+        emitLine(b,m,x1,y0,z1,x0,y0,z1,c); emitLine(b,m,x0,y0,z1,x0,y0,z0,c);
+        emitLine(b,m,x0,y1,z0,x1,y1,z0,c); emitLine(b,m,x1,y1,z0,x1,y1,z1,c);
+        emitLine(b,m,x1,y1,z1,x0,y1,z1,c); emitLine(b,m,x0,y1,z1,x0,y1,z0,c);
+        emitLine(b,m,x0,y0,z0,x0,y1,z0,c); emitLine(b,m,x1,y0,z0,x1,y1,z0,c);
+        emitLine(b,m,x1,y0,z1,x1,y1,z1,c); emitLine(b,m,x0,y0,z1,x0,y1,z1,c);
+    }
+
     private static void cornerEdge(BufferBuilder b, Matrix4f m,
                                    float ax, float ay, float az, float bx, float by, float bz,
                                    int color, float fraction) {
         float dx = bx - ax, dy = by - ay, dz = bz - az;
         emitLine(b,m,ax,ay,az,ax+dx*fraction,ay+dy*fraction,az+dz*fraction,color);
         emitLine(b,m,bx-dx*fraction,by-dy*fraction,bz-dz*fraction,bx,by,bz,color);
+    }
+
+    private static int style() {
+        ClientModule module = CincoClient.findModule("ESP Style");
+        return module == null ? 1 : Math.max(1, Math.min(4, (int) Math.round(module.setting)));
     }
 
     private static int withAlpha(int color, int alpha) {

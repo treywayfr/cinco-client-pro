@@ -20,7 +20,6 @@
     "FreeCamMovementMixin",
     "ChatHudEditorMixin",
     "StarActionBarMixin",
-    "HandViewMixin",
     "StarGuiBackgroundMixin"
   ],
   "injectors": {

@@ -238,7 +238,7 @@ public final class CincoClickGuiScreen extends Screen {
                 int y = viewportTop + i * ROW - scroll;
                 if (my < y || my > y + ROW - 5 || mx < contentX || mx > l + W - 13) continue;
                 if (module.name.equals("Color Wheel")) {
-                    MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(module));
+                    MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(module, this));
                     return true;
                 }
                 if (module.name.equals("Open GUI") || module.name.equals("Toggle HUD")) {

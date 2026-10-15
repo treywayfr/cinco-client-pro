@@ -38,6 +38,15 @@ public abstract class ModuleSettingsMixin {
             });
             return;
         }
+        if (module.name.equals("ESP Style") && which == 0) {
+            cir.setReturnValue(switch (selected) {
+                case 2 -> "Neon";
+                case 3 -> "Minimal";
+                case 4 -> "Bold";
+                default -> "Clean";
+            });
+            return;
+        }
         if (module.name.equals("Font Style") && which == 0) {
             cir.setReturnValue(StarFonts.name(selected));
             return;

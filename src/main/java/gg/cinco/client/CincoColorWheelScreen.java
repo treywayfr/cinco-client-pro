@@ -8,16 +8,14 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.Locale;
-
-/** HSV color wheel. Hue and saturation come from clicking/dragging the disk; brightness uses a slider. */
+/** HSV color wheel with the same supersampled rounded chrome as every other Cinco screen. */
 public final class CincoColorWheelScreen extends Screen {
+    private static final int W = 540, H = 350;
+    private static final int WHITE = 0xFFFFFFFF;
     private final ClientModule wheel;
     private final Screen parent;
     private boolean draggingWheel;
     private boolean draggingBrightness;
-    private static final int W = 560, H = 360;
-    private static final int WHITE = 0xFFFFFFFF;
 
     public CincoColorWheelScreen(ClientModule wheel) {
         this(wheel, new ModuleSettingsScreen(wheel));
@@ -32,158 +30,162 @@ public final class CincoColorWheelScreen extends Screen {
     private int left() { return (width - W) / 2; }
     private int top() { return (height - H) / 2; }
 
-    private Text label(String text) {
-        ClientModule font = CincoClient.findModule("Bold Typeface");
-        Style style = font != null && font.enabled
-                ? Style.EMPTY.withBold(true).withFont(Identifier.of("minecraft", "uniform"))
-                : Style.EMPTY.withFont(Identifier.of("minecraft", "default"));
-        return Text.literal(text).setStyle(style);
+    private Text label(String value, boolean bold) {
+        ClientModule typography = CincoClient.findModule("Bold Typeface");
+        return Text.literal(value).setStyle(Style.EMPTY
+                .withFont(Identifier.of("minecraft", "uniform"))
+                .withBold(bold || (typography != null && typography.enabled)));
     }
 
     @Override
     public void render(DrawContext c, int mouseX, int mouseY, float delta) {
         super.render(c, mouseX, mouseY, delta);
         c.fill(0, 0, width, height, CincoTheme.background());
-
         int l = left(), t = top();
-        c.fill(l - 2, t - 2, l + W + 2, t + H + 2, CincoTheme.accent());
-        c.fill(l, t, l + W, t + H, CincoTheme.panel());
-        c.fill(l, t, l + W, t + 3, CincoTheme.accent());
-        c.fill(l + 14, t + 13, l + 17, t + 42, CincoTheme.accent());
 
-        c.drawText(textRenderer, label("CINCO COLOR WHEEL"), l + 27, t + 15, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label("DRAG THE DISK TO PICK HUE + SATURATION"), l + 27, t + 30, CincoTheme.secondaryText(), false);
+        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 80);
+        CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accent(), CincoTheme.panel());
+        CincoDraw.rounded(c, l + 15, t + 15, l + 19, t + 43, 2, CincoTheme.accent());
+        c.drawText(textRenderer, label("CINCO COLOR WHEEL", true), l + 29, t + 16,
+                CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label("HUE + SATURATION + BRIGHTNESS", false), l + 29, t + 31,
+                CincoTheme.secondaryText(), false);
 
-        int cx = l + 155, cy = t + 188, radius = 110;
-        drawWheel(c, cx, cy, radius, (float) (wheel.setting3));
-        if (insideWheel(mouseX, mouseY, cx, cy, radius)) drawWheelHoverGlow(c, cx, cy, radius);
+        int cx = l + 142, cy = t + 183, radius = 102;
+        // Smooth dark halo around the disk makes the edge read cleanly against the panel.
+        CincoDraw.rounded(c, cx - radius - 5, cy - radius - 5, cx + radius + 5, cy + radius + 5,
+                radius + 5, 0x77000000);
+        drawWheel(c, cx, cy, radius, (float) wheel.setting3);
 
-        int swatchX = l + 300, swatchY = t + 75;
-        c.drawText(textRenderer, label("LIVE PREVIEW"), swatchX, swatchY, CincoTheme.secondaryText(), false);
-        c.fill(swatchX, swatchY + 17, swatchX + 225, swatchY + 65, CincoTheme.accent());
-        c.fill(swatchX + 4, swatchY + 21, swatchX + 221, swatchY + 61, CincoTheme.panel());
-        c.fill(swatchX + 8, swatchY + 25, swatchX + 49, swatchY + 57, CincoTheme.accent());
-        c.drawText(textRenderer, label("CINCO  /  LIVE CLIENT THEME"), swatchX + 59, swatchY + 30, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label("HUE: " + (int) wheel.setting + "°"), swatchX, t + 156, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label("SATURATION: " + Math.round(wheel.setting2 * 100) + "%"), swatchX, t + 173, CincoTheme.secondaryText(), false);
-        c.drawText(textRenderer, label("BRIGHTNESS: " + Math.round(wheel.setting3 * 100) + "%"), swatchX, t + 190, CincoTheme.secondaryText(), false);
+        int panelX = l + 274, panelY = t + 67, panelW = 244;
+        CincoDraw.rounded(c, panelX, panelY, panelX + panelW, panelY + 205, 13, CincoTheme.card());
+        c.drawText(textRenderer, label("LIVE PREVIEW", true), panelX + 14, panelY + 13,
+                CincoTheme.secondaryText(), false);
+        CincoDraw.bubble(c, panelX + 14, panelY + 31, panelX + panelW - 14, panelY + 79, 11,
+                CincoTheme.accent(), CincoTheme.panel());
+        CincoDraw.rounded(c, panelX + 24, panelY + 41, panelX + 60, panelY + 69, 9, CincoTheme.accent());
+        c.drawText(textRenderer, label("CINCO", true), panelX + 72, panelY + 42, CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label("LIVE CLIENT THEME", false), panelX + 72, panelY + 57, CincoTheme.secondaryText(), false);
 
-        c.drawText(textRenderer, label("BRIGHTNESS"), swatchX, t + 218, CincoTheme.secondaryText(), false);
-        int bx = swatchX, by = t + 240, bw = 225;
-        for (int i = 0; i < bw; i += 3) {
-            float v = i / (float) (bw - 1);
-            c.fill(bx + i, by, Math.min(bx + bw, bx + i + 3), by + 10, hsv((float) wheel.setting / 360.0f, (float) wheel.setting2, v));
+        c.drawText(textRenderer, label("HUE  " + (int) wheel.setting + "°", true), panelX + 14, panelY + 94,
+                CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label("SATURATION  " + Math.round(wheel.setting2 * 100) + "%", false),
+                panelX + 14, panelY + 112, CincoTheme.secondaryText(), false);
+        c.drawText(textRenderer, label("BRIGHTNESS  " + Math.round(wheel.setting3 * 100) + "%", false),
+                panelX + 14, panelY + 128, CincoTheme.secondaryText(), false);
+
+        int bx = panelX + 14, by = panelY + 158, bw = panelW - 28;
+        CincoDraw.rounded(c, bx - 2, by - 2, bx + bw + 2, by + 12, 7, 0xFF19131F);
+        for (int i = 0; i < bw; i += 2) {
+            float v = i / (float) Math.max(1, bw - 1);
+            c.fill(bx + i, by, Math.min(bx + bw, bx + i + 2), by + 8,
+                    hsv((float) wheel.setting / 360.0f, (float) wheel.setting2, v));
         }
-        if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by - 5 && mouseY <= by + 15)
-            drawRectHoverGlow(c, bx, by, bx + bw, by + 10);
-        int marker = bx + (int) ((wheel.setting3 - wheel.min3) / (wheel.max3 - wheel.min3) * bw);
-        c.fill(marker - 2, by - 4, marker + 3, by + 14, WHITE);
-        c.drawText(textRenderer, label("The selection updates the GUI, module screens and HUD immediately."), swatchX, t + 266, CincoTheme.secondaryText(), false);
+        int marker = bx + (int) ((wheel.setting3 - wheel.min3) / Math.max(0.001, wheel.max3 - wheel.min3) * bw);
+        CincoDraw.rounded(c, marker - 3, by - 4, marker + 4, by + 12, 4, WHITE);
+        c.drawText(textRenderer, label("DRAG BRIGHTNESS", true), bx, by + 20, CincoTheme.secondaryText(), false);
 
-        c.fill(l + 18, t + H - 36, l + 142, t + H - 13, CincoTheme.accentDark());
-        drawCentered(c, label("RESET ORANGE"), l + 80, t + H - 28, CincoTheme.primaryText());
-        c.fill(l + W - 132, t + H - 36, l + W - 18, t + H - 13, CincoTheme.accentDark());
-        drawCentered(c, label("BACK"), l + W - 75, t + H - 28, CincoTheme.primaryText());
-    }
-
-    private void drawWheelHoverGlow(DrawContext c, int cx, int cy, int radius) {
-        ClientModule glow = CincoClient.findModule("Hover Glow");
-        if (glow == null || !glow.enabled) return;
-        double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
-        double pulse = (Math.sin(System.currentTimeMillis() / (170.0 / speed)) + 1.0) * 0.5;
-        int alpha = (int) (70 + 150 * Math.max(0.2, Math.min(1.0, glow.setting)) * pulse);
-        int color = (alpha << 24) | (CincoTheme.accent() & 0x00FFFFFF);
-        for (int i = 0; i < 144; i++) {
-            double angle = Math.PI * 2.0 * i / 144.0;
-            int x = cx + (int) Math.round(Math.cos(angle) * (radius + 3));
-            int y = cy + (int) Math.round(Math.sin(angle) * (radius + 3));
-            c.fill(x - 2, y - 2, x + 3, y + 3, color);
-        }
-    }
-
-    private void drawRectHoverGlow(DrawContext c, int x, int y, int right, int bottom) {
-        ClientModule glow = CincoClient.findModule("Hover Glow");
-        if (glow == null || !glow.enabled) return;
-        double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
-        double pulse = (Math.sin(System.currentTimeMillis() / (170.0 / speed)) + 1.0) * 0.5;
-        int alpha = (int) (55 + 150 * Math.max(0.2, Math.min(1.0, glow.setting)) * pulse);
-        int color = (alpha << 24) | (CincoTheme.accent() & 0x00FFFFFF);
-        c.fill(x - 2, y - 2, right + 2, y, color);
-        c.fill(x - 2, bottom, right + 2, bottom + 2, color);
-        c.fill(x - 2, y, x, bottom, color);
-        c.fill(right, y, right + 2, bottom, color);
+        int by2 = t + H - 35;
+        drawButton(c, l + 18, by2, 126, 22, "RESET THEME", mouseX, mouseY);
+        drawButton(c, l + W - 116, by2, 98, 22, "BACK", mouseX, mouseY);
     }
 
     private void drawWheel(DrawContext c, int cx, int cy, int radius, float value) {
-        // A segmented polar disk avoids external textures while preserving a smooth-looking color wheel.
-        int angleSteps = 80;
-        int radialSteps = 16;
-        for (int radial = 1; radial <= radialSteps; radial++) {
+        int angleSteps = 96;
+        int radialSteps = 20;
+        for (int radial = radialSteps; radial >= 1; radial--) {
             double fraction = radial / (double) radialSteps;
             double r = radius * fraction;
-            int tile = Math.max(3, (int) Math.ceil(2 * Math.PI * r / angleSteps) + 1);
+            int tile = Math.max(2, (int) Math.ceil(2 * Math.PI * Math.max(1, r) / angleSteps) + 1);
             for (int a = 0; a < angleSteps; a++) {
                 double angle = Math.PI * 2.0 * a / angleSteps;
                 int x = cx + (int) Math.round(Math.cos(angle) * r);
                 int y = cy + (int) Math.round(Math.sin(angle) * r);
-                float hue = a / (float) angleSteps;
                 c.fill(x - tile / 2, y - tile / 2, x + tile / 2 + 1, y + tile / 2 + 1,
-                        hsv(hue, (float) fraction, value));
+                        hsv(a / (float) angleSteps, (float) fraction, value));
             }
         }
-
         double angle = Math.toRadians(wheel.setting);
         double r = radius * Math.max(0, Math.min(1, wheel.setting2));
-        int markerX = cx + (int) Math.round(Math.cos(angle) * r);
-        int markerY = cy + (int) Math.round(Math.sin(angle) * r);
-        c.fill(markerX - 5, markerY - 5, markerX + 6, markerY + 6, 0xFF171018);
-        c.fill(markerX - 3, markerY - 3, markerX + 4, markerY + 4, WHITE);
+        int mx = cx + (int) Math.round(Math.cos(angle) * r);
+        int my = cy + (int) Math.round(Math.sin(angle) * r);
+        CincoDraw.bubble(c, mx - 6, my - 6, mx + 7, my + 7, 7, 0xFFFFFFFF, 0xFF151019);
+        CincoDraw.rounded(c, mx - 3, my - 3, mx + 4, my + 4, 4, CincoTheme.accentLight());
+    }
+
+    private void drawButton(DrawContext c, int x, int y, int w, int h, String value, int mx, int my) {
+        boolean hover = mx >= x && mx <= x + w && my >= y && my <= y + h;
+        CincoDraw.rounded(c, x, y, x + w, y + h, 10, hover ? CincoTheme.cardHover() : CincoTheme.accentDark());
+        int tw = textRenderer.getWidth(value);
+        c.drawText(textRenderer, label(value, true), x + w / 2 - tw / 2, y + 7,
+                CincoTheme.primaryText(), false);
     }
 
     private static int hsv(float hue, float saturation, float brightness) {
         float h = (hue % 1.0f + 1.0f) % 1.0f;
         float s = Math.max(0.0f, Math.min(1.0f, saturation));
         float v = Math.max(0.0f, Math.min(1.0f, brightness));
-        float c = v * s, section = h * 6.0f, x = c * (1 - Math.abs(section % 2 - 1));
+        float chroma = v * s, section = h * 6.0f, x = chroma * (1 - Math.abs(section % 2 - 1));
         float r = 0, g = 0, b = 0;
-        if (section < 1) { r = c; g = x; }
-        else if (section < 2) { r = x; g = c; }
-        else if (section < 3) { g = c; b = x; }
-        else if (section < 4) { g = x; b = c; }
-        else if (section < 5) { r = x; b = c; }
-        else { r = c; b = x; }
-        float m = v - c;
+        if (section < 1) { r = chroma; g = x; }
+        else if (section < 2) { r = x; g = chroma; }
+        else if (section < 3) { g = chroma; b = x; }
+        else if (section < 4) { g = x; b = chroma; }
+        else if (section < 5) { r = x; b = chroma; }
+        else { r = chroma; b = x; }
+        float m = v - chroma;
         return 0xFF000000 | (Math.round((r + m) * 255) << 16)
                 | (Math.round((g + m) * 255) << 8) | Math.round((b + m) * 255);
     }
 
-    private void drawCentered(DrawContext c, Text text, int centerX, int y, int color) {
-        c.drawText(textRenderer, text, centerX - textRenderer.getWidth(text) / 2, y, color, false);
+    private boolean insideWheel(double x, double y, int cx, int cy, int radius) {
+        double dx = x - cx, dy = y - cy;
+        return dx * dx + dy * dy <= radius * radius;
+    }
+
+    private void updateWheel(double mouseX, double mouseY, int cx, int cy, int radius) {
+        double dx = mouseX - cx, dy = mouseY - cy;
+        double distance = Math.min(radius, Math.hypot(dx, dy));
+        double angle = Math.toDegrees(Math.atan2(dy, dx));
+        if (angle < 0) angle += 360.0;
+        wheel.setting = angle;
+        wheel.setting2 = Math.max(wheel.min2, Math.min(wheel.max2, distance / radius));
+        ConfigStore.save();
+    }
+
+    private void updateBrightness(double mouseX, int bx, int bw) {
+        double fraction = Math.max(0, Math.min(1, (mouseX - bx) / bw));
+        wheel.setting3 = wheel.min3 + (wheel.max3 - wheel.min3) * fraction;
+        ConfigStore.save();
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
         int l = left(), t = top();
-        int cx = l + 155, cy = t + 188, radius = 110;
+        int cx = l + 142, cy = t + 183, radius = 102;
         if (insideWheel(mouseX, mouseY, cx, cy, radius)) {
             draggingWheel = true;
             updateWheel(mouseX, mouseY, cx, cy, radius);
             return true;
         }
-        int bx = l + 300, by = t + 240, bw = 225;
-        if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by - 5 && mouseY <= by + 15) {
+        int panelX = l + 274, panelY = t + 67, panelW = 244;
+        int bx = panelX + 14, by = panelY + 158, bw = panelW - 28;
+        if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by - 6 && mouseY <= by + 16) {
             draggingBrightness = true;
             updateBrightness(mouseX, bx, bw);
             return true;
         }
-        if (mouseY >= t + H - 36 && mouseY <= t + H - 13) {
-            if (mouseX >= l + 18 && mouseX <= l + 142) {
-                wheel.setting = 28; wheel.setting2 = .90; wheel.setting3 = 1.0;
+        int by2 = t + H - 35;
+        if (mouseY >= by2 && mouseY <= by2 + 22) {
+            if (mouseX >= l + 18 && mouseX <= l + 144) {
+                wheel.setting = 28;
+                wheel.setting2 = 0.94;
+                wheel.setting3 = 1.0;
                 ConfigStore.save();
                 return true;
             }
-            if (mouseX >= l + W - 132 && mouseX <= l + W - 18) {
+            if (mouseX >= l + W - 116 && mouseX <= l + W - 18) {
                 close();
                 return true;
             }
@@ -194,11 +196,12 @@ public final class CincoColorWheelScreen extends Screen {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
         if (button == 0 && draggingWheel) {
-            updateWheel(mouseX, mouseY, left() + 155, top() + 188, 110);
+            updateWheel(mouseX, mouseY, left() + 142, top() + 183, 102);
             return true;
         }
         if (button == 0 && draggingBrightness) {
-            updateBrightness(mouseX, left() + 300, 225);
+            int panelX = left() + 274, panelW = 244;
+            updateBrightness(mouseX, panelX + 14, panelW - 28);
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dx, dy);
@@ -209,27 +212,6 @@ public final class CincoColorWheelScreen extends Screen {
         draggingWheel = false;
         draggingBrightness = false;
         return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    private boolean insideWheel(double x, double y, int cx, int cy, int radius) {
-        double dx = x - cx, dy = y - cy;
-        return dx * dx + dy * dy <= radius * radius;
-    }
-
-    private void updateWheel(double x, double y, int cx, int cy, int radius) {
-        double dx = x - cx, dy = y - cy;
-        double distance = Math.min(radius, Math.sqrt(dx * dx + dy * dy));
-        double hue = Math.toDegrees(Math.atan2(dy, dx));
-        if (hue < 0) hue += 360.0;
-        wheel.setting = Math.round(hue / wheel.step) * wheel.step;
-        if (wheel.setting >= 360) wheel.setting = 0;
-        wheel.setting2 = Math.max(wheel.min2, Math.min(wheel.max2, distance / radius));
-        ConfigStore.save();
-    }
-
-    private void updateBrightness(double x, int sliderX, int width) {
-        wheel.setSetting3FromSlider((x - sliderX) / (double) width);
-        ConfigStore.save();
     }
 
     @Override
@@ -243,7 +225,7 @@ public final class CincoColorWheelScreen extends Screen {
 
     @Override
     public void close() {
-        MinecraftClient.getInstance().setScreen(parent);
+        MinecraftClient.getInstance().setScreen(parent == null ? new CincoClickGuiScreen() : parent);
     }
 
     @Override

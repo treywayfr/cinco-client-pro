@@ -2,7 +2,7 @@
 
 **Target:** Minecraft Java Edition 1.21.1 · Fabric · Java 21
 
-Cinco Client has an animated purple-star ClickGUI, bold orange/amber text, configurable module settings, local HUD widgets, PvP helpers, and local loaded-area world scans.
+Cinco Client has an animated purple-star ClickGUI, a global HSV color wheel, bold typography, configurable module settings, local HUD widgets, PvP helpers, and local loaded-area world scans.
 
 ## Quick build (Windows)
 1. Install JDK 21: https://adoptium.net/temurin/releases/?version=21 (Windows x64, JDK, version 21, MSI installer).
@@ -16,7 +16,7 @@ Install that JAR and Fabric API for Minecraft 1.21.1 in `%appdata%\.minecraft\mo
 - **Right Shift:** open/close GUI
 - **H:** toggle HUD
 - **Mouse wheel:** scroll modules
-- **Left-click a module card:** toggle it
+- **Left-click a module card:** toggle it (the Color Wheel card opens the picker)
 - **Drag a card slider:** change its main setting
 - **Right-click a module card:** open its full settings
 - **Click MODULE KEYBIND, then press a keyboard key:** assign that module's hotkey
@@ -25,7 +25,7 @@ Install that JAR and Fabric API for Minecraft 1.21.1 in `%appdata%\.minecraft\mo
 - **Slash (/):** focus search
 - **Escape/Right Shift:** close the GUI
 
-Each module has three sliders (primary and two extra settings), an independently saved hotkey, enable state, and reset-to-defaults action. Settings and keybinds persist in `.minecraft/config/cinco-client.json`.
+Each module has three sliders (primary and two extra settings), an independently saved hotkey, enable state, and reset-to-defaults action. Right-click the Color Wheel card under SETTINGS to open its detail page, or simply left-click that card to open the full hue/saturation/brightness wheel. Drag around the wheel to change hue and saturation; drag the brightness strip to change brightness. These colors update the ClickGUI, module editor, and in-game HUD immediately, and persist across restarts. Settings and keybinds persist in `.minecraft/config/cinco-client.json`.
 
 Anchor Macro starts with **G**. When the module is enabled, its configured key runs its sequence; if it is disabled, the first press arms it and the next press runs it.
 
@@ -36,7 +36,7 @@ Anchor Macro starts with **G**. When the module is enabled, its configured key r
 - **World:** Base Finder, Container Finder, Sus Chunk Finder, Portal Finder, Spawner Finder, Shulker Finder, Stash Radar, Chunk Density, Nearby Player List, Block Notes
 - **Utility:** Config Auto-Save, Session Timer, Keystrokes, CPS, Safe Logout Reminder, Auto Refill, Inventory Checklist
 - **Practice:** Anchor Practice Timer, Reach Trainer, Cooldown Coach, Surround Trainer, Pearl Reminder
-- **Settings:** Bold Typeface, Text Palette, GUI Animation, Panel Opacity
+- **Settings:** Color Wheel, Bold Typeface, GUI Animation, Panel Opacity
 
 Some entries are configuration/visual foundations. Check each module in the detail screen for its current options.
 

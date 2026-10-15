@@ -1,160 +1,41 @@
 package gg.cinco.client;
 
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
 
-/**
- * Generates a local 64x64 Minecraft skin texture with a battle-royale-inspired tactical suit.
- * This changes only the local player's rendered skin, not their actual Mojang skin or other players.
- */
+/** Generated local tactical skin texture retained for compatibility with older Player Changer paths. */
 public final class FortniteSkinTexture {
     private static Identifier textureId;
-    private static int previousOutfit = -1;
-    private static int previousPalette = -1;
-    private static int previousVisor = -1;
-
     private FortniteSkinTexture() {}
 
     public static Identifier getTexture() {
-        ClientModule styleModule = CincoClient.findModule("GTA Skin Changer");
-        int outfit = styleModule == null ? 1 : (int) Math.round(styleModule.setting);
-        int palette = styleModule == null ? 1 : (int) Math.round(styleModule.setting2);
-        int visor = styleModule == null ? 1 : (int) Math.round(styleModule.setting3);
-        if (textureId != null && outfit == previousOutfit && palette == previousPalette && visor == previousVisor) {
-            return textureId;
-        }
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (textureId != null) client.getTextureManager().destroyTexture(textureId);
-
+        if (textureId != null) return textureId;
         NativeImage image = new NativeImage(NativeImage.Format.RGBA, 64, 64, false);
-        fill(image, 0, 0, 64, 64, 0x00000000);
-
-        int[][] palettes = {
-                {0xFF173C28, 0xFF277548, 0xFFF4F0D9, 0xFF182620},
-                {0xFF20252D, 0xFFEDF0F2, 0xFF28313A, 0xFF151A20},
-                {0xFF303030, 0xFF4A4A4A, 0xFFE5E5E5, 0xFF151515},
-                {0xFF183657, 0xFF336EA3, 0xFFFFFFFF, 0xFF162334}
-        };
-        int[] p = palettes[Math.floorMod(palette - 1 + outfit - 1, palettes.length)];
-        int dark = p[0], main = p[1], trim = p[2], shadow = p[3];
-        int skin = 0xFF875438, hair = 0xFF161211, white = 0xFFEAF4FF;
-
-        // Head base: helmet, face, sides and rear.
-        rect(image, 8, 0, 8, 8, shadow);       // head top
-        rect(image, 16, 0, 8, 8, dark);        // head underside
-        rect(image, 0, 8, 8, 8, dark);         // right side
-        rect(image, 8, 8, 8, 8, skin);         // face
-        rect(image, 16, 8, 8, 8, skin);        // left side
-        rect(image, 24, 8, 8, 8, hair);        // back of head
-        rect(image, 8, 8, 8, 2, hair);
-        rect(image, 8, 10, 1, 2, hair);
-        rect(image, 15, 10, 1, 2, hair);         // hairline
-        rect(image, 9, 11, 2, 1, white);       // eyes
-        rect(image, 13, 11, 2, 1, white);
-        rect(image, 9, 12, 2, 1, trim);
-        rect(image, 13, 12, 2, 1, trim);
-        rect(image, 10, 13, 4, 1, 0xFF493023); // short beard
-        rect(image, 11, 14, 2, 1, 0xFF36231C); // mouth
-        // No helmet: keep the face visible, with a subtle hair and beard overlay.
-        rect(image, 40, 8, 8, 2, hair);
-        rect(image, 40, 12, 1, 3, hair);
-        rect(image, 47, 12, 1, 3, hair);
-        rect(image, 42, 15, 4, 1, 0xFF2A1B18);
-
-        // Torso base: armored front, back, side panels and belt.
-        rect(image, 20, 16, 8, 4, dark);
-        rect(image, 28, 16, 8, 4, shadow);
-        rect(image, 16, 20, 4, 12, shadow);
-        rect(image, 20, 20, 8, 12, main);
-        rect(image, 28, 20, 4, 12, dark);
-        rect(image, 32, 20, 8, 12, shadow);
-        rect(image, 20, 20, 8, 3, main);
-        rect(image, 21, 24, 2, 5, main);
-        rect(image, 25, 24, 2, 5, main);
-        rect(image, 20, 29, 8, 3, shadow);
-        rect(image, 22, 29, 4, 1, trim);
-        // Jacket / shoulder-pad overlay.
-        rect(image, 20, 36, 8, 4, main);
-        rect(image, 28, 36, 8, 4, dark);
-        rect(image, 16, 40, 4, 8, shadow);
-        rect(image, 20, 40, 8, 8, main);
-        rect(image, 28, 40, 4, 8, dark);
-        rect(image, 32, 40, 8, 8, shadow);
-        rect(image, 20, 40, 8, 2, main);
-        rect(image, 23, 43, 2, 3, trim);
-
-        // Right arm base and sleeve.
-        rect(image, 44, 16, 4, 4, main);
-        rect(image, 48, 16, 4, 4, dark);
-        rect(image, 40, 20, 4, 12, shadow);
-        rect(image, 44, 20, 4, 12, main);
-        rect(image, 48, 20, 4, 12, dark);
-        rect(image, 52, 20, 4, 12, shadow);
-        rect(image, 44, 20, 4, 3, trim);
-        // Left arm base.
-        rect(image, 36, 48, 4, 4, main);
-        rect(image, 40, 48, 4, 4, dark);
-        rect(image, 32, 52, 4, 12, shadow);
-        rect(image, 36, 52, 4, 12, main);
-        rect(image, 40, 52, 4, 12, dark);
-        rect(image, 44, 52, 4, 12, shadow);
-        rect(image, 36, 52, 4, 3, trim);
-        // Boots / tactical trousers for both legs.
-        rect(image, 4, 16, 4, 4, main);
-        rect(image, 8, 16, 4, 4, shadow);
-        rect(image, 0, 20, 4, 12, dark);
-        rect(image, 4, 20, 4, 12, main);
-        rect(image, 8, 20, 4, 12, shadow);
-        rect(image, 12, 20, 4, 12, dark);
-        rect(image, 4, 27, 4, 5, shadow);
-        rect(image, 4, 30, 4, 2, trim);
-        rect(image, 20, 48, 4, 4, main);
-        rect(image, 24, 48, 4, 4, shadow);
-        rect(image, 16, 52, 4, 12, dark);
-        rect(image, 20, 52, 4, 12, main);
-        rect(image, 24, 52, 4, 12, shadow);
-        rect(image, 28, 52, 4, 12, dark);
-        rect(image, 20, 59, 4, 5, shadow);
-        rect(image, 20, 62, 4, 2, trim);
-        // Armor details on outer layers and small bright accents.
-        rect(image, 44, 32, 4, 4, dark);
-        rect(image, 48, 32, 4, 4, shadow);
-        rect(image, 40, 36, 4, 8, shadow);
-        rect(image, 44, 36, 4, 8, main);
-        rect(image, 48, 36, 4, 8, dark);
-        rect(image, 52, 36, 4, 8, shadow);
-        rect(image, 36, 48, 4, 1, trim);
-        rect(image, 20, 48, 4, 1, trim);
-        rect(image, 24, 40, 2, 2, trim);
-
-        textureId = client.getTextureManager().registerDynamicTexture("cinco_gta_franklin_local", new NativeImageBackedTexture(image));
-        previousOutfit = outfit;
-        previousPalette = palette;
-        previousVisor = visor;
+        fill(image,0,0,64,64,0x00000000);
+        int dark=0xFF17151C, main=0xFF4B2670, accent=0xFFA968FF, skin=0xFF875438, white=0xFFEAF4FF;
+        // Head / face.
+        rect(image,8,0,8,8,dark); rect(image,16,0,8,8,dark); rect(image,0,8,8,8,dark);
+        rect(image,8,8,8,8,skin); rect(image,16,8,8,8,skin); rect(image,24,8,8,8,dark);
+        rect(image,9,11,2,1,white); rect(image,13,11,2,1,white);
+        // Torso / jacket.
+        rect(image,20,16,8,4,dark); rect(image,28,16,8,4,dark); rect(image,16,20,4,12,dark);
+        rect(image,20,20,8,12,main); rect(image,28,20,4,12,dark); rect(image,32,20,8,12,dark);
+        rect(image,22,29,4,1,accent);
+        // Arms.
+        rect(image,44,16,4,4,main); rect(image,48,16,4,4,dark); rect(image,40,20,4,12,dark);
+        rect(image,44,20,4,12,main); rect(image,48,20,4,12,dark); rect(image,52,20,4,12,dark);
+        rect(image,36,48,4,4,main); rect(image,40,48,4,4,dark); rect(image,32,52,4,12,dark);
+        rect(image,36,52,4,12,main); rect(image,40,52,4,12,dark); rect(image,44,52,4,12,dark);
+        // Legs.
+        rect(image,4,16,4,4,main); rect(image,8,16,4,4,dark); rect(image,0,20,4,12,dark);
+        rect(image,4,20,4,12,main); rect(image,8,20,4,12,dark); rect(image,12,20,4,12,dark);
+        rect(image,20,48,4,4,main); rect(image,24,48,4,4,dark); rect(image,16,52,4,12,dark);
+        rect(image,20,52,4,12,main); rect(image,24,52,4,12,dark); rect(image,28,52,4,12,dark);
+        textureId = StarTextureCompat.register("generated_tactical_skin", image);
         return textureId;
     }
 
-    private static void rect(NativeImage image, int x, int y, int width, int height, int argb) {
-        if (width <= 0 || height <= 0) return;
-        int color = toAbgr(argb);
-        int xEnd = Math.min(64, x + width), yEnd = Math.min(64, y + height);
-        for (int yy = Math.max(0, y); yy < yEnd; yy++) {
-            for (int xx = Math.max(0, x); xx < xEnd; xx++) image.setColor(xx, yy, color);
-        }
-    }
-
-    private static void fill(NativeImage image, int x, int y, int width, int height, int argb) {
-        rect(image, x, y, width, height, argb);
-    }
-
-    private static int toAbgr(int argb) {
-        int a = (argb >>> 24) & 255;
-        int r = (argb >>> 16) & 255;
-        int g = (argb >>> 8) & 255;
-        int b = argb & 255;
-        return (a << 24) | (b << 16) | (g << 8) | r;
-    }
+    private static void rect(NativeImage image,int x,int y,int w,int h,int argb){int c=toAbgr(argb);for(int yy=Math.max(0,y);yy<Math.min(64,y+h);yy++)for(int xx=Math.max(0,x);xx<Math.min(64,x+w);xx++)image.setColor(xx,yy,c);}
+    private static void fill(NativeImage image,int x,int y,int w,int h,int argb){rect(image,x,y,w,h,argb);}
+    private static int toAbgr(int argb){int a=(argb>>>24)&255,r=(argb>>>16)&255,g=(argb>>>8)&255,b=argb&255;return(a<<24)|(b<<16)|(g<<8)|r;}
 }

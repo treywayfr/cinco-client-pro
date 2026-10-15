@@ -40,7 +40,7 @@ public final class BaseScanner {
         int width = radius * 2 + 1;
         int height = 49;
         int volume = width * width * height;
-        int budget = 1200;
+        int budget = module == null ? 1200 : (int) Math.max(200, Math.min(2400, module.setting2));
         for (int i = 0; i < budget && cursor < volume; i++, cursor++) {
             int layer = cursor / (width * width);
             int within = cursor % (width * width);

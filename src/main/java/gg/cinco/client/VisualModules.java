@@ -40,11 +40,9 @@ public final class VisualModules {
                 currentFov = originalFov;
                 fovCaptured = true;
             }
-            double desired = fov.setting;
-            if (fov.setting3 >= 0.5) {
-                double easeTicks = Math.max(1.0, fov.setting2);
-                currentFov += (desired - currentFov) / easeTicks;
-            } else currentFov = desired;
+            // setting2/setting3 are now Show Hand and Hand / Item Rotation.
+            // Keep the FOV value independent so changing hand presentation can never alter zoom.
+            currentFov = Math.max(fov.min, Math.min(fov.max, fov.setting));
             int adjusted = (int) Math.round(currentFov);
             if (!client.options.getFov().getValue().equals(adjusted)) client.options.getFov().setValue(adjusted);
         } else if (fovCaptured) {
@@ -99,7 +97,7 @@ public final class VisualModules {
         else if (section < 2) { r = x; g = chroma; }
         else if (section < 3) { g = chroma; b = x; }
         else if (section < 4) { g = x; b = chroma; }
-        else if (section < 5) { r = x; b = chroma; }
+        else if (section < 5) { r = x; b = 0; }
         else { r = chroma; b = x; }
         double m = value - chroma;
         return new double[]{r + m, g + m, b + m};

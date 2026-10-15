@@ -13,9 +13,9 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 
 /**
- * Small close-range geometry pass for the Player Changer models. It focuses extra vertices on
- * faces, hair silhouettes, clothing seams and accessories instead of increasing every body mesh,
- * so the models look richer without undoing the performance work elsewhere.
+ * Lightweight close-range detail pass for Player Changer. Extra geometry is concentrated on
+ * faces, hair, seams and accessories so the characters read better without multiplying the
+ * polygon count of the whole body.
  */
 public final class CharacterPremiumOverlay {
     private static Identifier texture;
@@ -61,46 +61,42 @@ public final class CharacterPremiumOverlay {
             default -> 0xFF2C784A;
         };
 
-        // Inner ears, cheek planes and a slightly projected nose give the face more depth.
-        box(v,e,-0.215f,1.690f,-0.045f,-0.198f,1.758f,0.028f,skinDark,light);
-        box(v,e,0.198f,1.690f,-0.045f,0.215f,1.758f,0.028f,skinDark,light);
-        box(v,e,-0.155f,1.650f,-0.199f,-0.080f,1.704f,-0.188f,skinHi,light);
-        box(v,e,0.080f,1.650f,-0.199f,0.155f,1.704f,-0.188f,skinHi,light);
+        // Face depth: inner ears, cheek planes, projected nose and jaw breakup.
+        box(v,e,-0.214f,1.690f,-0.040f,-0.198f,1.756f,0.030f,skinDark,light);
+        box(v,e,0.198f,1.690f,-0.040f,0.214f,1.756f,0.030f,skinDark,light);
+        box(v,e,-0.154f,1.650f,-0.200f,-0.080f,1.704f,-0.188f,skinHi,light);
+        box(v,e,0.080f,1.650f,-0.200f,0.154f,1.704f,-0.188f,skinHi,light);
         box(v,e,-0.030f,1.661f,-0.230f,0.030f,1.716f,-0.206f,skinDark,light);
         box(v,e,-0.044f,1.647f,-0.232f,0.044f,1.666f,-0.213f,skin,light);
+        box(v,e,-0.128f,1.572f,-0.198f,-0.086f,1.626f,-0.188f,beard,light);
+        box(v,e,0.086f,1.572f,-0.198f,0.128f,1.626f,-0.188f,beard,light);
+        box(v,e,-0.040f,1.555f,-0.205f,0.040f,1.598f,-0.194f,beard,light);
+        box(v,e,-0.055f,1.622f,-0.212f,0.055f,1.630f,-0.205f,0xFF9B6253,light);
 
-        // Tapered hairline / fade blocks make the top look less like a cap.
+        // More natural fade/hairline silhouette.
         for (int i = 0; i < 5; i++) {
             float x0 = -0.145f + i * 0.058f;
-            box(v,e,x0,1.894f-(Math.abs(2-i)*0.008f),-0.188f,
-                    x0+0.045f,1.918f,-0.170f,hair,light);
+            float y0 = 1.890f - Math.abs(2-i)*0.008f;
+            box(v,e,x0,y0,-0.188f,x0+0.045f,1.918f,-0.170f,hair,light);
         }
         box(v,e,-0.198f,1.730f,-0.150f,-0.186f,1.838f,0.060f,0xFF31211D,light);
         box(v,e,0.186f,1.730f,-0.150f,0.198f,1.838f,0.060f,0xFF31211D,light);
 
-        // Jaw / beard breakup and tiny lower-lip highlight.
-        box(v,e,-0.130f,1.572f,-0.198f,-0.086f,1.626f,-0.188f,beard,light);
-        box(v,e,0.086f,1.572f,-0.198f,0.130f,1.626f,-0.188f,beard,light);
-        box(v,e,-0.040f,1.555f,-0.205f,0.040f,1.598f,-0.194f,beard,light);
-        box(v,e,-0.055f,1.622f,-0.212f,0.055f,1.630f,-0.205f,0xFF9B6253,light);
-
-        // Shirt stitching, sleeve cuffs and chest pocket flap.
+        // Shirt stitching, cuff edges and pocket flap.
         box(v,e,-0.302f,1.160f,-0.112f,-0.286f,1.375f,0.105f,shade(shirt,0.68f),light);
         box(v,e,0.286f,1.160f,-0.112f,0.302f,1.375f,0.105f,shade(shirt,0.68f),light);
         box(v,e,-0.201f,1.286f,-0.190f,-0.106f,1.301f,-0.182f,shade(shirt,1.18f),light);
         box(v,e,-0.195f,1.222f,-0.192f,-0.113f,1.236f,-0.184f,shade(shirt,0.70f),light);
 
-        // Watch face, bracelet edge, belt buckle inset and front jean seams.
+        // Watch, buckle, jean seams and sneaker laces.
         box(v,e,-0.454f,0.806f,-0.095f,-0.356f,0.858f,-0.079f,0xFF111318,light);
         box(v,e,-0.438f,0.816f,-0.100f,-0.372f,0.848f,-0.090f,gold,light);
         box(v,e,-0.030f,0.864f,-0.181f,0.030f,0.913f,-0.168f,gold,light);
         box(v,e,-0.008f,0.722f,-0.151f,0.008f,0.858f,-0.143f,shade(denim,0.62f),light);
         box(v,e,-0.220f,0.810f,-0.153f,-0.102f,0.827f,-0.145f,shade(denim,1.22f),light);
         box(v,e,0.102f,0.810f,-0.153f,0.220f,0.827f,-0.145f,shade(denim,1.22f),light);
-
-        // Extra sneaker side panels and laces.
         for (int i=0;i<3;i++) {
-            float y = 0.100f + i*0.013f;
+            float y=0.100f+i*0.013f;
             box(v,e,-0.205f,y,-0.194f,-0.060f,y+0.006f,-0.187f,0xFFB8BDB9,light);
             box(v,e,0.060f,y,-0.194f,0.205f,y+0.006f,-0.187f,0xFFB8BDB9,light);
         }
@@ -112,20 +108,18 @@ public final class CharacterPremiumOverlay {
         int red = 0xFFF05B3D;
         int blue = 0xFF315EBC;
 
-        // Sharper pyramid spikes over the existing rounded hair silhouette.
-        for (int i = 0; i < 7; i++) {
-            float x = -0.168f + i * 0.056f;
-            float h = 1.925f + (i % 2) * 0.035f;
-            pyramid(v,e,x,1.750f,-0.005f,0.050f,h,yellow,light);
+        // Stepped spikes make the head silhouette much more recognizable without expensive curves.
+        for (int i=0;i<7;i++) {
+            float x=-0.175f+i*0.058f;
+            float h=0.10f+(i%2)*0.035f;
+            box(v,e,x,1.790f,-0.060f,x+0.042f,1.790f+h,0.045f,yellow,light);
         }
-        // Inner ears, eye outlines, cheek dimples and mouth depth.
         box(v,e,-0.236f,1.455f,-0.025f,-0.218f,1.535f,0.024f,yellowDark,light);
         box(v,e,0.218f,1.455f,-0.025f,0.236f,1.535f,0.024f,yellowDark,light);
         box(v,e,-0.140f,1.506f,-0.196f,-0.006f,1.520f,-0.188f,0xFF3B2A19,light);
         box(v,e,0.006f,1.506f,-0.196f,0.140f,1.520f,-0.188f,0xFF3B2A19,light);
         box(v,e,-0.104f,1.360f,-0.207f,0.104f,1.384f,-0.195f,0xFF6A351F,light);
         box(v,e,-0.055f,1.362f,-0.211f,0.055f,1.373f,-0.202f,0xFFFDF7E7,light);
-        // Clothing seams and shoe stripes.
         box(v,e,-0.205f,0.817f,-0.150f,0.205f,0.835f,-0.142f,shade(red,0.72f),light);
         box(v,e,-0.010f,0.606f,-0.151f,0.010f,0.815f,-0.144f,shade(blue,0.72f),light);
         box(v,e,-0.195f,0.042f,-0.171f,-0.025f,0.060f,-0.162f,0xFFFFFFFF,light);
@@ -142,16 +136,14 @@ public final class CharacterPremiumOverlay {
         int accent = palette == 3 ? 0xFF72D9FF : 0xFFFF7ACD;
         int dark = shade(hair,0.68f);
 
-        // Layered front/side hair strands rather than a single solid hair mass.
+        // Layered fringe and side strands.
         for (int i=0;i<4;i++) {
-            float x = -0.186f + i*0.105f;
+            float x=-0.186f+i*0.105f;
             box(v,e,x,1.760f,-0.199f,x+0.052f,1.892f-(i%2)*0.035f,-0.190f,
                     i==1 || i==2 ? shade(hair,1.18f) : hair,light);
         }
         box(v,e,-0.220f,1.250f,0.115f,-0.176f,1.720f,0.170f,dark,light);
         box(v,e,0.176f,1.250f,0.115f,0.220f,1.720f,0.170f,dark,light);
-
-        // Lashes, irises with two-step highlights, small nose and mouth.
         box(v,e,-0.137f,1.740f,-0.204f,-0.010f,1.754f,-0.197f,dark,light);
         box(v,e,0.010f,1.740f,-0.204f,0.137f,1.754f,-0.197f,dark,light);
         box(v,e,-0.073f,1.701f,-0.209f,-0.040f,1.738f,-0.202f,accent,light);
@@ -161,7 +153,7 @@ public final class CharacterPremiumOverlay {
         box(v,e,-0.015f,1.655f,-0.207f,0.015f,1.686f,-0.198f,0xFFD99D91,light);
         box(v,e,-0.052f,1.615f,-0.204f,0.052f,1.628f,-0.197f,0xFFC8677F,light);
 
-        // Bow, jacket cuffs, skirt pleats and stocking bands.
+        // Bow and skirt pleats.
         box(v,e,-0.105f,1.295f,-0.180f,-0.010f,1.360f,-0.168f,accent,light);
         box(v,e,0.010f,1.295f,-0.180f,0.105f,1.360f,-0.168f,accent,light);
         box(v,e,-0.026f,1.300f,-0.186f,0.026f,1.355f,-0.172f,shade(accent,0.72f),light);
@@ -179,7 +171,7 @@ public final class CharacterPremiumOverlay {
         int dark = 0xFF5F351D;
         int black = 0xFF14110F;
 
-        // Eye whites/pupils and raised brow give the face more expression.
+        // More expressive face.
         box(v,e,-0.125f,1.603f,-0.207f,-0.035f,1.675f,-0.197f,0xFFEBD9B9,light);
         box(v,e,0.035f,1.603f,-0.207f,0.125f,1.675f,-0.197f,0xFFEBD9B9,light);
         box(v,e,-0.085f,1.620f,-0.213f,-0.052f,1.662f,-0.204f,black,light);
@@ -187,16 +179,14 @@ public final class CharacterPremiumOverlay {
         box(v,e,-0.132f,1.690f,-0.202f,-0.030f,1.708f,-0.194f,dark,light);
         box(v,e,0.030f,1.690f,-0.202f,0.132f,1.708f,-0.194f,dark,light);
         box(v,e,-0.025f,1.545f,-0.222f,0.025f,1.605f,-0.203f,lightWood,light);
-
-        // Mouth/teeth plus several asymmetrical bark cracks and growth rings.
         box(v,e,-0.090f,1.490f,-0.212f,0.090f,1.520f,-0.202f,black,light);
         box(v,e,-0.058f,1.494f,-0.216f,0.058f,1.507f,-0.207f,0xFFE6D6B5,light);
+
+        // Bark grain and club wrapping.
         box(v,e,-0.205f,1.188f,-0.242f,-0.060f,1.205f,-0.232f,dark,light);
         box(v,e,0.078f,1.030f,-0.243f,0.198f,1.047f,-0.233f,lightWood,light);
         box(v,e,-0.155f,0.842f,-0.242f,0.105f,0.858f,-0.232f,dark,light);
         box(v,e,-0.025f,0.705f,-0.244f,0.025f,1.315f,-0.235f,shade(wood,0.76f),light);
-
-        // Wrapped grip bands on the club.
         box(v,e,0.500f,0.300f,-0.020f,0.585f,0.345f,0.020f,black,light);
         box(v,e,0.515f,0.245f,-0.025f,0.595f,0.282f,0.025f,0xFF3B2518,light);
     }
@@ -218,15 +208,6 @@ public final class CharacterPremiumOverlay {
         return (a<<24)|(r<<16)|(g<<8)|b;
     }
 
-    private static void pyramid(VertexConsumer v, MatrixStack.Entry e, float cx, float y0, float cz,
-                                float half, float y1, int color, int light) {
-        float[] a={cx-half,y0,cz-half}, b={cx+half,y0,cz-half};
-        float[] c={cx+half,y0,cz+half}, d={cx-half,y0,cz+half};
-        float[] t={cx,y1,cz};
-        tri(v,e,a,b,t,0,0,-1,color,light); tri(v,e,b,c,t,1,0,0,color,light);
-        tri(v,e,c,d,t,0,0,1,color,light); tri(v,e,d,a,t,-1,0,0,color,light);
-    }
-
     private static void box(VertexConsumer v, MatrixStack.Entry e, float x0,float y0,float z0,
                             float x1,float y1,float z1,int color,int light) {
         float[] a={x0,y0,z0}, b={x1,y0,z0}, c={x1,y1,z0}, d={x0,y1,z0};
@@ -234,12 +215,6 @@ public final class CharacterPremiumOverlay {
         quad(v,e,a,b,c,d,0,0,-1,color,light); quad(v,e,f,e0,h,g,0,0,1,color,light);
         quad(v,e,e0,a,d,h,-1,0,0,color,light); quad(v,e,b,f,g,c,1,0,0,color,light);
         quad(v,e,d,c,g,h,0,1,0,color,light); quad(v,e,e0,f,b,a,0,-1,0,color,light);
-    }
-
-    private static void tri(VertexConsumer v, MatrixStack.Entry e, float[] a,float[] b,float[] c,
-                            float nx,float ny,float nz,int color,int light) {
-        vertex(v,e,a,nx,ny,nz,color,light); vertex(v,e,b,nx,ny,nz,color,light);
-        vertex(v,e,c,nx,ny,nz,color,light);
     }
 
     private static void quad(VertexConsumer v, MatrixStack.Entry e, float[] a,float[] b,float[] c,float[] d,

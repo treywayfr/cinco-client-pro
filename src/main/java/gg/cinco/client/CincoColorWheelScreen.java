@@ -3,12 +3,10 @@ package gg.cinco.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
-/** HSV color wheel with the same supersampled rounded chrome as every other Cinco screen. */
+/** Star Client HSV color wheel with adaptive rendering cost. */
 public final class CincoColorWheelScreen extends Screen {
     private static final int W = 540, H = 350;
     private static final int WHITE = 0xFFFFFFFF;
@@ -22,68 +20,60 @@ public final class CincoColorWheelScreen extends Screen {
     }
 
     public CincoColorWheelScreen(ClientModule wheel, Screen parent) {
-        super(Text.literal("Cinco Color Wheel"));
+        super(Text.literal("Star Color Wheel"));
         this.wheel = wheel;
         this.parent = parent;
     }
 
     private int left() { return (width - W) / 2; }
     private int top() { return (height - H) / 2; }
-
-    private Text label(String value, boolean bold) {
-        ClientModule typography = CincoClient.findModule("Bold Typeface");
-        return Text.literal(value).setStyle(Style.EMPTY
-                .withFont(Identifier.of("minecraft", "uniform"))
-                .withBold(bold || (typography != null && typography.enabled)));
-    }
+    private Text label(String value, boolean bold) { return StarFonts.text(value, bold); }
 
     @Override
     public void render(DrawContext c, int mouseX, int mouseY, float delta) {
         super.render(c, mouseX, mouseY, delta);
-        c.fill(0, 0, width, height, CincoTheme.background());
+        c.fill(0, 0, width, height, 0xF006050A);
         int l = left(), t = top();
 
-        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 80);
-        CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accent(), CincoTheme.panel());
-        CincoDraw.rounded(c, l + 15, t + 15, l + 19, t + 43, 2, CincoTheme.accent());
-        c.drawText(textRenderer, label("CINCO COLOR WHEEL", true), l + 29, t + 16,
-                CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label("HUE + SATURATION + BRIGHTNESS", false), l + 29, t + 31,
-                CincoTheme.secondaryText(), false);
+        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 52);
+        CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accentMuted(), 0xF20B0911);
+        CincoDraw.rounded(c, l + 15, t + 15, l + 19, t + 43, 2, CincoTheme.accentLight());
+        c.drawText(textRenderer, label("★  STAR COLOR WHEEL", true), l + 29, t + 16, 0xFFFFFFFF, false);
+        c.drawText(textRenderer, label("HUE  •  SATURATION  •  BRIGHTNESS", false), l + 29, t + 31,
+                0xFF91899D, false);
 
         int cx = l + 142, cy = t + 183, radius = 102;
-        // Smooth dark halo around the disk makes the edge read cleanly against the panel.
-        CincoDraw.rounded(c, cx - radius - 5, cy - radius - 5, cx + radius + 5, cy + radius + 5,
-                radius + 5, 0x77000000);
+        CincoDraw.rounded(c, cx - radius - 4, cy - radius - 4, cx + radius + 4, cy + radius + 4,
+                radius + 4, 0x66000000);
         drawWheel(c, cx, cy, radius, (float) wheel.setting3);
 
         int panelX = l + 274, panelY = t + 67, panelW = 244;
-        CincoDraw.rounded(c, panelX, panelY, panelX + panelW, panelY + 205, 13, CincoTheme.card());
-        c.drawText(textRenderer, label("LIVE PREVIEW", true), panelX + 14, panelY + 13,
-                CincoTheme.secondaryText(), false);
+        CincoDraw.rounded(c, panelX, panelY, panelX + panelW, panelY + 205, 13, 0xE615111D);
+        c.drawText(textRenderer, label("LIVE PREVIEW", true), panelX + 14, panelY + 13, 0xFF968EA1, false);
         CincoDraw.bubble(c, panelX + 14, panelY + 31, panelX + panelW - 14, panelY + 79, 11,
-                CincoTheme.accent(), CincoTheme.panel());
+                CincoTheme.accentMuted(), 0xED0E0B14);
         CincoDraw.rounded(c, panelX + 24, panelY + 41, panelX + 60, panelY + 69, 9, CincoTheme.accent());
-        c.drawText(textRenderer, label("CINCO", true), panelX + 72, panelY + 42, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label("LIVE CLIENT THEME", false), panelX + 72, panelY + 57, CincoTheme.secondaryText(), false);
+        c.drawCenteredTextWithShadow(textRenderer, label("★", true), panelX + 42, panelY + 51, 0xFFFFFFFF);
+        c.drawText(textRenderer, label("STAR", true), panelX + 72, panelY + 42, 0xFFFFFFFF, false);
+        c.drawText(textRenderer, label("LIVE CLIENT THEME", false), panelX + 72, panelY + 57, 0xFF91899D, false);
 
         c.drawText(textRenderer, label("HUE  " + (int) wheel.setting + "°", true), panelX + 14, panelY + 94,
-                CincoTheme.primaryText(), false);
+                0xFFF8F4FF, false);
         c.drawText(textRenderer, label("SATURATION  " + Math.round(wheel.setting2 * 100) + "%", false),
-                panelX + 14, panelY + 112, CincoTheme.secondaryText(), false);
+                panelX + 14, panelY + 112, 0xFF9B93A8, false);
         c.drawText(textRenderer, label("BRIGHTNESS  " + Math.round(wheel.setting3 * 100) + "%", false),
-                panelX + 14, panelY + 128, CincoTheme.secondaryText(), false);
+                panelX + 14, panelY + 128, 0xFF9B93A8, false);
 
         int bx = panelX + 14, by = panelY + 158, bw = panelW - 28;
         CincoDraw.rounded(c, bx - 2, by - 2, bx + bw + 2, by + 12, 7, 0xFF19131F);
-        for (int i = 0; i < bw; i += 2) {
+        for (int i = 0; i < bw; i += 3) {
             float v = i / (float) Math.max(1, bw - 1);
-            c.fill(bx + i, by, Math.min(bx + bw, bx + i + 2), by + 8,
+            c.fill(bx + i, by, Math.min(bx + bw, bx + i + 3), by + 8,
                     hsv((float) wheel.setting / 360.0f, (float) wheel.setting2, v));
         }
         int marker = bx + (int) ((wheel.setting3 - wheel.min3) / Math.max(0.001, wheel.max3 - wheel.min3) * bw);
         CincoDraw.rounded(c, marker - 3, by - 4, marker + 4, by + 12, 4, WHITE);
-        c.drawText(textRenderer, label("DRAG BRIGHTNESS", true), bx, by + 20, CincoTheme.secondaryText(), false);
+        c.drawText(textRenderer, label("DRAG BRIGHTNESS", true), bx, by + 20, 0xFF8F879A, false);
 
         int by2 = t + H - 35;
         drawButton(c, l + 18, by2, 126, 22, "RESET THEME", mouseX, mouseY);
@@ -91,12 +81,13 @@ public final class CincoColorWheelScreen extends Screen {
     }
 
     private void drawWheel(DrawContext c, int cx, int cy, int radius, float value) {
-        int angleSteps = 96;
-        int radialSteps = 20;
+        boolean performance = StarPerformance.active(MinecraftClient.getInstance());
+        int angleSteps = performance ? 48 : 72;
+        int radialSteps = performance ? 11 : 15;
         for (int radial = radialSteps; radial >= 1; radial--) {
             double fraction = radial / (double) radialSteps;
             double r = radius * fraction;
-            int tile = Math.max(2, (int) Math.ceil(2 * Math.PI * Math.max(1, r) / angleSteps) + 1);
+            int tile = Math.max(3, (int) Math.ceil(2 * Math.PI * Math.max(1, r) / angleSteps) + 1);
             for (int a = 0; a < angleSteps; a++) {
                 double angle = Math.PI * 2.0 * a / angleSteps;
                 int x = cx + (int) Math.round(Math.cos(angle) * r);
@@ -115,10 +106,9 @@ public final class CincoColorWheelScreen extends Screen {
 
     private void drawButton(DrawContext c, int x, int y, int w, int h, String value, int mx, int my) {
         boolean hover = mx >= x && mx <= x + w && my >= y && my <= y + h;
-        CincoDraw.rounded(c, x, y, x + w, y + h, 10, hover ? CincoTheme.cardHover() : CincoTheme.accentDark());
+        CincoDraw.rounded(c, x, y, x + w, y + h, 10, hover ? 0xFF291A32 : 0xFF1A1322);
         int tw = textRenderer.getWidth(value);
-        c.drawText(textRenderer, label(value, true), x + w / 2 - tw / 2, y + 7,
-                CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label(value, true), x + w / 2 - tw / 2, y + 7, 0xFFF8F4FF, false);
     }
 
     private static int hsv(float hue, float saturation, float brightness) {

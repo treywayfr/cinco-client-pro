@@ -17,9 +17,6 @@ public final class ModuleSettingsScreen extends Screen {
     private int dragging = 0;
     private static final int W = 540;
     private static final int H = 350;
-    private static final int ORANGE = 0xFFFF9C32;
-    private static final int BRIGHT = 0xFFFFC078;
-    private static final int MUTED = 0xFFE89745;
 
     public ModuleSettingsScreen(ClientModule module) {
         super(Text.literal("Cinco Module Settings"));
@@ -40,32 +37,32 @@ public final class ModuleSettingsScreen extends Screen {
     @Override
     public void render(DrawContext c, int mouseX, int mouseY, float delta) {
         super.render(c, mouseX, mouseY, delta);
-        c.fill(0, 0, width, height, 0xFF080611);
+        c.fill(0, 0, width, height, CincoTheme.background());
         int l = left(), t = top();
-        c.fill(l - 2, t - 2, l + W + 2, t + H + 2, ORANGE);
-        c.fill(l, t, l + W, t + H, 0xFF100C1A);
-        c.fill(l, t, l + W, t + 3, ORANGE);
-        c.fill(l + 14, t + 13, l + 17, t + 42, ORANGE);
-        c.drawText(textRenderer, label(module.name.toUpperCase(Locale.ROOT)), l + 26, t + 15, BRIGHT, false);
-        c.drawText(textRenderer, label("MODULE SETTINGS"), l + 26, t + 29, MUTED, false);
-        c.drawText(textRenderer, label(module.description), l + 18, t + 54, MUTED, false);
+        c.fill(l - 2, t - 2, l + W + 2, t + H + 2, CincoTheme.accent());
+        c.fill(l, t, l + W, t + H, CincoTheme.panel());
+        c.fill(l, t, l + W, t + 3, CincoTheme.accent());
+        c.fill(l + 14, t + 13, l + 17, t + 42, CincoTheme.accent());
+        c.drawText(textRenderer, label(module.name.toUpperCase(Locale.ROOT)), l + 26, t + 15, CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label("MODULE SETTINGS"), l + 26, t + 29, CincoTheme.secondaryText(), false);
+        c.drawText(textRenderer, label(module.description), l + 18, t + 54, CincoTheme.secondaryText(), false);
 
         drawSlider(c, l, t, 0, module.settingLabel, module.setting, module.min, module.max);
         drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2);
         drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3);
 
         int keyY = t + 244;
-        c.drawText(textRenderer, label("MODULE KEYBIND"), l + 18, keyY, MUTED, false);
-        c.fill(l + 18, keyY + 17, l + W - 18, keyY + 46, waitingForKey ? 0xFF633316 : 0xFF2A1A10);
-        c.fill(l + 18, keyY + 17, l + 21, keyY + 46, ORANGE);
+        c.drawText(textRenderer, label("MODULE KEYBIND"), l + 18, keyY, CincoTheme.secondaryText(), false);
+        c.fill(l + 18, keyY + 17, l + W - 18, keyY + 46, waitingForKey ? CincoTheme.accentDark() : CincoTheme.card());
+        c.fill(l + 18, keyY + 17, l + 21, keyY + 46, CincoTheme.accent());
         String binding = waitingForKey ? "PRESS A KEY  •  DELETE TO CLEAR  •  ESC TO CANCEL" :
                 "CURRENT: " + keyName(module.keyCode) + "     (CLICK TO CHANGE)";
-        c.drawText(textRenderer, label(binding), l + 29, keyY + 27, BRIGHT, false);
+        c.drawText(textRenderer, label(binding), l + 29, keyY + 27, CincoTheme.primaryText(), false);
 
-        c.fill(l + 18, t + H - 37, l + 145, t + H - 13, 0xFF633316);
-        drawCenteredSharp(c, label("RESET SETTINGS"), l + 81, t + H - 29, BRIGHT);
-        c.fill(l + W - 135, t + H - 37, l + W - 18, t + H - 13, 0xFF633316);
-        drawCenteredSharp(c, label("BACK"), l + W - 76, t + H - 29, BRIGHT);
+        c.fill(l + 18, t + H - 37, l + 145, t + H - 13, CincoTheme.accentDark());
+        drawCenteredSharp(c, label("RESET SETTINGS"), l + 81, t + H - 29, CincoTheme.primaryText());
+        c.fill(l + W - 135, t + H - 37, l + W - 18, t + H - 13, CincoTheme.accentDark());
+        drawCenteredSharp(c, label("BACK"), l + W - 76, t + H - 29, CincoTheme.primaryText());
     }
 
     private void drawCenteredSharp(DrawContext c, Text text, int centerX, int y, int color) {
@@ -75,13 +72,13 @@ public final class ModuleSettingsScreen extends Screen {
     private void drawSlider(DrawContext c, int l, int t, int which,
                             String name, double value, double min, double max) {
         int rowTop = t + 83 + which * 49;
-        c.drawText(textRenderer, label(name), l + 18, rowTop, BRIGHT, false);
-        c.drawText(textRenderer, label(format(value)), l + W - 68, rowTop, BRIGHT, false);
+        c.drawText(textRenderer, label(name), l + 18, rowTop, CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label(format(value)), l + W - 68, rowTop, CincoTheme.primaryText(), false);
         int x = l + 18, y = rowTop + 19, w = W - 36;
-        c.fill(x, y, x + w, y + 5, 0xFF573019);
+        c.fill(x, y, x + w, y + 5, CincoTheme.sliderTrack());
         double fraction = (value - min) / Math.max(0.0001, max - min);
         int knob = x + (int)(Math.max(0, Math.min(1, fraction)) * w);
-        c.fill(x, y, knob, y + 5, ORANGE);
+        c.fill(x, y, knob, y + 5, CincoTheme.accent());
         c.fill(knob - 3, y - 3, knob + 4, y + 8, 0xFFFFE3C1);
     }
 

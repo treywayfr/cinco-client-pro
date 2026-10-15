@@ -1,5 +1,5 @@
 {
-  "required": true,
+  "required": false,
   "minVersion": "0.8",
   "package": "gg.cinco.client.mixin",
   "compatibilityLevel": "JAVA_21",
@@ -7,22 +7,14 @@
     "CombatModulesMixin",
     "AutoTotemDoubleHandMixin",
     "CincoClientMixin",
-    "EntityGlowMixin",
-    "LightmapFullbrightMixin",
-    "GameRendererFullbrightMixin",
-    "SimpleOptionAccessor",
     "PlayerChangerAliasMixin",
     "ModuleSettingsMixin",
     "ClientModuleTuningMixin",
     "PatchModuleCleanupMixin",
     "PvpFolderFilterMixin",
-    "FreeCamMouseMixin",
-    "FreeCamMovementMixin",
-    "ChatHudEditorMixin",
-    "StarActionBarMixin",
     "StarGuiBackgroundMixin"
   ],
   "injectors": {
-    "defaultRequire": 1
+    "defaultRequire": 0
   }
 }

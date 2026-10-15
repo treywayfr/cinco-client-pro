@@ -6,6 +6,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
@@ -31,6 +32,7 @@ public final class CombatModules {
     private static boolean autoEatPressing;
     private static int autoEatTicks;
     private static int autoTotemCooldown;
+    private static int safeAnchorCooldown;
     private static int autoEatCooldown;
 
     private CombatModules() {}
@@ -39,6 +41,7 @@ public final class CombatModules {
         if (crystalCooldown > 0) crystalCooldown--;
         if (anchorCooldown > 0) anchorCooldown--;
         if (autoTotemCooldown > 0) autoTotemCooldown--;
+        if (safeAnchorCooldown > 0) safeAnchorCooldown--;
         if (autoEatCooldown > 0) autoEatCooldown--;
 
         if (enabled("Auto Crystal") || enabled("Crystal Breaker")) tickAutoCrystal(client, enabled("Auto Crystal"));
@@ -145,7 +148,7 @@ public final class CombatModules {
     }
 
     private static void tickAutoSafeAnchor(MinecraftClient client) {
-        if (!enabled("Auto Safe Anchor") || safeGlowstonePlaced || anchorStage == 0 || client.player == null) return;
+        if (!enabled("Auto Safe Anchor") || safeGlowstonePlaced || anchorStage == 0 || client.player == null || safeAnchorCooldown > 0) return;
         ClientModule safe = CincoClient.findModule("Auto Safe Anchor");
         float threshold = safe == null ? 70 : (float) safe.setting;
         if (client.player.getPitch() < threshold) return; // positive pitch means looking down
@@ -159,6 +162,7 @@ public final class CombatModules {
         client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
         client.player.swingHand(Hand.MAIN_HAND);
         safeGlowstonePlaced = true;
+        safeAnchorCooldown = safe == null ? 3 : (int) safe.setting3;
         notify(client, "Safe Anchor: placed glowstone at your look point near your feet.");
     }
 
@@ -271,11 +275,24 @@ public final class CombatModules {
         }
         if (!allowPlace) return;
         PlayerEntity target = null;
-        double targetDistance = range * range;
-        for (PlayerEntity player : client.world.getPlayers()) {
-            if (player == client.player || !player.isAlive() || player.isSpectator()) continue;
-            double dist = client.player.squaredDistanceTo(player);
-            if (dist < targetDistance) { targetDistance = dist; target = player; }
+        int targetMode = module == null ? 1 : (int) module.setting3;
+        if (targetMode == 2 && client.crosshairTarget instanceof EntityHitResult entityHit
+                && entityHit.getEntity() instanceof PlayerEntity aimed && aimed != client.player && aimed.isAlive()) {
+            if (client.player.squaredDistanceTo(aimed) <= range * range) target = aimed;
+        } else {
+            double targetDistance = range * range;
+            float lowestHealth = Float.MAX_VALUE;
+            for (PlayerEntity player : client.world.getPlayers()) {
+                if (player == client.player || !player.isAlive() || player.isSpectator()) continue;
+                double dist = client.player.squaredDistanceTo(player);
+                if (dist > range * range) continue;
+                if (targetMode == 3) {
+                    if (player.getHealth() < lowestHealth) { lowestHealth = player.getHealth(); target = player; }
+                } else if (dist < targetDistance) {
+                    targetDistance = dist;
+                    target = player;
+                }
+            }
         }
         if (target == null) return;
         int crystalSlot = findHotbarItem(client, Items.END_CRYSTAL);

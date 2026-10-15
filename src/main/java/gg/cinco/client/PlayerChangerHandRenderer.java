@@ -27,10 +27,14 @@ public final class PlayerChangerHandRenderer {
         int character = Math.max(1, Math.min(4, (int) Math.round(module.setting)));
         int palette = Math.max(1, Math.min(4, (int) Math.round(module.setting2)));
         VertexConsumer v = consumers.getBuffer(RenderLayer.getEntitySolid(getTexture()));
+
+        // Custom-character hands intentionally sit much farther out than vanilla. This gives the
+        // Player Changer first-person view a real extended arm instead of a tiny block at the edge.
+        matrices.push();
+        matrices.translate(right ? -0.035 : 0.035, -0.10, -0.52);
+        matrices.scale(1.0F, 1.18F, 1.0F);
         MatrixStack.Entry e = matrices.peek();
 
-        // Matches the vanilla 4px-wide arm volume closely, so HeldItemRenderer's existing hand
-        // transform and swing animation still position the custom arm naturally.
         float x0 = right ? 0.125f : -0.375f;
         float x1 = right ? 0.375f : -0.125f;
         float z0 = -0.125f, z1 = 0.125f;
@@ -41,6 +45,7 @@ public final class PlayerChangerHandRenderer {
             case 4 -> wooden(v, e, x0, x1, z0, z1, light);
             default -> franklin(v, e, x0, x1, z0, z1, palette, right, light);
         }
+        matrices.pop();
         return true;
     }
 
@@ -56,10 +61,8 @@ public final class PlayerChangerHandRenderer {
         };
         box(v,e,x0,0.00f,z0,x1,0.43f,z1,shirt,light);
         box(v,e,x0,0.43f,z0,x1,0.75f,z1,skin,light);
-        // Sleeve seam and subtle hand highlight.
         box(v,e,x0-0.006f,0.405f,z0-0.006f,x1+0.006f,0.438f,z1+0.006f,shade(shirt,0.68f),light);
         box(v,e,x0+0.018f,0.56f,z0-0.008f,x1-0.018f,0.73f,z0+0.012f,skinHi,light);
-        // Franklin-inspired watch on the left wrist.
         if (!right) {
             box(v,e,x0-0.010f,0.455f,z0-0.010f,x1+0.010f,0.505f,z1+0.010f,0xFF141519,light);
             box(v,e,x0-0.015f,0.465f,z0-0.016f,x0+0.090f,0.495f,z0+0.002f,0xFFE1B957,light);

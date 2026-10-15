@@ -2,7 +2,13 @@ package gg.cinco.client;
 
 public final class ClientModule {
     public enum Category {
-        COMBAT("COMBAT"), MOVEMENT("MOVEMENT"), RENDER("RENDER"), WORLD("WORLD"), UTILITY("UTILITY"), PRACTICE("PRACTICE");
+        COMBAT("COMBAT"),
+        MOVEMENT("MOVEMENT"),
+        RENDER("RENDER"),
+        WORLD("WORLD"),
+        UTILITY("UTILITY"),
+        PRACTICE("PRACTICE"),
+        SETTINGS("SETTINGS");
         public final String label;
         Category(String label) { this.label = label; }
     }

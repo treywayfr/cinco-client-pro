@@ -39,27 +39,50 @@ public abstract class ClientModuleTuningMixin {
             min2 = 1.0; max2 = 6.0; step2 = 1.0;
             if (setting2 < min2 || setting2 > max2) setting2 = 1.0;
             defaultSetting2 = 1.0;
-            // First-person hand visibility is no longer owned by Player Changer.
             setting3Label = "Model detail";
             min3 = 0.0; max3 = 1.0; step3 = 1.0; setting3 = 1.0; defaultSetting3 = 1.0;
         } else if ("FOV Changer".equals(moduleName)) {
-            // Custom FOV now owns the global first-person hand controls.
             setting2Label = "Show hand";
             min2 = 0.0; max2 = 1.0; step2 = 1.0; setting2 = 1.0; defaultSetting2 = 1.0;
             setting3Label = "Hand / item rotation";
             min3 = -90.0; max3 = 90.0; step3 = 5.0; setting3 = 0.0; defaultSetting3 = 0.0;
         } else if ("Auto Totem".equals(moduleName)) {
-            // Primary setting remains the health trigger. These two slots now control double-hand.
             setting2Label = "Double hand";
             min2 = 0.0; max2 = 1.0; step2 = 1.0; setting2 = 0.0; defaultSetting2 = 0.0;
             setting3Label = "Double hand slot";
             min3 = 1.0; max3 = 9.0; step3 = 1.0; setting3 = 1.0; defaultSetting3 = 1.0;
         } else if ("Hand View".equals(moduleName)) {
-            // Legacy definition kept only for old configs; the module is removed after init.
+            // Legacy definition only. CincoPatchClient removes this module after base registration.
             setting2Label = "Scale";
             min2 = 0.55; max2 = 1.80; step2 = 0.05; setting2 = 1.0; defaultSetting2 = 1.0;
             setting3Label = "Horizontal spacing";
             min3 = 0.0; max3 = 0.60; step3 = 0.05; setting3 = 0.20; defaultSetting3 = 0.20;
+        } else if ("Sky Changer".equals(moduleName)) {
+            // Eight procedural animated sky families, including the flowing liquid-gold look.
+            settingLabel = "Animated sky";
+            max = 8.0;
+            setting2Label = "Flow speed";
+            min2 = 0.15; max2 = 2.50; step2 = 0.05;
+            if (setting2 < min2 || setting2 > max2) setting2 = 0.80;
+            defaultSetting2 = 0.80;
+            setting3Label = "Glow intensity";
+            min3 = 0.20; max3 = 1.0; step3 = 0.05;
+            if (setting3 < min3 || setting3 > max3) setting3 = 0.85;
+            defaultSetting3 = 0.85;
+        } else if ("Animations".equals(moduleName)) {
+            settingLabel = "Effect";
+            max = 8.0;
+            setting2Label = "Animation speed";
+            min2 = 0.20; max2 = 3.0; step2 = 0.10; setting2 = 1.0; defaultSetting2 = 1.0;
+            setting3Label = "Effect intensity";
+            min3 = 0.20; max3 = 1.0; step3 = 0.05; setting3 = 0.80; defaultSetting3 = 0.80;
+        } else if ("Custom Accessory".equals(moduleName)) {
+            settingLabel = "Accessory";
+            max = 8.0;
+            setting2Label = "Accessory size";
+            min2 = 0.60; max2 = 1.80; step2 = 0.05; setting2 = 1.0; defaultSetting2 = 1.0;
+            setting3Label = "Accessory motion";
+            min3 = 0.0; max3 = 2.50; step3 = 0.10; setting3 = 1.0; defaultSetting3 = 1.0;
         } else if ("Spotify HUD".equals(moduleName)) {
             setting2Label = "Compact mode";
             min2 = 0; max2 = 1; step2 = 1; setting2 = 0; defaultSetting2 = 0;

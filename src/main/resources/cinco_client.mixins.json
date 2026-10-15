@@ -11,7 +11,8 @@
     "EntityGlowMixin",
     "LightmapFullbrightMixin",
     "GameRendererFullbrightMixin",
-    "SimpleOptionAccessor"
+    "SimpleOptionAccessor",
+    "PlayerChangerAliasMixin"
   ],
   "injectors": {
     "defaultRequire": 1

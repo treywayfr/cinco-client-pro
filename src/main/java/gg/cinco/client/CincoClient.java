@@ -110,7 +110,9 @@ public final class CincoClient implements ClientModInitializer {
     private static void registerModules() {
         MODULES.clear();
         // COMBAT — keep automation explicit and off by default.
-        add("Auto Crystal", "While right-clicking with crystals: place on the targeted base and rapidly break nearby crystals", ClientModule.Category.COMBAT, false, "Action delay", 0, 0, 4, 1);
+        add("Auto Crystal", "While holding crystals and right-clicking: place on the targeted base and break nearby crystals", ClientModule.Category.COMBAT, false, "Action delay", 0, 0, 4, 1);
+        add("Kill Aura", "Attack the nearest visible player in range while enabled", ClientModule.Category.COMBAT, false, "Range", 3.5, 3.0, 6.0, 0.5);
+        add("Reach", "Change the client interaction reach value", ClientModule.Category.COMBAT, false, "Reach", 4.5, 3.0, 6.5, 0.5);
         add("Anchor Macro", "One key: place an anchor, charge with glowstone, then activate using a totem", ClientModule.Category.COMBAT, false, "Step delay", 1, 0, 5, 1);
         add("Key Pearl", "Press its key to select a hotbar pearl and throw it instantly", ClientModule.Category.COMBAT, false, "Cooldown", 0, 0, 10, 1);
         add("Auto Safe Anchor", "During an anchor macro, place glowstone at your feet when looking down", ClientModule.Category.COMBAT, false, "Look Angle", 70, 50, 85, 5);
@@ -125,6 +127,9 @@ public final class CincoClient implements ClientModInitializer {
 
         // MOVEMENT
         add("Sprint Assist", "Sprint while the forward key is held", ClientModule.Category.MOVEMENT, false, "Mode", 1, 1, 2, 1);
+        add("Speed", "Adjust horizontal movement while walking", ClientModule.Category.MOVEMENT, false, "Multiplier", 1.3, 1.0, 2.5, 0.1);
+        add("Flight", "Client-side directional flight controls", ClientModule.Category.MOVEMENT, false, "Vertical speed", 0.5, 0.1, 1.5, 0.1);
+        add("No Slow", "Reduce local movement slowdowns while using items", ClientModule.Category.MOVEMENT, false, "Multiplier", 1.0, 1.0, 1.5, 0.1);
         add("Safe Walk Guide", "Movement-practice helper foundation", ClientModule.Category.MOVEMENT, false, "Sensitivity", 5, 1, 10, 1);
         add("Elytra Reminder", "Warn when an elytra is not equipped", ClientModule.Category.MOVEMENT, false, "Interval", 10, 2, 20, 2);
         add("Auto Swim", "Swimming convenience helper foundation", ClientModule.Category.MOVEMENT, false, "Mode", 1, 1, 2, 1);
@@ -143,9 +148,19 @@ public final class CincoClient implements ClientModInitializer {
         add("Compact HUD", "Use tighter HUD spacing", ClientModule.Category.RENDER, false, "Padding", 4, 2, 10, 2);
         add("Crosshair Guide", "Draw a simple crosshair guide", ClientModule.Category.RENDER, false, "Size", 5, 3, 11, 2);
         add("Hover Glow", "Subtle animated glow around hovered module cards and settings", ClientModule.Category.RENDER, true, "Intensity", 0.8, 0.2, 1.0, 0.2);
+        add("Player ESP", "Screen-space player outlines, names and distances", ClientModule.Category.RENDER, false, "Range", 64, 16, 128, 16);
+        add("Tracers", "Draw clean screen-space tracer lines to nearby players", ClientModule.Category.RENDER, false, "Range", 64, 16, 128, 16);
+        add("Storage ESP", "On-screen markers for selected nearby storage blocks", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
+        add("ESP Chests", "Show chest storage markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
+        add("ESP Trapped Chests", "Show trapped chest markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
+        add("ESP Barrels", "Show barrel markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
+        add("ESP Ender Chests", "Show ender chest markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
+        add("ESP Shulkers", "Show shulker box markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
+        add("ESP Spawners", "Show spawner markers when Storage ESP is active", ClientModule.Category.RENDER, false, "Range", 48, 8, 96, 8);
+        add("Fullbright", "Increase the local gamma for easier visibility", ClientModule.Category.RENDER, false, "Gamma", 1.0, 0.5, 5.0, 0.5);
         add("FOV Changer", "Set a custom field of view while enabled", ClientModule.Category.RENDER, false, "FOV", 100, 70, 110, 1);
         add("Sky Changer", "Change sky and cloud colors with animated presets", ClientModule.Category.RENDER, false, "Style", 1, 1, 5, 1);
-        add("Fortnite Style", "Swap the local player skin texture to a custom battle-royale-inspired outfit", ClientModule.Category.RENDER, false, "Outfit", 1, 1, 4, 1);
+        add("GTA Skin Changer", "Local-only Franklin-inspired streetwear skin on the 3D Minecraft player model", ClientModule.Category.RENDER, false, "Outfit", 1, 1, 4, 1);
         add("Target HUD", "Show distance to the entity under your crosshair", ClientModule.Category.RENDER, false, "Range", 6, 2, 12, 2);
         add("Ping Display", "Show current player's latency when available", ClientModule.Category.RENDER, false, "Scale", 1, 1, 3, 1);
 
@@ -169,6 +184,8 @@ public final class CincoClient implements ClientModInitializer {
         add("Safe Logout Reminder", "Local reminder before disconnecting", ClientModule.Category.UTILITY, false, "Interval", 10, 5, 30, 5);
         add("Auto Refill", "Hotbar refill helper foundation", ClientModule.Category.UTILITY, false, "Stack Size", 16, 8, 64, 8);
         add("Inventory Checklist", "Display crystal, glowstone, totem and food counts", ClientModule.Category.UTILITY, false, "Rows", 4, 1, 8, 1);
+        add("Fast XP", "Repeatedly use XP bottles while the selected input is held", ClientModule.Category.UTILITY, false, "Cooldown", 1, 0, 5, 1);
+        add("Auto Clicker", "Repeat attack clicks while left mouse is held", ClientModule.Category.UTILITY, false, "Delay", 2, 1, 10, 1);
 
         // PRACTICE
         add("Anchor Practice Timer", "Practice timing helper; no automatic detonation", ClientModule.Category.PRACTICE, false, "Seconds", 2, 1, 5, 1);

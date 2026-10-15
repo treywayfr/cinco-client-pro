@@ -88,8 +88,11 @@ public final class CincoPatchClient implements ClientModInitializer {
             FreeCamController.tick(client);
             FastXpController.tick(client);
         });
-        HudRenderCallback.EVENT.register((ctx, tickCounter) ->
-                EnhancedEspHud.render(ctx, MinecraftClient.getInstance()));
+        HudRenderCallback.EVENT.register((ctx, tickCounter) -> {
+            MinecraftClient client = MinecraftClient.getInstance();
+            EnhancedEspHud.render(ctx, client);
+            StarSplash.render(ctx, client);
+        });
         WorldRenderEvents.LAST.register(StorageEspWorldRenderer::render);
         WorldRenderEvents.LAST.register(CleanEspWorldRenderer::render);
     }

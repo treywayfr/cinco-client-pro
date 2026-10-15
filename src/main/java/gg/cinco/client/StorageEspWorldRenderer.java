@@ -27,6 +27,10 @@ public final class StorageEspWorldRenderer {
         if (matrices == null) return;
 
         Vec3d camera = context.camera().getPos();
+        Vec3d playerEye = client.player.getEyePos();
+        float playerX = (float) (playerEye.x - camera.x);
+        float playerY = (float) (playerEye.y - camera.y);
+        float playerZ = (float) (playerEye.z - camera.z);
         double range = module.setting;
         double rangeSq = range * range;
 
@@ -42,7 +46,7 @@ public final class StorageEspWorldRenderer {
         Matrix4f matrix = matrices.peek().getPositionMatrix();
 
         int rendered = 0;
-        final int renderCap = 180;
+        final int renderCap = StarPerformance.storageRenderCap(client);
         for (BlockPos pos : EnhancedWorldScan.storage()) {
             if (rendered >= renderCap) break;
             double cx = pos.getX() + 0.5;
@@ -51,8 +55,8 @@ public final class StorageEspWorldRenderer {
             double dx = cx - camera.x;
             double dy = cy - camera.y;
             double dz = cz - camera.z;
-            double distanceSq = dx * dx + dy * dy + dz * dz;
-            if (distanceSq > rangeSq) continue;
+            double playerDistanceSq = client.player.squaredDistanceTo(cx, cy, cz);
+            if (playerDistanceSq > rangeSq) continue;
 
             BlockState state = client.world.getBlockState(pos);
             StorageEspConfig.TypeKey type = StorageEspConfig.typeOf(state);
@@ -67,21 +71,21 @@ public final class StorageEspWorldRenderer {
             float y1 = y0 + 1.005F;
             float z1 = z0 + 1.005F;
 
-            int outline = distanceFade(setting.color, Math.sqrt(distanceSq), range, 105, 238);
+            int outline = distanceFade(setting.color, Math.sqrt(playerDistanceSq), range, 105, 238);
             if (setting.highlight) emitBox(buffer, matrix, x0, y0, z0, x1, y1, z1, outline);
             if (setting.tracer) {
                 int tracer = withAlpha(setting.color, Math.min(150, (outline >>> 24) & 0xFF));
-                emitLine(buffer, matrix, 0.0F, -0.10F, 0.0F,
-                        (float) dx, (float) dy, (float) dz, tracer);
+                // Start at the storage block center and terminate at the real player's eye position.
+                // This stays correct even while Free Cam's render camera is detached.
+                emitLine(buffer, matrix, (float) dx, (float) dy, (float) dz,
+                        playerX, playerY, playerZ, tracer);
             }
             rendered++;
         }
 
         try {
             BufferRenderer.drawWithGlobalProgram(buffer.end());
-        } catch (IllegalStateException ignored) {
-            // Empty buffers are normal for a frame while chunks unload or filters exclude all blocks.
-        }
+        } catch (IllegalStateException ignored) {}
 
         RenderSystem.lineWidth(1.0F);
         RenderSystem.enableCull();

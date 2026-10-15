@@ -29,6 +29,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: cinco-client-2.0.0
-          path: build/libs/cinco-client-2.0.0.jar
+          name: cinco-client-2.3.0
+          path: build/libs/cinco-client-2.3.0.jar
           if-no-files-found: error

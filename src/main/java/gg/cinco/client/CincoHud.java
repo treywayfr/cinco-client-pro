@@ -226,7 +226,7 @@ public final class CincoHud {
         key(ctx, client.options.leftKey.isPressed(), x, y + 18, "A");
         key(ctx, client.options.backKey.isPressed(), x + 27, y + 18, "S");
         key(ctx, client.options.rightKey.isPressed(), x + 54, y + 18, "D");
-        ctx.fill(x, y + 37, x + 76, y + 48, client.options.jumpKey.isPressed() ? 0xFFB65B18 : CincoTheme.disabled());
+        ctx.fill(x, y + 37, x + 76, y + 48, client.options.jumpKey.isPressed() ? CincoTheme.enabled() : CincoTheme.disabled());
         Text jumpText = hudText("JUMP");
         ctx.drawText(client.textRenderer, jumpText, x + 38 - client.textRenderer.getWidth(jumpText) / 2, y + 39, textColor(0xFFFFFFFF), false);
     }

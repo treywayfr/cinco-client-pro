@@ -1,13 +1,14 @@
 package gg.cinco.client;
 
 import net.minecraft.text.Style;
+import net.minecraft.text.StyleSpriteSource;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 /** Lightweight font profiles using Minecraft's bundled renderers, so no external font assets are required. */
 public final class StarFonts {
-    private static final Identifier PIXEL = Identifier.of("minecraft", "default");
-    private static final Identifier CLEAN = Identifier.of("minecraft", "uniform");
+    private static final StyleSpriteSource.Font PIXEL = new StyleSpriteSource.Font(Identifier.of("minecraft", "default"));
+    private static final StyleSpriteSource.Font CLEAN = new StyleSpriteSource.Font(Identifier.of("minecraft", "uniform"));
 
     private StarFonts() {}
 
@@ -15,15 +16,15 @@ public final class StarFonts {
         ClientModule font = CincoClient.findModule("Font Style");
         int mode = font == null ? 1 : Math.max(1, Math.min(4, (int) Math.round(font.setting)));
 
-        Identifier id;
+        StyleSpriteSource.Font selected;
         boolean strong = bold;
         switch (mode) {
-            case 2 -> id = CLEAN; // clean UI everywhere
-            case 3 -> { id = PIXEL; strong = bold; } // classic Minecraft
-            case 4 -> { id = CLEAN; strong = bold; } // compact/uniform UI
-            default -> id = bold ? CLEAN : PIXEL; // Nebula Luxe pairing: modern titles + pixel secondary text
+            case 2 -> selected = CLEAN;
+            case 3 -> { selected = PIXEL; strong = bold; }
+            case 4 -> { selected = CLEAN; strong = bold; }
+            default -> selected = bold ? CLEAN : PIXEL;
         }
-        return Text.literal(value).setStyle(Style.EMPTY.withFont(id).withBold(strong));
+        return Text.literal(value).setStyle(Style.EMPTY.withFont(selected).withBold(strong));
     }
 
     public static String name(int mode) {

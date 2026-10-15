@@ -3,6 +3,7 @@ package gg.cinco.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
@@ -24,6 +25,8 @@ public final class ModuleSettingsScreen extends Screen {
     private int left() { return (width - W) / 2; }
     private int top() { return (height - H) / 2; }
     private Text label(String value, boolean bold) { return StarFonts.text(value, bold); }
+    private boolean playerChanger() { return module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer"); }
+    private int sliderWidth() { return playerChanger() ? W - 166 : W - 36; }
 
     @Override
     public void render(DrawContext c, int mouseX, int mouseY, float delta) {
@@ -38,12 +41,14 @@ public final class ModuleSettingsScreen extends Screen {
                 0xFFFFFFFF, false);
         c.drawText(textRenderer, label("★  MODULE SETTINGS", false), l + 29, t + 31,
                 0xFF9B93A8, false);
-        c.drawText(textRenderer, label(trim(module.description, 74), false), l + 18, t + 54,
+        c.drawText(textRenderer, label(trim(module.description, playerChanger() ? 52 : 74), false), l + 18, t + 54,
                 0xFF8D8598, false);
 
         drawSlider(c, l, t, 0, module.settingLabel, module.setting, module.min, module.max, mouseX, mouseY);
         drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2, mouseX, mouseY);
         drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3, mouseX, mouseY);
+
+        if (playerChanger()) drawPlayerPreview(c, l, t);
 
         int colorY = t + 225;
         button(c, l + 18, colorY, W - 36, 24, "OPEN STAR COLOR WHEEL", mouseX, mouseY,
@@ -65,20 +70,38 @@ public final class ModuleSettingsScreen extends Screen {
                 0xFF1B1322, 0xFF291A32);
     }
 
+    private void drawPlayerPreview(DrawContext c, int l, int t) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+        int x = l + W - 132;
+        int y = t + 75;
+        int w = 114;
+        int h = 133;
+        CincoDraw.bubble(c, x, y, x + w, y + h, 12, 0xFF352742, 0xE8110D17);
+        c.drawCenteredTextWithShadow(textRenderer, label("★ PREVIEW", true), x + w / 2, y + 8, CincoTheme.accentLight());
+        float orbit = (float) Math.sin(System.currentTimeMillis() / 850.0) * 26.0f;
+        try {
+            InventoryScreen.drawEntity(c, x + 8, y + 22, x + w - 8, y + h - 7,
+                    43, 0.0f, x + w / 2.0f + orbit, y + 53.0f, client.player);
+        } catch (RuntimeException ignored) {
+            // Preview should never make the settings screen unusable on renderer transitions.
+        }
+    }
+
     private void drawSlider(DrawContext c, int l, int t, int which,
                             String name, double value, double min, double max, int mouseX, int mouseY) {
         int rowTop = t + 82 + which * 45;
         String shownName = name;
-        if ((module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer")) && which == 2)
-            shownName = "First-person hands";
+        if (playerChanger() && which == 2) shownName = "First-person hands";
         c.drawText(textRenderer, label(shownName.toUpperCase(Locale.ROOT), true), l + 18, rowTop,
                 0xFFF8F4FF, false);
         String valueText = displaySetting(which, value);
         int valueWidth = textRenderer.getWidth(valueText);
-        c.drawText(textRenderer, label(valueText, true), l + W - 18 - valueWidth, rowTop,
+        int x = l + 18, w = sliderWidth();
+        c.drawText(textRenderer, label(valueText, true), x + w - valueWidth, rowTop,
                 CincoTheme.accentLight(), false);
 
-        int x = l + 18, y = rowTop + 19, w = W - 36;
+        int y = rowTop + 19;
         CincoDraw.rounded(c, x, y, x + w, y + 6, 3, 0xFF302A37);
         double fraction = (value - min) / Math.max(0.0001, max - min);
         int knob = x + (int) Math.round(Math.max(0, Math.min(1, fraction)) * w);
@@ -108,7 +131,7 @@ public final class ModuleSettingsScreen extends Screen {
                 default -> "Ember";
             };
         }
-        if (which == 0 && (module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer"))) {
+        if (which == 0 && playerChanger()) {
             return switch (selected) {
                 case 2 -> "Spiky Cartoon Kid";
                 case 3 -> "Anime Heroine";
@@ -116,8 +139,7 @@ public final class ModuleSettingsScreen extends Screen {
                 default -> "Franklin / GTA V";
             };
         }
-        if ((module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer")) && which == 2)
-            return selected == 1 ? "ON" : "OFF";
+        if (playerChanger() && which == 2) return selected == 1 ? "ON" : "OFF";
         if (module.name.equals("Font Style") && which == 0) return StarFonts.name(selected);
         if (module.name.equals("Client Profile") && which == 0) return StarProfiles.name(selected);
         if ((module.name.equals("Key Pearl") || module.name.equals("Auto Eat")) && which == 2)
@@ -196,9 +218,10 @@ public final class ModuleSettingsScreen extends Screen {
             }
         }
 
+        int sliderX = l + 18, sliderW = sliderWidth();
         for (int i = 0; i < 3; i++) {
             int y = t + 82 + i * 45 + 13;
-            if (mouseX >= l + 15 && mouseX <= l + W - 15 && mouseY >= y && mouseY <= y + 21) {
+            if (mouseX >= sliderX - 3 && mouseX <= sliderX + sliderW + 3 && mouseY >= y && mouseY <= y + 21) {
                 dragging = i + 1;
                 updateSlider(mouseX);
                 return true;
@@ -223,7 +246,7 @@ public final class ModuleSettingsScreen extends Screen {
     }
 
     private void updateSlider(double mouseX) {
-        int x = left() + 18, w = W - 36;
+        int x = left() + 18, w = sliderWidth();
         double fraction = (mouseX - x) / w;
         if (dragging == 1) module.setSettingFromSlider(fraction);
         if (dragging == 2) module.setSetting2FromSlider(fraction);

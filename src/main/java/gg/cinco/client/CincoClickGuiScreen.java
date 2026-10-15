@@ -147,6 +147,30 @@ public final class CincoClickGuiScreen extends Screen {
     }
 
 
+    private Text uiText(String value) {
+        ClientModule typography = CincoClient.findModule("Bold Typeface");
+        if (typography != null && typography.enabled) {
+            return Text.literal(value).setStyle(Style.EMPTY.withBold(true).withFont(Identifier.of("minecraft", "uniform")));
+        }
+        return Text.literal(value).setStyle(Style.EMPTY.withFont(Identifier.of("minecraft", "default")));
+    }
+
+    private int uiColor(int original) {
+        ClientModule palette = CincoClient.findModule("Text Palette");
+        int choice = palette == null || !palette.enabled ? 1 : (int) Math.round(palette.setting);
+        int r = (original >> 16) & 255, g = (original >> 8) & 255, b = original & 255;
+        boolean bright = (r * 299 + g * 587 + b * 114) / 1000 >= 170;
+        if (choice == 2) return bright ? 0xFFFFD36B : 0xFFE09A22;
+        if (choice >= 3) return bright ? 0xFFD9B3FF : 0xFFA87BDE;
+        return bright ? 0xFFFFC078 : 0xFFE88736;
+    }
+
+    private int panelColor(int rgb) {
+        ClientModule opacity = CincoClient.findModule("Panel Opacity");
+        int alpha = opacity == null || !opacity.enabled ? 255 : (int) (Math.max(0.75, Math.min(1.0, opacity.setting)) * 255);
+        return (alpha << 24) | (rgb & 0x00FFFFFF);
+    }
+
     private void drawCenteredTextSharp(DrawContext context, Text value, int centerX, int y, int color) {
         context.drawText(textRenderer, value, centerX - textRenderer.getWidth(value) / 2, y, uiColor(color), false);
     }

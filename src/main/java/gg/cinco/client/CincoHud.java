@@ -17,6 +17,8 @@ import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Locale;
 
@@ -173,6 +175,29 @@ public final class CincoHud {
                 lines.add(new HudLine("  " + pos.getX() + "  " + pos.getY() + "  " + pos.getZ(), 0xFFCEB8ED));
             }
         }
+        if ((on("Sus Chunk Finder") || on("Stash Radar") || on("Chunk Density")) && on("Container Radar HUD")) {
+            Map<Long, Integer> chunkCounts = new HashMap<>();
+            for (BlockPos pos : BaseScanner.getFindings()) {
+                long key = ((long) (pos.getX() >> 4) << 32) | ((pos.getZ() >> 4) & 0xFFFFFFFFL);
+                chunkCounts.merge(key, 1, Integer::sum);
+            }
+            int minimum = on("Stash Radar") ? (int) module("Stash Radar").setting
+                    : (int) module(on("Sus Chunk Finder") ? "Sus Chunk Finder" : "Chunk Density").setting3;
+            List<Map.Entry<Long, Integer>> ranked = new ArrayList<>();
+            for (Map.Entry<Long, Integer> entry : chunkCounts.entrySet()) {
+                if (entry.getValue() >= minimum) ranked.add(entry);
+            }
+            ranked.sort(Map.Entry.<Long, Integer>comparingByValue().reversed());
+            lines.add(new HudLine("SUS CHUNK RADAR  " + ranked.size() + " CANDIDATES", 0xFFFFC078));
+            int rows = Math.min((int) module("Container Radar HUD").setting, ranked.size());
+            for (int i = 0; i < rows; i++) {
+                Map.Entry<Long, Integer> entry = ranked.get(i);
+                int chunkX = (int) (entry.getKey() >> 32);
+                int chunkZ = (int) (long) entry.getKey();
+                lines.add(new HudLine("  CHUNK " + chunkX + ", " + chunkZ + "  •  " + entry.getValue() + " blocks", 0xFFE89745));
+            }
+        }
+
         if (on("Reach Trainer") && client.crosshairTarget instanceof EntityHitResult hit) {
             double distance = client.player.distanceTo(hit.getEntity());
             double desired = module("Reach Trainer").setting;

@@ -1,4 +1,4 @@
-name: Build Cinco Client
+name: Build Star Client
 
 on:
   push:
@@ -23,12 +23,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
-      - name: Build mod
+      - name: Build Star Client
         run: gradle build --no-daemon
-      - name: Upload mod JAR
+      - name: Upload Star Client JAR
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: cinco-client-2.3.0
-          path: build/libs/cinco-client-2.3.0.jar
+          name: star-client-2.3.0
+          path: build/libs/star-client-2.3.0.jar
           if-no-files-found: error

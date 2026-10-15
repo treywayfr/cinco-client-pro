@@ -17,8 +17,14 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.LightType;
 import org.joml.Matrix4f;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 /** Clean through-wall player and underground-light ESP with shared Star visual presets. */
 public final class CleanEspWorldRenderer {
+    private static final Map<UUID, Vec3d> SMOOTH_TRACER_TARGETS = new HashMap<>();
+
     private CleanEspWorldRenderer() {}
 
     public static void render(WorldRenderContext context) {
@@ -37,6 +43,7 @@ public final class CleanEspWorldRenderer {
         if (matrices == null) return;
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         Vec3d camera = context.camera().getPos();
+        Vec3d crosshairAnchor = crosshairAnchor(camera, context.camera().getYaw(), context.camera().getPitch());
         int style = style();
 
         RenderSystem.enableBlend();
@@ -46,16 +53,17 @@ public final class CleanEspWorldRenderer {
         RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.lineWidth(switch (style) {
-            case 2 -> 2.05F; // Neon
-            case 3 -> 1.00F; // Minimal
-            case 4 -> 2.40F; // Bold
-            default -> 1.40F; // Clean
+            case 2 -> 2.05F;
+            case 3 -> 1.00F;
+            case 4 -> 2.40F;
+            default -> 1.40F;
         });
 
         BufferBuilder buffer = Tessellator.getInstance().begin(
                 VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
-        if (drawPlayers || drawTracers) renderPlayers(buffer, matrix, client, camera, playerEsp, tracers, style);
+        if (drawPlayers || drawTracers)
+            renderPlayers(buffer, matrix, client, camera, crosshairAnchor, playerEsp, tracers, style);
         if (drawLights) renderLights(buffer, matrix, client, camera, lightFinder, style);
 
         try {
@@ -72,7 +80,7 @@ public final class CleanEspWorldRenderer {
     }
 
     private static void renderPlayers(BufferBuilder b, Matrix4f m, MinecraftClient client, Vec3d camera,
-                                      ClientModule esp, ClientModule tracers, int style) {
+                                      Vec3d crosshairAnchor, ClientModule esp, ClientModule tracers, int style) {
         double range = esp != null && esp.enabled ? esp.setting : 0.0;
         if (tracers != null && tracers.enabled) range = Math.max(range, tracers.setting);
         double rangeSq = range * range;
@@ -100,10 +108,11 @@ public final class CleanEspWorldRenderer {
         int rendered = 0;
         int cap = StarPerformance.active(client) ? 24 : 48;
 
-        Vec3d eye = client.player.getEyePos();
-        float eyeX = (float) (eye.x - camera.x);
-        float eyeY = (float) (eye.y - camera.y);
-        float eyeZ = (float) (eye.z - camera.z);
+        // Every tracer shares one small camera-forward endpoint, so the lines converge cleanly on
+        // the crosshair rather than chasing the player's interpolated eye position around the screen.
+        float anchorX = (float) (crosshairAnchor.x - camera.x);
+        float anchorY = (float) (crosshairAnchor.y - camera.y);
+        float anchorZ = (float) (crosshairAnchor.z - camera.z);
 
         for (PlayerEntity player : client.world.getPlayers()) {
             if (rendered >= cap) break;
@@ -124,15 +133,28 @@ public final class CleanEspWorldRenderer {
             }
 
             if (tracers != null && tracers.enabled && distanceSq <= tracers.setting * tracers.setting) {
-                float tx = (float) (player.getX() - camera.x);
-                float ty = (float) (player.getY() + player.getHeight() * 0.52 - camera.y);
-                float tz = (float) (player.getZ() - camera.z);
-                // Player tracers terminate at the real player's eye just like storage tracers,
-                // which prevents detached Free Cam from making them point at the floor/camera origin.
-                emitLine(b, m, tx, ty, tz, eyeX, eyeY, eyeZ, tracerColor);
+                Vec3d rawTarget = new Vec3d(player.getX(), player.getY() + player.getHeight() * 0.52, player.getZ());
+                Vec3d old = SMOOTH_TRACER_TARGETS.get(player.getUuid());
+                Vec3d smooth = old == null ? rawTarget : old.lerp(rawTarget, 0.32);
+                SMOOTH_TRACER_TARGETS.put(player.getUuid(), smooth);
+                float tx = (float) (smooth.x - camera.x);
+                float ty = (float) (smooth.y - camera.y);
+                float tz = (float) (smooth.z - camera.z);
+                emitLine(b, m, tx, ty, tz, anchorX, anchorY, anchorZ, tracerColor);
             }
             rendered++;
         }
+    }
+
+    private static Vec3d crosshairAnchor(Vec3d camera, float yawDegrees, float pitchDegrees) {
+        double yaw = Math.toRadians(yawDegrees);
+        double pitch = Math.toRadians(pitchDegrees);
+        double cosPitch = Math.cos(pitch);
+        Vec3d forward = new Vec3d(
+                -Math.sin(yaw) * cosPitch,
+                -Math.sin(pitch),
+                Math.cos(yaw) * cosPitch);
+        return camera.add(forward.multiply(0.34));
     }
 
     private static void renderLights(BufferBuilder b, Matrix4f m, MinecraftClient client, Vec3d camera,

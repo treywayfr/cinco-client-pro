@@ -50,9 +50,25 @@ public final class ClientModule {
             setting2Label = "Saturation"; setting2 = 0.90; min2 = 0.10; max2 = 1.0; step2 = 0.05;
             setting3Label = "Brightness"; setting3 = 1.0; min3 = 0.15; max3 = 1.0; step3 = 0.05;
         } else if (name.equals("Anchor Macro")) {
-            setting2Label = "Charge retries"; setting2 = 2; min2 = 1; max2 = 4; step2 = 1;
-            setting3Label = "Switch delay"; setting3 = 1; min3 = 0; max3 = 5; step3 = 1;
+            setting2Label = "Switch delay"; setting2 = 1; min2 = 0; max2 = 5; step2 = 1;
+            setting3Label = "Charge retries"; setting3 = 2; min3 = 1; max3 = 4; step3 = 1;
             keyCode = GLFW.GLFW_KEY_G;
+        } else if (name.equals("Key Pearl")) {
+            setting2Label = "Restore delay"; setting2 = 2; min2 = 1; max2 = 10; step2 = 1;
+            setting3Label = "Restore slot"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
+            keyCode = GLFW.GLFW_KEY_V;
+        } else if (name.equals("FOV Changer")) {
+            setting2Label = "Ease ticks"; setting2 = 1; min2 = 1; max2 = 10; step2 = 1;
+            setting3Label = "Motion FOV"; setting3 = 0; min3 = 0; max3 = 1; step3 = 1;
+        } else if (name.equals("Sky Changer")) {
+            setting2Label = "Animation speed"; setting2 = 0.8; min2 = 0.1; max2 = 2.0; step2 = 0.1;
+            setting3Label = "Intensity"; setting3 = 0.8; min3 = 0.2; max3 = 1.0; step3 = 0.1;
+        } else if (name.equals("Fortnite Style")) {
+            setting2Label = "Suit palette"; setting2 = 1; min2 = 1; max2 = 4; step2 = 1;
+            setting3Label = "Helmet visor"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
+        } else if (name.equals("Hover Glow")) {
+            setting2Label = "Pulse speed"; setting2 = 1; min2 = 0.5; max2 = 2.5; step2 = 0.25;
+            setting3Label = "Glow width"; setting3 = 2; min3 = 1; max3 = 4; step3 = 1;
         } else if (name.equals("Auto Safe Anchor")) {
             setting2Label = "Placement radius"; setting2 = 2.0; min2 = 1.0; max2 = 5.0; step2 = 0.5;
             setting3Label = "Cooldown"; setting3 = 3; min3 = 1; max3 = 10; step3 = 1;

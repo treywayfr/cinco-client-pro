@@ -1,24 +1,13 @@
 package gg.cinco.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.math.MatrixStack;
-import org.joml.Matrix4f;
+import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.VertexConsumer;
 
 /**
  * Deep-space sky decoration for Sky Changer.
- *
- * This intentionally contains no DEBUG_LINES/line ribbons. The old filament renderer could read
- * like glowing wires stretched across the sky. The new renderer uses only filled triangles:
- * softly drifting nebula clouds and crisp filled star sprites over the dark sky color supplied by
- * VisualModules/ClientWorldSkyMixin.
+ * Uses Fabric 1.21.11's world render consumer instead of legacy direct OpenGL calls.
  */
 public final class AnimatedSkyRenderer {
     private static final double SKY_RADIUS = 360.0;
@@ -27,9 +16,7 @@ public final class AnimatedSkyRenderer {
 
     public static void render(WorldRenderContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (!VisualModules.skyEnabled() || client.world == null || client.player == null) return;
-        MatrixStack matrices = context.matrixStack();
-        if (matrices == null) return;
+        if (!VisualModules.skyEnabled() || client.world == null || client.player == null || context.consumers() == null) return;
 
         int tier = StarPerformance.animationTier(client);
         int starCount = tier == 0 ? 70 : tier == 1 ? 140 : 240;
@@ -37,29 +24,15 @@ public final class AnimatedSkyRenderer {
         int cloudSegments = tier == 0 ? 8 : tier == 1 ? 11 : 14;
         double time = System.currentTimeMillis() / 1000.0 * VisualModules.skySpeed();
         double intensity = VisualModules.skyIntensity();
-        int style = VisualModules.skyStyle();
-        int[] palette = palette(style);
+        int[] palette = palette(VisualModules.skyStyle());
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.disableCull();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-        drawNebula(matrices, cloudCount, cloudSegments, time, intensity, palette);
-        drawStars(matrices, starCount, time, intensity, palette);
-
-        RenderSystem.enableCull();
-        RenderSystem.depthMask(true);
-        RenderSystem.disableBlend();
+        VertexConsumer vertices = context.consumers().getBuffer(RenderLayers.debugQuads());
+        drawNebula(vertices, cloudCount, cloudSegments, time, intensity, palette);
+        drawStars(vertices, starCount, time, intensity, palette);
     }
 
-    private static void drawNebula(MatrixStack matrices, int cloudCount, int segments,
+    private static void drawNebula(VertexConsumer b, int cloudCount, int segments,
                                    double time, double intensity, int[] palette) {
-        BufferBuilder b = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        Matrix4f m = matrices.peek().getPositionMatrix();
-
         for (int i = 0; i < cloudCount; i++) {
             double seed = i * 19.731 + 4.17;
             double baseAz = hash(seed) * Math.PI * 2.0;
@@ -74,86 +47,68 @@ public final class AnimatedSkyRenderer {
             int alphaA = (int)Math.round((20 + hash(seed + 5.0) * 24) * intensity);
             int alphaB = (int)Math.round((10 + hash(seed + 7.0) * 17) * intensity);
 
-            // Three overlapping filled haze petals create a cloud instead of a geometric circle.
-            nebulaFan(b, m, az, el, angularRadius, segments, SKY_RADIUS,
-                    withAlpha(colorA, alphaA), 0x00000000, seed);
-            nebulaFan(b, m, az + angularRadius * 0.55, el + angularRadius * 0.18,
+            nebulaFan(b, az, el, angularRadius, segments, SKY_RADIUS,
+                    withAlpha(colorA, alphaA), seed);
+            nebulaFan(b, az + angularRadius * 0.55, el + angularRadius * 0.18,
                     angularRadius * 0.78, segments, SKY_RADIUS - 0.7,
-                    withAlpha(colorB, alphaB), 0x00000000, seed + 11.0);
-            nebulaFan(b, m, az - angularRadius * 0.43, el - angularRadius * 0.20,
+                    withAlpha(colorB, alphaB), seed + 11.0);
+            nebulaFan(b, az - angularRadius * 0.43, el - angularRadius * 0.20,
                     angularRadius * 0.62, segments, SKY_RADIUS - 1.2,
-                    withAlpha(mixRgb(colorA, 0xFFFFFFFF, 0.22), Math.max(4, alphaB - 2)),
-                    0x00000000, seed + 23.0);
+                    withAlpha(mixRgb(colorA, 0xFFFFFFFF, 0.22), Math.max(4, alphaB - 2)), seed + 23.0);
         }
-
-        try { BufferRenderer.drawWithGlobalProgram(b.end()); }
-        catch (IllegalStateException ignored) {}
     }
 
-    private static void nebulaFan(BufferBuilder b, Matrix4f m,
-                                  double az, double el, double angularRadius, int segments,
-                                  double radius, int centerColor, int edgeColor, double seed) {
+    private static void nebulaFan(VertexConsumer b, double az, double el, double angularRadius,
+                                  int segments, double radius, int centerColor, double seed) {
         double[] center = sphere(radius, az, el);
+        int edgeColor = centerColor & 0x00FFFFFF;
         for (int i = 0; i < segments; i++) {
             double a0 = i * Math.PI * 2.0 / segments;
             double a1 = (i + 1) * Math.PI * 2.0 / segments;
             double r0 = angularRadius * (0.82 + hash(seed + i * 3.17) * 0.34);
             double r1 = angularRadius * (0.82 + hash(seed + (i + 1) * 3.17) * 0.34);
-            double[] p0 = sphere(radius,
-                    az + Math.cos(a0) * r0,
+            double[] p0 = sphere(radius, az + Math.cos(a0) * r0,
                     clamp(el + Math.sin(a0) * r0 * 0.68, 0.035, 1.53));
-            double[] p1 = sphere(radius,
-                    az + Math.cos(a1) * r1,
+            double[] p1 = sphere(radius, az + Math.cos(a1) * r1,
                     clamp(el + Math.sin(a1) * r1 * 0.68, 0.035, 1.53));
-            tri(b, m, center, p0, p1, centerColor, edgeColor, edgeColor);
+            tri(b, center, p0, p1, centerColor, edgeColor, edgeColor);
         }
     }
 
-    private static void drawStars(MatrixStack matrices, int count, double time,
+    private static void drawStars(VertexConsumer b, int count, double time,
                                   double intensity, int[] palette) {
-        BufferBuilder b = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        Matrix4f m = matrices.peek().getPositionMatrix();
-
         for (int i = 0; i < count; i++) {
             double seed = i * 41.137 + 1.913;
             double az = hash(seed) * Math.PI * 2.0;
             double el = 0.055 + Math.pow(hash(seed + 9.1), 0.72) * 1.46;
             double twinkle = 0.70 + 0.30 * Math.sin(time * (0.34 + hash(seed + 2.2) * 0.45) + seed);
             double rare = hash(seed + 18.7);
-            double size = (rare > 0.965 ? 0.78 : rare > 0.88 ? 0.42 : 0.18 + hash(seed + 4.4) * 0.16);
+            double size = rare > 0.965 ? 0.78 : rare > 0.88 ? 0.42 : 0.18 + hash(seed + 4.4) * 0.16;
             int base = rare > 0.84 ? palette[(int)(hash(seed + 30.0) * palette.length) % palette.length] : 0xFFFFFFFF;
             int alpha = (int)Math.round((125 + 120 * twinkle) * intensity);
-            filledStar(b, m, SKY_RADIUS - 2.0 - hash(seed + 20.0) * 2.0,
+            filledStar(b, SKY_RADIUS - 2.0 - hash(seed + 20.0) * 2.0,
                     az, el, size, withAlpha(base, alpha), rare > 0.965);
         }
-
-        try { BufferRenderer.drawWithGlobalProgram(b.end()); }
-        catch (IllegalStateException ignored) {}
     }
 
-    private static void filledStar(BufferBuilder b, Matrix4f m, double radius,
+    private static void filledStar(VertexConsumer b, double radius,
                                    double az, double el, double size, int color, boolean large) {
         double[] c = sphere(radius, az, el);
         double[] right = {-Math.sin(az), 0.0, Math.cos(az)};
         double[] up = {-Math.cos(az) * Math.sin(el), Math.cos(el), -Math.sin(az) * Math.sin(el)};
-
         double sx = size * (large ? 1.55 : 1.0);
         double sy = size * (large ? 0.72 : 1.0);
-        double[] left = offset(c, right, -sx);
-        double[] rightP = offset(c, right, sx);
-        double[] top = offset(c, up, sy);
-        double[] bottom = offset(c, up, -sy);
-        tri(b, m, top, rightP, bottom, color, color, color);
-        tri(b, m, top, bottom, left, color, color, color);
+        double[] left = offset(c, right, -sx), rightP = offset(c, right, sx);
+        double[] top = offset(c, up, sy), bottom = offset(c, up, -sy);
+        tri(b, top, rightP, bottom, color, color, color);
+        tri(b, top, bottom, left, color, color, color);
 
         if (large) {
             int soft = withAlpha(color, Math.max(18, ((color >>> 24) & 0xFF) / 3));
-            double[] left2 = offset(c, right, -sx * 0.48);
-            double[] right2 = offset(c, right, sx * 0.48);
-            double[] top2 = offset(c, up, sy * 2.2);
-            double[] bottom2 = offset(c, up, -sy * 2.2);
-            tri(b, m, top2, right2, bottom2, soft, soft, soft);
-            tri(b, m, top2, bottom2, left2, soft, soft, soft);
+            double[] left2 = offset(c, right, -sx * 0.48), right2 = offset(c, right, sx * 0.48);
+            double[] top2 = offset(c, up, sy * 2.2), bottom2 = offset(c, up, -sy * 2.2);
+            tri(b, top2, right2, bottom2, soft, soft, soft);
+            tri(b, top2, bottom2, left2, soft, soft, soft);
         }
     }
 
@@ -200,11 +155,12 @@ public final class AnimatedSkyRenderer {
         return 0xFF000000 | (r<<16) | (g<<8) | bl;
     }
 
-    private static void tri(BufferBuilder b, Matrix4f m,
-                            double[] a, double[] d, double[] e,
-                            int ca, int cd, int ce) {
-        b.vertex(m, (float)a[0], (float)a[1], (float)a[2]).color(ca);
-        b.vertex(m, (float)d[0], (float)d[1], (float)d[2]).color(cd);
-        b.vertex(m, (float)e[0], (float)e[1], (float)e[2]).color(ce);
+    /** RenderLayers.debugQuads uses quads, so duplicate the last triangle vertex into a degenerate quad. */
+    private static void tri(VertexConsumer b, double[] a, double[] d, double[] e, int ca, int cd, int ce) {
+        vertex(b, a, ca); vertex(b, d, cd); vertex(b, e, ce); vertex(b, e, ce);
+    }
+
+    private static void vertex(VertexConsumer b, double[] p, int color) {
+        b.vertex((float)p[0], (float)p[1], (float)p[2]).color(color);
     }
 }

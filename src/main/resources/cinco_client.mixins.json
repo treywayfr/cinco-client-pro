@@ -16,7 +16,8 @@
     "ModuleSettingsMixin",
     "FreeCamMouseMixin",
     "FreeCamMovementMixin",
-    "ChatHudEditorMixin"
+    "ChatHudEditorMixin",
+    "StarActionBarMixin"
   ],
   "injectors": {
     "defaultRequire": 1

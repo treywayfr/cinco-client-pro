@@ -27,23 +27,25 @@ public final class StarSplash {
         if (alpha <= 2) return;
 
         String title = "★  STAR CLIENT  ★";
-        String sub = "NEBULA LUXE";
+        String sub = "Created by Trey , Stxrz";
         int sw = client.getWindow().getScaledWidth();
         int sh = client.getWindow().getScaledHeight();
-        int tw = client.textRenderer.getWidth(title);
+        int titleWidth = client.textRenderer.getWidth(title);
+        int subWidth = client.textRenderer.getWidth(sub);
+        int tw = Math.max(titleWidth, subWidth);
         int x = sw / 2;
         int y = sh / 2 - 26;
 
-        int panel = (Math.min(190, alpha) << 24) | 0x06040B;
-        int border = (Math.min(215, alpha) << 24) | (CincoTheme.magenta() & 0x00FFFFFF);
+        int panel = (Math.min(194, alpha) << 24) | 0x050507;
+        int border = (Math.min(215, alpha) << 24) | (CincoTheme.accent() & 0x00FFFFFF);
         CincoDraw.softShadow(ctx, x - tw / 2 - 18, y - 11, x + tw / 2 + 18, y + 34,
-                12, CincoTheme.accent(), Math.min(44, alpha / 4));
+                12, CincoTheme.accent(), Math.min(40, alpha / 5));
         CincoDraw.bubble(ctx, x - tw / 2 - 18, y - 11, x + tw / 2 + 18, y + 34, 12, border, panel);
         CincoDraw.rounded(ctx, x - tw / 2 - 6, y + 28, x + tw / 2 + 6, y + 30, 1,
-                (Math.min(alpha, 205) << 24) | (CincoTheme.cyan() & 0x00FFFFFF));
+                (Math.min(alpha, 190) << 24) | (CincoTheme.accentMuted() & 0x00FFFFFF));
         ctx.drawCenteredTextWithShadow(client.textRenderer, StarFonts.text(title, true), x, y,
-                (alpha << 24) | (CincoTheme.starGold() & 0x00FFFFFF));
+                (alpha << 24) | (CincoTheme.accentLight() & 0x00FFFFFF));
         ctx.drawCenteredTextWithShadow(client.textRenderer, StarFonts.text(sub, false), x, y + 16,
-                (Math.min(alpha, 205) << 24) | (CincoTheme.accentLight() & 0x00FFFFFF));
+                (Math.min(alpha, 205) << 24) | (CincoTheme.secondaryText() & 0x00FFFFFF));
     }
 }

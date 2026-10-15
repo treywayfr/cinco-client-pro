@@ -56,7 +56,7 @@ public final class CincoColorWheelScreen extends Screen {
         c.fill(swatchX, swatchY + 17, swatchX + 225, swatchY + 65, CincoTheme.accent());
         c.fill(swatchX + 4, swatchY + 21, swatchX + 221, swatchY + 61, CincoTheme.panel());
         c.fill(swatchX + 8, swatchY + 25, swatchX + 49, swatchY + 57, CincoTheme.accent());
-        c.drawText(textRenderer, label("CINCO  /  ORANGE-GRADE CONTRAST"), swatchX + 59, swatchY + 30, CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label("CINCO  /  LIVE CLIENT THEME"), swatchX + 59, swatchY + 30, CincoTheme.primaryText(), false);
         c.drawText(textRenderer, label("HUE: " + (int) wheel.setting + "°"), swatchX, t + 156, CincoTheme.primaryText(), false);
         c.drawText(textRenderer, label("SATURATION: " + Math.round(wheel.setting2 * 100) + "%"), swatchX, t + 173, CincoTheme.secondaryText(), false);
         c.drawText(textRenderer, label("BRIGHTNESS: " + Math.round(wheel.setting3 * 100) + "%"), swatchX, t + 190, CincoTheme.secondaryText(), false);

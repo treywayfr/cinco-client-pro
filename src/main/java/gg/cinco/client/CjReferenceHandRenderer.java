@@ -3,7 +3,7 @@ package gg.cinco.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.texture.NativeImage;
@@ -27,23 +27,20 @@ public final class CjReferenceHandRenderer {
         int skin = 0xFF6A402E;
         int skinLight = 0xFF85533D;
         int skinDark = 0xFF4A2C21;
-        VertexConsumer v = consumers.getBuffer(RenderLayer.getEntitySolid(texture()));
+        VertexConsumer v = consumers.getBuffer(RenderLayers.entitySolid(texture()));
 
         matrices.push();
         matrices.translate(right ? 0.22 : -0.22, -0.13, -0.70);
         matrices.scale(1.04F, 1.30F, 1.04F);
         MatrixStack.Entry e = matrices.peek();
 
-        // Long forearm like the reference, tapering naturally toward the wrist.
         frustumY(v,e,0.0f,0.00f,0.0f,0.105f,0.120f,
                 0.0f,0.56f,0.0f,0.078f,0.092f,skin,light);
-        // Wrist + broader palm.
         frustumY(v,e,0.0f,0.53f,0.0f,0.080f,0.092f,
                 0.0f,0.74f,0.0f,0.112f,0.105f,skinLight,light);
         frustumY(v,e,0.0f,0.72f,0.0f,0.110f,0.104f,
                 0.0f,0.82f,0.0f,0.095f,0.090f,skinLight,light);
 
-        // Four compact fingers plus side thumb produce the open/fist-like silhouette from the shots.
         float start = -0.078f;
         for (int i=0;i<4;i++) {
             float fx0 = start + i * 0.040f;
@@ -83,7 +80,7 @@ public final class CjReferenceHandRenderer {
         NativeImage image = new NativeImage(NativeImage.Format.RGBA, 2, 2, false);
         for (int y=0;y<2;y++) for (int x=0;x<2;x++) image.setColor(x,y,0xFFFFFFFF);
         texture = MinecraftClient.getInstance().getTextureManager().registerDynamicTexture(
-                "star_cj_reference_hand_white", new NativeImageBackedTexture(image));
+                "star_cj_reference_hand_white", new NativeImageBackedTexture(() -> "star_cj_reference_hand_white", image));
         return texture;
     }
 

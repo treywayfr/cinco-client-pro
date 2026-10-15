@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = ClientModule.class, remap = false)
 public abstract class ClientModuleTuningMixin {
     @Shadow public String name;
+    @Shadow @Final @Mutable public String settingLabel;
     @Shadow @Final @Mutable public double max;
     @Shadow @Final @Mutable public String setting2Label;
     @Shadow @Final @Mutable public double min2;
@@ -29,9 +30,10 @@ public abstract class ClientModuleTuningMixin {
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void star$tune(String moduleName, String description, ClientModule.Category category, boolean enabled,
-                           String settingLabel, double setting, double min, double originalMax, double step,
+                           String originalSettingLabel, double setting, double min, double originalMax, double step,
                            CallbackInfo ci) {
         if ("GTA Skin Changer".equals(moduleName) || "Player Changer".equals(moduleName)) {
+            settingLabel = "Character";
             max = 5.0;
             setting2Label = "Outfit";
             min2 = 1.0; max2 = 6.0; step2 = 1.0;

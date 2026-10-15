@@ -14,13 +14,11 @@ public final class ClientModule {
     public final String description;
     public final Category category;
 
-    // Main feature-specific setting, kept stable for the gameplay modules.
     public final String settingLabel;
     public final double min, max, step;
     public double setting;
     public final double defaultSetting;
 
-    // Additional per-module controls, shown in the module detail screen and persisted.
     public final String setting2Label;
     public final double min2, max2, step2;
     public double setting2;
@@ -36,7 +34,9 @@ public final class ClientModule {
     public ClientModule(String name, String description, Category category, boolean enabled,
                         String settingLabel, double setting, double min, double max, double step) {
         this.name = name;
-        this.description = description;
+        // Legacy module registration strings are sanitized here so old internal naming can remain
+        // compatible without ever showing the old brand in Star Client's GUI.
+        this.description = description == null ? "" : description.replace("Cinco", "Star");
         this.category = category;
         this.enabled = enabled;
         this.settingLabel = settingLabel;
@@ -45,7 +45,6 @@ public final class ClientModule {
         this.max = max;
         this.step = step;
 
-        // Sensible extra controls for every module; key gameplay options have specific labels/ranges.
         if (name.equals("Color Wheel")) {
             setting2Label = "Saturation"; setting2 = 0.90; min2 = 0.10; max2 = 1.0; step2 = 0.05;
             setting3Label = "Brightness"; setting3 = 1.0; min3 = 0.15; max3 = 1.0; step3 = 0.05;
@@ -65,7 +64,7 @@ public final class ClientModule {
             setting3Label = "Intensity"; setting3 = 0.8; min3 = 0.2; max3 = 1.0; step3 = 0.1;
         } else if (name.equals("GTA Skin Changer") || name.equals("Player Changer")) {
             setting2Label = "Outfit palette"; setting2 = 1; min2 = 1; max2 = 4; step2 = 1;
-            setting3Label = "High detail"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
+            setting3Label = "First-person hands"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
         } else if (name.equals("Storage ESP")) {
             setting2Label = "Filter (1 all, 2 chest, 3 barrel, 4 shulker, 5 spawner, 6 ender)"; setting2 = 1; min2 = 1; max2 = 6; step2 = 1;
             setting3Label = "Show coordinates"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;

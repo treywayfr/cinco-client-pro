@@ -40,6 +40,12 @@ public final class CincoPatchClient implements ClientModInitializer {
             changedModules = true;
         }
 
+        if (CincoClient.findModule("ESP Style") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "ESP Style", "Choose the shared player, storage and light ESP presentation",
+                    ClientModule.Category.RENDER, true, "Style", 1, 1, 4, 1));
+            changedModules = true;
+        }
         if (CincoClient.findModule("Font Style") == null) {
             CincoClient.MODULES.add(new ClientModule(
                     "Font Style", "Choose Star Client's interface typeface profile",

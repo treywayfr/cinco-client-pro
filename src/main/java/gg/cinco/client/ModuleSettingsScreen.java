@@ -10,13 +10,13 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.Locale;
 
-/** Expanded per-module settings, including a click-to-record keyboard binding. */
+/** Compact per-module settings screen using the same 8x-AA rounded language as the ClickGUI. */
 public final class ModuleSettingsScreen extends Screen {
+    private static final int W = 520;
+    private static final int H = 342;
     private final ClientModule module;
     private boolean waitingForKey;
-    private int dragging = 0;
-    private static final int W = 540;
-    private static final int H = 350;
+    private int dragging;
 
     public ModuleSettingsScreen(ClientModule module) {
         super(Text.literal("Cinco Module Settings"));
@@ -26,12 +26,11 @@ public final class ModuleSettingsScreen extends Screen {
     private int left() { return (width - W) / 2; }
     private int top() { return (height - H) / 2; }
 
-    private Text label(String value) {
-        ClientModule font = CincoClient.findModule("Bold Typeface");
-        Style style = font != null && font.enabled
-                ? Style.EMPTY.withBold(true).withFont(Identifier.of("minecraft", "uniform"))
-                : Style.EMPTY.withFont(Identifier.of("minecraft", "default"));
-        return Text.literal(value).setStyle(style);
+    private Text label(String value, boolean bold) {
+        ClientModule typography = CincoClient.findModule("Bold Typeface");
+        return Text.literal(value).setStyle(Style.EMPTY
+                .withFont(Identifier.of("minecraft", "uniform"))
+                .withBold(bold || (typography != null && typography.enabled)));
     }
 
     @Override
@@ -39,74 +38,68 @@ public final class ModuleSettingsScreen extends Screen {
         super.render(c, mouseX, mouseY, delta);
         c.fill(0, 0, width, height, CincoTheme.background());
         int l = left(), t = top();
-        c.fill(l - 2, t - 2, l + W + 2, t + H + 2, CincoTheme.accent());
-        c.fill(l, t, l + W, t + H, CincoTheme.panel());
-        c.fill(l, t, l + W, t + 3, CincoTheme.accent());
-        c.fill(l + 14, t + 13, l + 17, t + 42, CincoTheme.accent());
-        c.drawText(textRenderer, label(module.name.toUpperCase(Locale.ROOT)), l + 26, t + 15, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label("MODULE SETTINGS"), l + 26, t + 29, CincoTheme.secondaryText(), false);
-        c.drawText(textRenderer, label(module.description), l + 18, t + 54, CincoTheme.secondaryText(), false);
+
+        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 75);
+        CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accent(), CincoTheme.panel());
+        CincoDraw.rounded(c, l + 15, t + 15, l + 19, t + 43, 2, CincoTheme.accent());
+        c.drawText(textRenderer, label(module.name.toUpperCase(Locale.ROOT), true), l + 29, t + 16,
+                CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label("MODULE SETTINGS", false), l + 29, t + 31,
+                CincoTheme.secondaryText(), false);
+        c.drawText(textRenderer, label(trim(module.description, 74), false), l + 18, t + 54,
+                CincoTheme.secondaryText(), false);
 
         drawSlider(c, l, t, 0, module.settingLabel, module.setting, module.min, module.max, mouseX, mouseY);
         drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2, mouseX, mouseY);
         drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3, mouseX, mouseY);
 
-        c.fill(l + 18, t + 212, l + W - 18, t + 237, CincoTheme.card());
-        if (mouseX >= l + 18 && mouseX <= l + W - 18 && mouseY >= t + 212 && mouseY <= t + 237)
-            drawHoverGlow(c, l + 18, t + 212, l + W - 18, t + 237);
-        c.fill(l + 18, t + 212, l + 21, t + 237, CincoTheme.accent());
-        drawCenteredSharp(c, label("OPEN CLIENT COLOR WHEEL"), l + W / 2, t + 221, CincoTheme.primaryText());
+        int colorY = t + 225;
+        button(c, l + 18, colorY, W - 36, 24, "OPEN CLIENT COLOR WHEEL", mouseX, mouseY,
+                CincoTheme.card(), CincoTheme.cardHover());
 
-        int keyY = t + 244;
-        c.drawText(textRenderer, label("MODULE KEYBIND"), l + 18, keyY, CincoTheme.secondaryText(), false);
-        c.fill(l + 18, keyY + 17, l + W - 18, keyY + 46, waitingForKey ? CincoTheme.accentDark() : CincoTheme.card());
-        if (waitingForKey || (mouseX >= l + 18 && mouseX <= l + W - 18 && mouseY >= keyY + 17 && mouseY <= keyY + 46))
-            drawHoverGlow(c, l + 18, keyY + 17, l + W - 18, keyY + 46);
-        c.fill(l + 18, keyY + 17, l + 21, keyY + 46, CincoTheme.accent());
-        String binding = waitingForKey ? "PRESS A KEY  •  DELETE TO CLEAR  •  ESC TO CANCEL" :
-                "CURRENT: " + keyName(module.keyCode) + "     (CLICK TO CHANGE)";
-        c.drawText(textRenderer, label(binding), l + 29, keyY + 27, CincoTheme.primaryText(), false);
+        int keyY = t + 257;
+        c.drawText(textRenderer, label("KEYBIND", true), l + 18, keyY, CincoTheme.secondaryText(), false);
+        CincoDraw.bubble(c, l + 92, keyY - 6, l + W - 18, keyY + 18, 9,
+                waitingForKey ? CincoTheme.accent() : CincoTheme.line(),
+                waitingForKey ? CincoTheme.cardHover() : CincoTheme.card());
+        String binding = waitingForKey ? "PRESS A KEY  •  DELETE CLEARS  •  ESC CANCELS"
+                : "CURRENT: " + keyName(module.keyCode) + "  •  CLICK TO CHANGE";
+        c.drawText(textRenderer, label(binding, false), l + 104, keyY + 1, CincoTheme.primaryText(), false);
 
-        c.fill(l + 18, t + H - 37, l + 145, t + H - 13, CincoTheme.accentDark());
-        drawCenteredSharp(c, label("RESET SETTINGS"), l + 81, t + H - 29, CincoTheme.primaryText());
-        c.fill(l + W - 135, t + H - 37, l + W - 18, t + H - 13, CincoTheme.accentDark());
-        drawCenteredSharp(c, label("BACK"), l + W - 76, t + H - 29, CincoTheme.primaryText());
-    }
-
-    private void drawCenteredSharp(DrawContext c, Text text, int centerX, int y, int color) {
-        c.drawText(textRenderer, text, centerX - textRenderer.getWidth(text) / 2, y, color, false);
-    }
-
-    private void drawHoverGlow(DrawContext c, int x, int y, int right, int bottom) {
-        ClientModule glow = CincoClient.findModule("Hover Glow");
-        if (glow == null || !glow.enabled) return;
-        double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
-        double pulse = (Math.sin(System.currentTimeMillis() / (170.0 / speed)) + 1.0) * 0.5;
-        int strength = (int) (65 + 150 * Math.max(0.2, Math.min(1.0, glow.setting) * pulse));
-        int width = Math.max(1, Math.min(4, (int) glow.setting3));
-        int rgb = CincoTheme.accent() & 0x00FFFFFF;
-        for (int layer = width; layer >= 1; layer--) {
-            int color = (Math.max(16, strength / (layer + 1)) << 24) | rgb;
-            c.fill(x - layer, y - layer, right + layer, y - layer + 1, color);
-            c.fill(x - layer, bottom + layer - 1, right + layer, bottom + layer, color);
-            c.fill(x - layer, y, x - layer + 1, bottom, color);
-            c.fill(right + layer - 1, y, right + layer, bottom, color);
-        }
+        int by = t + H - 36;
+        button(c, l + 18, by, 126, 23, "RESET SETTINGS", mouseX, mouseY,
+                CincoTheme.accentDark(), CincoTheme.cardHover());
+        button(c, l + W - 116, by, 98, 23, "BACK", mouseX, mouseY,
+                CincoTheme.accentDark(), CincoTheme.cardHover());
     }
 
     private void drawSlider(DrawContext c, int l, int t, int which,
                             String name, double value, double min, double max, int mouseX, int mouseY) {
-        int rowTop = t + 83 + which * 49;
-        c.drawText(textRenderer, label(name), l + 18, rowTop, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label(displaySetting(which, value)), l + W - 110, rowTop, CincoTheme.primaryText(), false);
+        int rowTop = t + 82 + which * 45;
+        c.drawText(textRenderer, label(name.toUpperCase(Locale.ROOT), true), l + 18, rowTop,
+                CincoTheme.primaryText(), false);
+        String valueText = displaySetting(which, value);
+        int valueWidth = textRenderer.getWidth(valueText);
+        c.drawText(textRenderer, label(valueText, true), l + W - 18 - valueWidth, rowTop,
+                CincoTheme.accentLight(), false);
+
         int x = l + 18, y = rowTop + 19, w = W - 36;
-        c.fill(x, y, x + w, y + 5, CincoTheme.sliderTrack());
-        if (mouseX >= x - 2 && mouseX <= x + w + 2 && mouseY >= y - 5 && mouseY <= y + 12)
-            drawHoverGlow(c, x, y - 2, x + w, y + 7);
+        CincoDraw.rounded(c, x, y, x + w, y + 6, 3, CincoTheme.sliderTrack());
         double fraction = (value - min) / Math.max(0.0001, max - min);
-        int knob = x + (int)(Math.max(0, Math.min(1, fraction)) * w);
-        c.fill(x, y, knob, y + 5, CincoTheme.accent());
-        c.fill(knob - 3, y - 3, knob + 4, y + 8, 0xFFFFE3C1);
+        int knob = x + (int) Math.round(Math.max(0, Math.min(1, fraction)) * w);
+        CincoDraw.rounded(c, x, y, knob, y + 6, 3, CincoTheme.accent());
+        CincoDraw.rounded(c, knob - 4, y - 3, knob + 5, y + 10, 5, CincoTheme.accentLight());
+        if (mouseX >= x - 3 && mouseX <= x + w + 3 && mouseY >= y - 6 && mouseY <= y + 13)
+            CincoDraw.softShadow(c, x, y, x + w, y + 6, 4, CincoTheme.accent(), 45);
+    }
+
+    private void button(DrawContext c, int x, int y, int w, int h, String text,
+                        int mx, int my, int normal, int hoverColor) {
+        boolean hover = mx >= x && mx <= x + w && my >= y && my <= y + h;
+        CincoDraw.rounded(c, x, y, x + w, y + h, 10, hover ? hoverColor : normal);
+        int tw = textRenderer.getWidth(text);
+        c.drawText(textRenderer, label(text, true), x + w / 2 - tw / 2, y + 8,
+                CincoTheme.primaryText(), false);
     }
 
     private String displaySetting(int which, double value) {
@@ -120,29 +113,33 @@ public final class ModuleSettingsScreen extends Screen {
                 default -> "Ember";
             };
         }
-        if (which == 0 && module.name.equals("Fortnite Style")) {
+        if (which == 0 && module.name.equals("GTA Skin Changer")) {
             return switch (selected) {
-                case 1 -> "Vanguard";
-                case 2 -> "Crimson";
-                case 3 -> "Tidebreaker";
-                default -> "Void";
+                case 2 -> "Spiky Cartoon Kid";
+                case 3 -> "Anime Heroine";
+                case 4 -> "Tung Tung Sahur";
+                default -> "Franklin / GTA V";
             };
         }
-        if (module.name.equals("Key Pearl") && which == 2) return selected == 1 ? "ON" : "OFF";
-        if (module.name.equals("Auto Eat") && which == 2) return selected == 1 ? "ON" : "OFF";
+        if ((module.name.equals("Key Pearl") || module.name.equals("Auto Eat")) && which == 2)
+            return selected == 1 ? "ON" : "OFF";
         return format(value);
+    }
+
+    private String trim(String value, int max) {
+        return value.length() <= max ? value : value.substring(0, max - 1) + "…";
     }
 
     private String format(double value) {
         return Math.abs(value - Math.round(value)) < 0.0001
-                ? Integer.toString((int)Math.round(value))
+                ? Integer.toString((int) Math.round(value))
                 : String.format(Locale.ROOT, "%.2f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
     public static String keyName(int code) {
         if (code == GLFW.GLFW_KEY_UNKNOWN || code < 0) return "UNBOUND";
-        if (code >= GLFW.GLFW_KEY_A && code <= GLFW.GLFW_KEY_Z) return String.valueOf((char)('A' + code - GLFW.GLFW_KEY_A));
-        if (code >= GLFW.GLFW_KEY_0 && code <= GLFW.GLFW_KEY_9) return String.valueOf((char)('0' + code - GLFW.GLFW_KEY_0));
+        if (code >= GLFW.GLFW_KEY_A && code <= GLFW.GLFW_KEY_Z) return String.valueOf((char) ('A' + code - GLFW.GLFW_KEY_A));
+        if (code >= GLFW.GLFW_KEY_0 && code <= GLFW.GLFW_KEY_9) return String.valueOf((char) ('0' + code - GLFW.GLFW_KEY_0));
         if (code >= GLFW.GLFW_KEY_F1 && code <= GLFW.GLFW_KEY_F25) return "F" + (code - GLFW.GLFW_KEY_F1 + 1);
         return switch (code) {
             case GLFW.GLFW_KEY_SPACE -> "SPACE";
@@ -163,10 +160,6 @@ public final class ModuleSettingsScreen extends Screen {
             case GLFW.GLFW_KEY_GRAVE_ACCENT -> "GRAVE";
             case GLFW.GLFW_KEY_MINUS -> "MINUS";
             case GLFW.GLFW_KEY_EQUAL -> "EQUALS";
-            case GLFW.GLFW_KEY_LEFT_BRACKET -> "L BRACKET";
-            case GLFW.GLFW_KEY_RIGHT_BRACKET -> "R BRACKET";
-            case GLFW.GLFW_KEY_SEMICOLON -> "SEMICOLON";
-            case GLFW.GLFW_KEY_APOSTROPHE -> "APOSTROPHE";
             case GLFW.GLFW_KEY_COMMA -> "COMMA";
             case GLFW.GLFW_KEY_PERIOD -> "PERIOD";
             case GLFW.GLFW_KEY_SLASH -> "SLASH";
@@ -178,30 +171,35 @@ public final class ModuleSettingsScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
         int l = left(), t = top();
-        if (mouseY >= t + 212 && mouseY <= t + 237) {
+        int colorY = t + 225;
+        if (mouseX >= l + 18 && mouseX <= l + W - 18 && mouseY >= colorY && mouseY <= colorY + 24) {
             ClientModule wheel = CincoClient.findModule("Color Wheel");
             if (wheel != null) MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(wheel, this));
             return true;
         }
-        int keyY = t + 244;
-        if (mouseX >= l + 18 && mouseX <= l + W - 18 && mouseY >= keyY + 17 && mouseY <= keyY + 46) {
+
+        int keyY = t + 257;
+        if (mouseX >= l + 92 && mouseX <= l + W - 18 && mouseY >= keyY - 6 && mouseY <= keyY + 18) {
             waitingForKey = true;
             return true;
         }
-        if (mouseY >= t + H - 37 && mouseY <= t + H - 13) {
-            if (mouseX >= l + 18 && mouseX <= l + 145) {
+
+        int by = t + H - 36;
+        if (mouseY >= by && mouseY <= by + 23) {
+            if (mouseX >= l + 18 && mouseX <= l + 144) {
                 module.resetSettings();
                 ConfigStore.save();
                 return true;
             }
-            if (mouseX >= l + W - 135 && mouseX <= l + W - 18) {
+            if (mouseX >= l + W - 116 && mouseX <= l + W - 18) {
                 close();
                 return true;
             }
         }
+
         for (int i = 0; i < 3; i++) {
-            int y = t + 83 + i * 49 + 14;
-            if (mouseY >= y && mouseY <= y + 17 && mouseX >= l + 18 && mouseX <= l + W - 18) {
+            int y = t + 82 + i * 45 + 13;
+            if (mouseX >= l + 15 && mouseX <= l + W - 15 && mouseY >= y && mouseY <= y + 21) {
                 dragging = i + 1;
                 updateSlider(mouseX);
                 return true;

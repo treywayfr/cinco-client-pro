@@ -51,6 +51,10 @@ public final class ModuleSettingsScreen extends Screen {
         drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2);
         drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3);
 
+        c.fill(l + 18, t + 212, l + W - 18, t + 237, CincoTheme.card());
+        c.fill(l + 18, t + 212, l + 21, t + 237, CincoTheme.accent());
+        drawCenteredSharp(c, label("OPEN CLIENT COLOR WHEEL"), l + W / 2, t + 221, CincoTheme.primaryText());
+
         int keyY = t + 244;
         c.drawText(textRenderer, label("MODULE KEYBIND"), l + 18, keyY, CincoTheme.secondaryText(), false);
         c.fill(l + 18, keyY + 17, l + W - 18, keyY + 46, waitingForKey ? CincoTheme.accentDark() : CincoTheme.card());
@@ -127,6 +131,11 @@ public final class ModuleSettingsScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
         int l = left(), t = top();
+        if (mouseY >= t + 212 && mouseY <= t + 237) {
+            ClientModule wheel = CincoClient.findModule("Color Wheel");
+            if (wheel != null) MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(wheel));
+            return true;
+        }
         int keyY = t + 244;
         if (mouseX >= l + 18 && mouseX <= l + W - 18 && mouseY >= keyY + 17 && mouseY <= keyY + 46) {
             waitingForKey = true;

@@ -63,9 +63,30 @@ public final class ClientModule {
         } else if (name.equals("Sky Changer")) {
             setting2Label = "Animation speed"; setting2 = 0.8; min2 = 0.1; max2 = 2.0; step2 = 0.1;
             setting3Label = "Intensity"; setting3 = 0.8; min3 = 0.2; max3 = 1.0; step3 = 0.1;
-        } else if (name.equals("Fortnite Style")) {
-            setting2Label = "Suit palette"; setting2 = 1; min2 = 1; max2 = 4; step2 = 1;
-            setting3Label = "Helmet visor"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
+        } else if (name.equals("GTA Skin Changer")) {
+            setting2Label = "Outfit palette"; setting2 = 1; min2 = 1; max2 = 4; step2 = 1;
+            setting3Label = "Jacket detail"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
+        } else if (name.equals("Storage ESP")) {
+            setting2Label = "Show labels"; setting2 = 1; min2 = 0; max2 = 1; step2 = 1;
+            setting3Label = "Storage tracers"; setting3 = 0; min3 = 0; max3 = 1; step3 = 1;
+        } else if (name.equals("Player ESP")) {
+            setting2Label = "Name + distance"; setting2 = 1; min2 = 0; max2 = 1; step2 = 1;
+            setting3Label = "Box outlines"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
+        } else if (name.equals("Kill Aura")) {
+            setting2Label = "Attack delay"; setting2 = 2; min2 = 1; max2 = 10; step2 = 1;
+            setting3Label = "Target mode"; setting3 = 1; min3 = 1; max3 = 3; step3 = 1;
+        } else if (name.equals("Reach")) {
+            setting2Label = "Block reach"; setting2 = 4.5; min2 = 3.0; max2 = 6.5; step2 = 0.5;
+            setting3Label = "Entity reach"; setting3 = 4.5; min3 = 3.0; max3 = 6.5; step3 = 0.5;
+        } else if (name.equals("Flight")) {
+            setting2Label = "Horizontal speed"; setting2 = 0.9; min2 = 0.2; max2 = 2.5; step2 = 0.1;
+            setting3Label = "Vertical speed"; setting3 = 0.5; min3 = 0.1; max3 = 1.5; step3 = 0.1;
+        } else if (name.equals("Speed")) {
+            setting2Label = "Air multiplier"; setting2 = 1.1; min2 = 1.0; max2 = 2.0; step2 = 0.1;
+            setting3Label = "Ground multiplier"; setting3 = 1.3; min3 = 1.0; max3 = 2.5; step3 = 0.1;
+        } else if (name.equals("Fast XP")) {
+            setting2Label = "Use interval"; setting2 = 1; min2 = 1; max2 = 10; step2 = 1;
+            setting3Label = "Only while right-clicking"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
         } else if (name.equals("Hover Glow")) {
             setting2Label = "Pulse speed"; setting2 = 1; min2 = 0.5; max2 = 2.5; step2 = 0.25;
             setting3Label = "Glow width"; setting3 = 2; min3 = 1; max3 = 4; step3 = 1;

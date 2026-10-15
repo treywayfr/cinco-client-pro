@@ -3,14 +3,12 @@ package gg.cinco.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Locale;
 
-/** Compact per-module settings screen using the same 8x-AA rounded language as the ClickGUI. */
+/** Compact Star Client per-module settings screen. */
 public final class ModuleSettingsScreen extends Screen {
     private static final int W = 520;
     private static final int H = 342;
@@ -19,78 +17,75 @@ public final class ModuleSettingsScreen extends Screen {
     private int dragging;
 
     public ModuleSettingsScreen(ClientModule module) {
-        super(Text.literal("Cinco Module Settings"));
+        super(Text.literal("Star Module Settings"));
         this.module = module;
     }
 
     private int left() { return (width - W) / 2; }
     private int top() { return (height - H) / 2; }
-
-    private Text label(String value, boolean bold) {
-        ClientModule typography = CincoClient.findModule("Bold Typeface");
-        return Text.literal(value).setStyle(Style.EMPTY
-                .withFont(Identifier.of("minecraft", "uniform"))
-                .withBold(bold || (typography != null && typography.enabled)));
-    }
+    private Text label(String value, boolean bold) { return StarFonts.text(value, bold); }
 
     @Override
     public void render(DrawContext c, int mouseX, int mouseY, float delta) {
         super.render(c, mouseX, mouseY, delta);
-        c.fill(0, 0, width, height, CincoTheme.background());
+        c.fill(0, 0, width, height, 0xF006050A);
         int l = left(), t = top();
 
-        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 75);
-        CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accent(), CincoTheme.panel());
-        CincoDraw.rounded(c, l + 15, t + 15, l + 19, t + 43, 2, CincoTheme.accent());
+        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 52);
+        CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accentMuted(), 0xF20B0911);
+        CincoDraw.rounded(c, l + 15, t + 15, l + 19, t + 43, 2, CincoTheme.accentLight());
         c.drawText(textRenderer, label(module.name.toUpperCase(Locale.ROOT), true), l + 29, t + 16,
-                CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, label("MODULE SETTINGS", false), l + 29, t + 31,
-                CincoTheme.secondaryText(), false);
+                0xFFFFFFFF, false);
+        c.drawText(textRenderer, label("★  MODULE SETTINGS", false), l + 29, t + 31,
+                0xFF9B93A8, false);
         c.drawText(textRenderer, label(trim(module.description, 74), false), l + 18, t + 54,
-                CincoTheme.secondaryText(), false);
+                0xFF8D8598, false);
 
         drawSlider(c, l, t, 0, module.settingLabel, module.setting, module.min, module.max, mouseX, mouseY);
         drawSlider(c, l, t, 1, module.setting2Label, module.setting2, module.min2, module.max2, mouseX, mouseY);
         drawSlider(c, l, t, 2, module.setting3Label, module.setting3, module.min3, module.max3, mouseX, mouseY);
 
         int colorY = t + 225;
-        button(c, l + 18, colorY, W - 36, 24, "OPEN CLIENT COLOR WHEEL", mouseX, mouseY,
-                CincoTheme.card(), CincoTheme.cardHover());
+        button(c, l + 18, colorY, W - 36, 24, "OPEN STAR COLOR WHEEL", mouseX, mouseY,
+                0xFF17121F, 0xFF24172E);
 
         int keyY = t + 257;
-        c.drawText(textRenderer, label("KEYBIND", true), l + 18, keyY, CincoTheme.secondaryText(), false);
+        c.drawText(textRenderer, label("KEYBIND", true), l + 18, keyY, 0xFF9B93A8, false);
         CincoDraw.bubble(c, l + 92, keyY - 6, l + W - 18, keyY + 18, 9,
-                waitingForKey ? CincoTheme.accent() : CincoTheme.line(),
-                waitingForKey ? CincoTheme.cardHover() : CincoTheme.card());
+                waitingForKey ? CincoTheme.accent() : 0xFF30283A,
+                waitingForKey ? 0xFF21152A : 0xFF15111B);
         String binding = waitingForKey ? "PRESS A KEY  •  DELETE CLEARS  •  ESC CANCELS"
                 : "CURRENT: " + keyName(module.keyCode) + "  •  CLICK TO CHANGE";
-        c.drawText(textRenderer, label(binding, false), l + 104, keyY + 1, CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, label(binding, false), l + 104, keyY + 1, 0xFFF5F0FA, false);
 
         int by = t + H - 36;
         button(c, l + 18, by, 126, 23, "RESET SETTINGS", mouseX, mouseY,
-                CincoTheme.accentDark(), CincoTheme.cardHover());
+                0xFF1B1322, 0xFF291A32);
         button(c, l + W - 116, by, 98, 23, "BACK", mouseX, mouseY,
-                CincoTheme.accentDark(), CincoTheme.cardHover());
+                0xFF1B1322, 0xFF291A32);
     }
 
     private void drawSlider(DrawContext c, int l, int t, int which,
                             String name, double value, double min, double max, int mouseX, int mouseY) {
         int rowTop = t + 82 + which * 45;
-        c.drawText(textRenderer, label(name.toUpperCase(Locale.ROOT), true), l + 18, rowTop,
-                CincoTheme.primaryText(), false);
+        String shownName = name;
+        if ((module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer")) && which == 2)
+            shownName = "First-person hands";
+        c.drawText(textRenderer, label(shownName.toUpperCase(Locale.ROOT), true), l + 18, rowTop,
+                0xFFF8F4FF, false);
         String valueText = displaySetting(which, value);
         int valueWidth = textRenderer.getWidth(valueText);
         c.drawText(textRenderer, label(valueText, true), l + W - 18 - valueWidth, rowTop,
                 CincoTheme.accentLight(), false);
 
         int x = l + 18, y = rowTop + 19, w = W - 36;
-        CincoDraw.rounded(c, x, y, x + w, y + 6, 3, CincoTheme.sliderTrack());
+        CincoDraw.rounded(c, x, y, x + w, y + 6, 3, 0xFF302A37);
         double fraction = (value - min) / Math.max(0.0001, max - min);
         int knob = x + (int) Math.round(Math.max(0, Math.min(1, fraction)) * w);
-        CincoDraw.rounded(c, x, y, knob, y + 6, 3, CincoTheme.accent());
+        if (knob > x) CincoDraw.rounded(c, x, y, knob, y + 6, 3, CincoTheme.accent());
         CincoDraw.rounded(c, knob - 4, y - 3, knob + 5, y + 10, 5, CincoTheme.accentLight());
         if (mouseX >= x - 3 && mouseX <= x + w + 3 && mouseY >= y - 6 && mouseY <= y + 13)
-            CincoDraw.softShadow(c, x, y, x + w, y + 6, 4, CincoTheme.accent(), 45);
+            CincoDraw.rounded(c, x, y - 1, x + w, y + 7, 4, 0x382E203A);
     }
 
     private void button(DrawContext c, int x, int y, int w, int h, String text,
@@ -99,7 +94,7 @@ public final class ModuleSettingsScreen extends Screen {
         CincoDraw.rounded(c, x, y, x + w, y + h, 10, hover ? hoverColor : normal);
         int tw = textRenderer.getWidth(text);
         c.drawText(textRenderer, label(text, true), x + w / 2 - tw / 2, y + 8,
-                CincoTheme.primaryText(), false);
+                0xFFF8F4FF, false);
     }
 
     private String displaySetting(int which, double value) {
@@ -113,7 +108,7 @@ public final class ModuleSettingsScreen extends Screen {
                 default -> "Ember";
             };
         }
-        if (which == 0 && module.name.equals("GTA Skin Changer")) {
+        if (which == 0 && (module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer"))) {
             return switch (selected) {
                 case 2 -> "Spiky Cartoon Kid";
                 case 3 -> "Anime Heroine";
@@ -121,6 +116,10 @@ public final class ModuleSettingsScreen extends Screen {
                 default -> "Franklin / GTA V";
             };
         }
+        if ((module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer")) && which == 2)
+            return selected == 1 ? "ON" : "OFF";
+        if (module.name.equals("Font Style") && which == 0) return StarFonts.name(selected);
+        if (module.name.equals("Client Profile") && which == 0) return StarProfiles.name(selected);
         if ((module.name.equals("Key Pearl") || module.name.equals("Auto Eat")) && which == 2)
             return selected == 1 ? "ON" : "OFF";
         return format(value);
@@ -229,6 +228,7 @@ public final class ModuleSettingsScreen extends Screen {
         if (dragging == 1) module.setSettingFromSlider(fraction);
         if (dragging == 2) module.setSetting2FromSlider(fraction);
         if (dragging == 3) module.setSetting3FromSlider(fraction);
+        if (module.name.equals("Client Profile") && dragging == 1) StarProfiles.apply((int) Math.round(module.setting));
         ConfigStore.save();
     }
 

@@ -131,7 +131,7 @@ public final class AdvancedModulesController {
         int cps = Math.max(1, Math.min(20, (int)Math.round(m.setting)));
         clickTicks = Math.max(1, 20 / cps);
 
-        if (m.setting2 >= 0.5) {
+        if (m.setting2 >= 0.5 && client.options.attackKey.isPressed()) {
             HitResult hit = client.crosshairTarget;
             if (hit instanceof EntityHitResult entityHit) {
                 client.interactionManager.attackEntity(client.player, entityHit.getEntity());
@@ -141,9 +141,8 @@ public final class AdvancedModulesController {
                 client.player.swingHand(Hand.MAIN_HAND);
             }
         }
-        if (m.setting3 >= 0.5) {
+        if (m.setting3 >= 0.5 && client.options.useKey.isPressed()) {
             client.options.useKey.setPressed(true);
-            // Release on the next tick so vanilla receives a clean pulse instead of a stuck key.
             client.execute(() -> client.options.useKey.setPressed(false));
         }
     }
@@ -165,7 +164,7 @@ public final class AdvancedModulesController {
 
     private static Rotation rotationTo(PlayerEntity from, PlayerEntity to) {
         Vec3d eye = from.getEyePos();
-        Vec3d aim = to.getPos().add(0, to.getHeight() * 0.72, 0);
+        Vec3d aim = new Vec3d(to.getX(), to.getY() + to.getHeight() * 0.72, to.getZ());
         Vec3d d = aim.subtract(eye);
         double flat = Math.hypot(d.x, d.z);
         float yaw = (float)(Math.toDegrees(Math.atan2(d.z, d.x)) - 90.0);

@@ -115,8 +115,11 @@ public final class CincoClickGuiScreen extends Screen {
             int y = viewportTop + i * ROW - scroll;
             if (y + ROW < viewportTop || y > viewportBottom) continue;
             boolean hovered = mx >= contentX && mx <= l + W - 13 && my >= y && my <= y + ROW - 5;
-            c.fill(contentX, y, l + W - 13, y + ROW - 5, hovered ? CincoTheme.cardHover() : CincoTheme.card());
-            c.fill(contentX, y, contentX + 3, y + ROW - 5, module.enabled ? CincoTheme.accent() : CincoTheme.disabled());
+            int cardRight = l + W - 13;
+            int cardBottom = y + ROW - 5;
+            c.fill(contentX, y, cardRight, cardBottom, hovered ? CincoTheme.cardHover() : CincoTheme.card());
+            if (hovered) drawHoverGlow(c, contentX, y, cardRight, cardBottom, now);
+            c.fill(contentX, y, contentX + 3, cardBottom, module.enabled ? CincoTheme.accent() : CincoTheme.disabled());
             c.drawText(textRenderer, uiText(module.name), contentX + 11, y + 6, uiColor(module.enabled ? CincoTheme.primaryText() : CincoTheme.secondaryText()), false);
             c.drawText(textRenderer, uiText(module.description), contentX + 11, y + 20, uiColor(CincoTheme.secondaryText()), false);
 
@@ -161,6 +164,24 @@ public final class CincoClickGuiScreen extends Screen {
 
     private void drawCenteredTextSharp(DrawContext context, Text value, int centerX, int y, int color) {
         context.drawText(textRenderer, value, centerX - textRenderer.getWidth(value) / 2, y, uiColor(color), false);
+    }
+
+    private void drawHoverGlow(DrawContext c, int x, int y, int right, int bottom, long now) {
+        ClientModule glow = CincoClient.findModule("Hover Glow");
+        if (glow == null || !glow.enabled) return;
+        double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
+        double pulse = (Math.sin(now / (170.0 / speed)) + 1.0) * 0.5;
+        int strength = (int) (80 + 130 * Math.max(0.2, Math.min(1.0, glow.setting)) * pulse);
+        int width = Math.max(1, Math.min(4, (int) glow.setting3));
+        int rgb = CincoTheme.accent() & 0x00FFFFFF;
+        for (int layer = width; layer >= 1; layer--) {
+            int alpha = Math.max(18, strength / (layer + 1));
+            int color = (alpha << 24) | rgb;
+            c.fill(x - layer, y - layer, right + layer, y - layer + 1, color);
+            c.fill(x - layer, bottom + layer - 1, right + layer, bottom + layer, color);
+            c.fill(x - layer, y, x - layer + 1, bottom, color);
+            c.fill(right + layer - 1, y, right + layer, bottom, color);
+        }
     }
 
     private void drawStars(DrawContext c, long now, float delta) {

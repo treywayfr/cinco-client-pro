@@ -200,12 +200,15 @@ public final class CincoHud {
         key(ctx, client.options.backKey.isPressed(), x + 27, y + 18, "S");
         key(ctx, client.options.rightKey.isPressed(), x + 54, y + 18, "D");
         ctx.fill(x, y + 37, x + 76, y + 48, client.options.jumpKey.isPressed() ? 0xFF8550D8 : 0xFF342744);
-        ctx.drawCenteredText(client.textRenderer, Text.literal("JUMP"), x + 38, y + 39, 0xFFFFFFFF);
+        Text jumpText = Text.literal("JUMP");
+        ctx.drawText(client.textRenderer, jumpText, x + 38 - client.textRenderer.getWidth(jumpText) / 2, y + 39, 0xFFFFFFFF, false);
     }
 
     private static void key(DrawContext ctx, boolean pressed, int x, int y, String label) {
         ctx.fill(x, y, x + 22, y + 16, pressed ? 0xFF8550D8 : 0xFF342744);
-        ctx.drawCenteredText(MinecraftClient.getInstance().textRenderer, Text.literal(label), x + 11, y + 4, 0xFFFFFFFF);
+        Text keyText = Text.literal(label);
+        var renderer = MinecraftClient.getInstance().textRenderer;
+        ctx.drawText(renderer, keyText, x + 11 - renderer.getWidth(keyText) / 2, y + 4, 0xFFFFFFFF, false);
     }
 
     private static void drawCrosshair(DrawContext ctx, MinecraftClient client, int size) {

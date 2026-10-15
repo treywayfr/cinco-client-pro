@@ -56,9 +56,7 @@ public abstract class ModuleSettingsMixin {
                     case 6 -> "Cream Streetwear";
                     default -> "Grove Green";
                 });
-            } else {
-                cir.setReturnValue("Palette " + selected);
-            }
+            } else cir.setReturnValue("Palette " + selected);
             return;
         }
         if (changer && which == 2) {
@@ -79,6 +77,45 @@ public abstract class ModuleSettingsMixin {
         }
         if (module.name.equals("Auto Totem") && which == 2) {
             cir.setReturnValue("SLOT " + Math.max(1, Math.min(9, selected)));
+            return;
+        }
+        if (module.name.equals("Sky Changer") && which == 0) {
+            cir.setReturnValue(switch (selected) {
+                case 2 -> "Purple Nebula";
+                case 3 -> "Electric Violet";
+                case 4 -> "Aurora Flow";
+                case 5 -> "Crimson Storm";
+                case 6 -> "Ice Plasma";
+                case 7 -> "Emerald Flux";
+                case 8 -> "Rainbow Void";
+                default -> "Liquid Gold";
+            });
+            return;
+        }
+        if (module.name.equals("Animations") && which == 0) {
+            cir.setReturnValue(switch (selected) {
+                case 2 -> "Purple Aura";
+                case 3 -> "Jump Circles";
+                case 4 -> "Speed Trails";
+                case 5 -> "Orbit Runes";
+                case 6 -> "Lightning Sparks";
+                case 7 -> "Footstep Rings";
+                case 8 -> "Cosmic Pulse";
+                default -> "Golden Aura";
+            });
+            return;
+        }
+        if (module.name.equals("Custom Accessory") && which == 0) {
+            cir.setReturnValue(switch (selected) {
+                case 2 -> "Demon Wings";
+                case 3 -> "Halo";
+                case 4 -> "Star Crown";
+                case 5 -> "Orbit Stars";
+                case 6 -> "Nebula Horns";
+                case 7 -> "Energy Ring";
+                case 8 -> "Nebula Cape";
+                default -> "Angel Wings";
+            });
             return;
         }
         if (module.name.equals("Storage ESP") && which == 1) {
@@ -105,8 +142,6 @@ public abstract class ModuleSettingsMixin {
             cir.setReturnValue(StarFonts.name(selected));
             return;
         }
-        if (module.name.equals("Client Profile") && which == 0) {
-            cir.setReturnValue(StarProfiles.name(selected));
-        }
+        if (module.name.equals("Client Profile") && which == 0) cir.setReturnValue(StarProfiles.name(selected));
     }
 }

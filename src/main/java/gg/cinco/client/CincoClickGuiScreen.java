@@ -3,32 +3,41 @@ package gg.cinco.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
-/** Compact modern ClickGUI with anti-aliased cards and denser module sizing. */
+/** Star Client's compact two-column animated ClickGUI. */
 public final class CincoClickGuiScreen extends Screen {
-    private static final int W = 620;
-    private static final int H = 388;
-    private static final int SIDE = 112;
-    private static final int ROW = 44;
+    private static final int W = 700;
+    private static final int H = 420;
+    private static final int SIDE = 126;
+    private static final int CARD_H = 58;
+    private static final int GAP = 8;
+    private static final Set<String> FAVORITES = new LinkedHashSet<>();
 
     private int scroll;
     private String search = "";
     private boolean searchFocused;
     private boolean draggingSlider;
     private ClientModule draggingModule;
+    private int draggingSliderX;
+    private int draggingSliderW;
     private final long openedAt = System.currentTimeMillis();
     private final List<Star> stars = new ArrayList<>();
+    private final Map<String, Float> hoverAnim = new HashMap<>();
+    private final Map<String, Float> toggleAnim = new HashMap<>();
 
     private static final class Star {
-        final double x, speed, phase;
+        final double x, phase, speed;
         double y;
         Star(double x, double y, double speed, double phase) {
             this.x = x; this.y = y; this.speed = speed; this.phase = phase;
@@ -36,143 +45,155 @@ public final class CincoClickGuiScreen extends Screen {
     }
 
     public CincoClickGuiScreen() {
-        super(Text.literal("Cinco Client"));
-        for (int i = 0; i < 125; i++)
-            stars.add(new Star(i * 73.37 % 1600, i * 47.19 % 1000,
-                    0.12 + (i % 7) * 0.045, (i % 13) * 0.43));
+        super(Text.literal("Star Client"));
+        for (int i = 0; i < 42; i++) {
+            stars.add(new Star(i * 97.13 % 1600, i * 61.77 % 900,
+                    0.07 + (i % 5) * 0.025, i * 0.37));
+        }
     }
 
     private int left() { return (width - W) / 2; }
     private int top() { return (height - H) / 2; }
-
-    private Text ui(String value, boolean bold) {
-        ClientModule typography = CincoClient.findModule("Bold Typeface");
-        boolean strong = bold || (typography != null && typography.enabled);
-        return Text.literal(value).setStyle(Style.EMPTY
-                .withFont(Identifier.of("minecraft", "uniform"))
-                .withBold(strong));
-    }
+    private Text ui(String value, boolean bold) { return StarFonts.text(value, bold); }
 
     @Override
     public void render(DrawContext c, int mx, int my, float delta) {
         super.render(c, mx, my, delta);
         long now = System.currentTimeMillis();
-        c.fill(0, 0, width, height, CincoTheme.background());
+        c.fill(0, 0, width, height, 0xEE06050A);
         drawStars(c, now, delta);
 
         int l = left(), t = top();
         ClientModule anim = CincoClient.findModule("GUI Animation");
-        double duration = anim == null || !anim.enabled ? 1.0 : Math.max(80.0, anim.setting);
-        double progress = anim == null || !anim.enabled ? 1.0 : Math.min(1.0, (now - openedAt) / duration);
-        int lift = (int) ((1.0 - progress) * 8.0);
-        int py = t + lift;
+        double duration = anim == null || !anim.enabled ? 1.0 : Math.max(100.0, anim.setting);
+        float open = anim == null || !anim.enabled ? 1f : ease((float) Math.min(1.0, (now - openedAt) / duration));
+        int py = t + Math.round((1f - open) * 13f);
 
-        CincoDraw.softShadow(c, l, py, l + W, py + H, 16, CincoTheme.accent(), 80);
-        CincoDraw.bubble(c, l, py, l + W, py + H, 16, CincoTheme.accent(), CincoTheme.panel());
-        CincoDraw.rounded(c, l + 6, py + 6, l + SIDE - 4, py + H - 6, 12, CincoTheme.sidebar());
+        // One shadow for the entire interface. No per-card shadow passes: this is much cheaper.
+        CincoDraw.softShadow(c, l, py, l + W, py + H, 18, CincoTheme.accent(), 52);
+        CincoDraw.bubble(c, l, py, l + W, py + H, 18, CincoTheme.accentMuted(), 0xF20B0911);
+        CincoDraw.rounded(c, l + 6, py + 6, l + SIDE, py + H - 6, 14, 0xF00F0C17);
 
-        // Compact brand / category rail.
-        CincoDraw.rounded(c, l + 14, py + 14, l + 34, py + 34, 10, CincoTheme.accent());
-        c.drawText(textRenderer, ui("C", true), l + 21, py + 20, 0xFFFFFFFF, false);
-        c.drawText(textRenderer, ui("CINCO", true), l + 42, py + 15, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, ui("CLIENT 2.3", false), l + 42, py + 27, CincoTheme.secondaryText(), false);
+        // Brand block.
+        CincoDraw.rounded(c, l + 14, py + 14, l + 46, py + 46, 12, CincoTheme.accentDark());
+        c.drawCenteredTextWithShadow(textRenderer, ui("★", true), l + 30, py + 25, CincoTheme.accentLight());
+        c.drawText(textRenderer, ui("STAR", true), l + 55, py + 17, 0xFFFFFFFF, false);
+        c.drawText(textRenderer, ui("CLIENT", false), l + 55, py + 31, CincoTheme.secondaryText(), false);
 
-        int catTop = py + 54;
+        int catTop = py + 62;
         for (ClientModule.Category category : ClientModule.Category.values()) {
-            int y = catTop + category.ordinal() * 30;
+            int y = catTop + category.ordinal() * 31;
             boolean selected = category == CincoClient.selectedCategory;
+            float pulse = selected ? 1f : 0f;
             if (selected) {
-                CincoDraw.rounded(c, l + 10, y, l + SIDE - 10, y + 23, 9, CincoTheme.accentDark());
-                CincoDraw.rounded(c, l + 13, y + 6, l + 17, y + 17, 2, CincoTheme.accent());
+                CincoDraw.rounded(c, l + 11, y, l + SIDE - 10, y + 24, 9, withAlpha(CincoTheme.accentDark(), 205));
+                CincoDraw.rounded(c, l + 15, y + 7, l + 18, y + 17, 2, CincoTheme.accentLight());
             }
-            c.drawText(textRenderer, ui(category.label, selected), l + 24, y + 7,
-                    selected ? CincoTheme.primaryText() : CincoTheme.secondaryText(), false);
+            c.drawText(textRenderer, ui(category.label, selected), l + 25, y + 8,
+                    selected ? 0xFFFFFFFF : mix(0xFF827C91, CincoTheme.accentLight(), pulse), false);
         }
 
         int enabled = (int) CincoClient.MODULES.stream().filter(m -> m.enabled).count();
-        CincoDraw.rounded(c, l + 10, py + H - 49, l + SIDE - 10, py + H - 12, 10, CincoTheme.card());
-        c.drawText(textRenderer, ui("ACTIVE", true), l + 18, py + H - 41, CincoTheme.secondaryText(), false);
-        c.drawText(textRenderer, ui(enabled + " MODULES", true), l + 18, py + H - 27, CincoTheme.accentLight(), false);
+        CincoDraw.rounded(c, l + 12, py + H - 55, l + SIDE - 11, py + H - 13, 11, 0xCC171220);
+        c.drawText(textRenderer, ui("★  " + enabled + " ACTIVE", true), l + 20, py + H - 43, CincoTheme.accentLight(), false);
+        ClientModule perf = CincoClient.findModule("Performance Mode");
+        String perfText = perf != null && perf.enabled ? "ADAPTIVE FPS" : "QUALITY MODE";
+        c.drawText(textRenderer, ui(perfText, false), l + 20, py + H - 28, 0xFF8C849A, false);
 
-        int contentX = l + SIDE + 13;
-        int contentRight = l + W - 12;
-        c.drawText(textRenderer, ui(CincoClient.selectedCategory.label, true), contentX, py + 16,
-                CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, ui("LEFT CLICK TOGGLE  •  RIGHT CLICK SETTINGS", false), contentX, py + 30,
-                CincoTheme.secondaryText(), false);
+        int contentX = l + SIDE + 16;
+        int contentRight = l + W - 14;
+        c.drawText(textRenderer, ui(CincoClient.selectedCategory.label, true), contentX, py + 17, 0xFFFFFFFF, false);
+        c.drawText(textRenderer, ui("LMB toggle  •  RMB settings  •  MMB ★ favorite", false),
+                contentX, py + 32, 0xFF827C91, false);
 
-        int searchW = 165, searchX = contentRight - searchW, searchY = py + 11;
-        CincoDraw.bubble(c, searchX, searchY, contentRight, searchY + 25, 10,
-                searchFocused ? CincoTheme.accent() : CincoTheme.line(),
-                searchFocused ? CincoTheme.cardHover() : CincoTheme.card());
-        String searchText = search.isEmpty() ? "SEARCH /" : search.toUpperCase(Locale.ROOT) + (searchFocused ? " _" : "");
-        c.drawText(textRenderer, ui(searchText, false), searchX + 9, searchY + 8, CincoTheme.primaryText(), false);
+        int searchW = 180, searchX = contentRight - searchW, searchY = py + 12;
+        CincoDraw.bubble(c, searchX, searchY, contentRight, searchY + 29, 11,
+                searchFocused ? CincoTheme.accent() : 0xFF2A2434,
+                searchFocused ? 0xFF181020 : 0xFF120F18);
+        String s = search.isEmpty() ? "⌕ SEARCH MODULES" : search.toUpperCase(Locale.ROOT) + (searchFocused ? "  _" : "");
+        c.drawText(textRenderer, ui(s, false), searchX + 10, searchY + 10, search.isEmpty() ? 0xFF817A8C : 0xFFF5EFFF, false);
 
         List<ClientModule> list = filteredModules();
-        int viewportTop = py + 52;
-        int viewportBottom = py + H - 12;
-        int visibleHeight = viewportBottom - viewportTop;
-        int maxScroll = Math.max(0, list.size() * ROW - visibleHeight);
+        int viewportTop = py + 57;
+        int viewportBottom = py + H - 13;
+        int columns = 2;
+        int cardW = (contentRight - contentX - GAP) / columns;
+        int rows = (list.size() + 1) / 2;
+        int rowPitch = CARD_H + GAP;
+        int maxScroll = Math.max(0, rows * rowPitch - (viewportBottom - viewportTop));
         scroll = Math.max(0, Math.min(scroll, maxScroll));
 
-        c.enableScissor(contentX, viewportTop, contentRight + 1, viewportBottom);
+        c.enableScissor(contentX - 2, viewportTop, contentRight + 2, viewportBottom);
         for (int i = 0; i < list.size(); i++) {
             ClientModule module = list.get(i);
-            int y = viewportTop + i * ROW - scroll;
-            if (y + ROW < viewportTop || y > viewportBottom) continue;
-            int bottom = y + ROW - 5;
-            boolean hover = mx >= contentX && mx <= contentRight && my >= y && my <= bottom;
+            int col = i & 1;
+            int row = i >> 1;
+            int x = contentX + col * (cardW + GAP);
+            int y = viewportTop + row * rowPitch - scroll;
+            if (y + CARD_H < viewportTop || y > viewportBottom) continue;
 
-            if (hover) CincoDraw.softShadow(c, contentX, y, contentRight, bottom, 10, CincoTheme.accent(), 55);
-            CincoDraw.bubble(c, contentX, y, contentRight, bottom, 10,
-                    hover ? CincoTheme.accentMuted() : CincoTheme.line(),
-                    hover ? CincoTheme.cardHover() : CincoTheme.card());
+            boolean hover = mx >= x && mx <= x + cardW && my >= y && my <= y + CARD_H;
+            float h = animate(hoverAnim, module.name, hover ? 1f : 0f, 0.20f);
+            float e = animate(toggleAnim, module.name, module.enabled ? 1f : 0f, 0.22f);
 
-            CincoDraw.rounded(c, contentX + 7, y + 7, contentX + 11, bottom - 7, 2,
-                    module.enabled ? CincoTheme.accent() : CincoTheme.disabled());
-            c.drawText(textRenderer, ui(module.name.toUpperCase(Locale.ROOT), true),
-                    contentX + 18, y + 6,
-                    module.enabled ? CincoTheme.primaryText() : CincoTheme.secondaryText(), false);
-            c.drawText(textRenderer, ui(trim(module.description, 51), false),
-                    contentX + 18, y + 18, CincoTheme.secondaryText(), false);
+            int border = mix(0xFF282231, CincoTheme.accent(), h * 0.72f);
+            int fill = mix(0xE5120F18, 0xF0211728, h);
+            CincoDraw.bubble(c, x, y, x + cardW, y + CARD_H, 12, border, fill);
 
-            int toggleW = 46, toggleX = contentRight - toggleW - 8;
-            CincoDraw.rounded(c, toggleX, y + 7, toggleX + toggleW, y + 23, 8,
-                    module.enabled ? CincoTheme.enabled() : CincoTheme.disabled());
-            String state = module.enabled ? "ON" : "OFF";
-            int tw = textRenderer.getWidth(state);
-            c.drawText(textRenderer, ui(state, true), toggleX + toggleW / 2 - tw / 2,
-                    y + 12, 0xFFFFFFFF, false);
+            // Thin animated status rail instead of expensive glows.
+            CincoDraw.rounded(c, x + 7, y + 8, x + 10, y + CARD_H - 8, 2,
+                    mix(0xFF373140, CincoTheme.accentLight(), e));
 
-            int sliderX = contentRight - 196, sliderY = y + 31, sliderW = 100;
-            CincoDraw.rounded(c, sliderX, sliderY, sliderX + sliderW, sliderY + 4, 2, CincoTheme.sliderTrack());
-            double fraction = (module.setting - module.min) / Math.max(0.0001, module.max - module.min);
-            int knob = sliderX + (int) Math.round(Math.max(0, Math.min(1, fraction)) * sliderW);
-            CincoDraw.rounded(c, sliderX, sliderY, knob, sliderY + 4, 2, CincoTheme.accent());
-            CincoDraw.rounded(c, knob - 3, sliderY - 2, knob + 4, sliderY + 6, 4, CincoTheme.accentLight());
-            String setting = module.settingLabel + " " + format(module.setting);
-            c.drawText(textRenderer, ui(setting.toUpperCase(Locale.ROOT), false), sliderX - 105, y + 29,
-                    CincoTheme.secondaryText(), false);
+            boolean favorite = FAVORITES.contains(module.name);
+            c.drawText(textRenderer, ui((favorite ? "★ " : "") + module.name, true), x + 17, y + 8,
+                    mix(0xFFAAA4B2, 0xFFFFFFFF, Math.max(h, e)), false);
+            c.drawText(textRenderer, ui(trim(module.description, 30), false), x + 17, y + 22,
+                    mix(0xFF716B7B, 0xFFAAA2B5, h), false);
+
+            // Animated pill switch.
+            int sw = 34, sx = x + cardW - sw - 10, sy = y + 9;
+            CincoDraw.rounded(c, sx, sy, sx + sw, sy + 15, 8,
+                    mix(0xFF312B38, CincoTheme.enabled(), e));
+            int knob = sx + 3 + Math.round(e * (sw - 14));
+            CincoDraw.rounded(c, knob, sy + 3, knob + 9, sy + 12, 5, 0xFFFFFFFF);
+
+            // Compact main-setting slider.
+            int sliderX = x + 17, sliderY = y + 43, sliderW = cardW - 34;
+            CincoDraw.rounded(c, sliderX, sliderY, sliderX + sliderW, sliderY + 3, 2, 0xFF2E2935);
+            double f = (module.setting - module.min) / Math.max(0.0001, module.max - module.min);
+            int fillX = sliderX + (int) Math.round(Math.max(0, Math.min(1, f)) * sliderW);
+            if (fillX > sliderX) CincoDraw.rounded(c, sliderX, sliderY, fillX, sliderY + 3, 2, CincoTheme.accent());
+            CincoDraw.rounded(c, fillX - 2, sliderY - 2, fillX + 3, sliderY + 5, 3, CincoTheme.accentLight());
+            String settingText = shortSetting(module);
+            int tw = textRenderer.getWidth(settingText);
+            c.drawText(textRenderer, ui(settingText, false), x + cardW - tw - 10, y + 32, 0xFF948DA0, false);
         }
         c.disableScissor();
     }
 
-    private String trim(String value, int max) {
-        return value.length() <= max ? value : value.substring(0, Math.max(0, max - 1)) + "…";
+    private float animate(Map<String, Float> map, String key, float target, float speed) {
+        float current = map.getOrDefault(key, target);
+        current += (target - current) * speed;
+        if (Math.abs(target - current) < 0.003f) current = target;
+        map.put(key, current);
+        return current;
     }
+
+    private float ease(float p) { return 1f - (1f - p) * (1f - p) * (1f - p); }
 
     private void drawStars(DrawContext c, long now, float delta) {
         ClientModule density = CincoClient.findModule("Purple Stars");
-        int amount = density == null ? stars.size() : (!density.enabled ? 0 : (int) (stars.size() * density.setting / 3.0));
-        amount = Math.max(0, Math.min(stars.size(), amount));
+        if (density != null && !density.enabled) return;
+        int requested = density == null ? stars.size() : (int) Math.round(stars.size() * density.setting / 3.0);
+        int amount = Math.min(Math.min(stars.size(), requested), StarPerformance.guiStarCap(MinecraftClient.getInstance()));
         for (int i = 0; i < amount; i++) {
             Star star = stars.get(i);
-            star.y += star.speed * (0.8 + delta * 0.2);
+            star.y += star.speed * Math.max(0.6, delta);
             if (star.y > height) star.y = 0;
-            double pulse = (Math.sin(now / 390.0 + star.phase) + 1.0) * 0.5;
-            int alpha = 55 + (int) (pulse * 135);
-            int x = (int) (star.x % Math.max(1, width)), y = (int) star.y;
-            c.fill(x, y, x + 1, y + 1, (alpha << 24) | (CincoTheme.accent() & 0x00FFFFFF));
+            int alpha = 35 + (int) (((Math.sin(now / 620.0 + star.phase) + 1.0) * 0.5) * 90);
+            int x = (int) (star.x % Math.max(1, width));
+            int y = (int) star.y;
+            c.fill(x, y, x + 1, y + 1, (alpha << 24) | (CincoTheme.accentLight() & 0x00FFFFFF));
         }
     }
 
@@ -185,7 +206,19 @@ public final class CincoClickGuiScreen extends Screen {
                     && !module.description.toLowerCase(Locale.ROOT).contains(q)) continue;
             out.add(module);
         }
+        out.sort(Comparator.comparing((ClientModule m) -> !FAVORITES.contains(m.name))
+                .thenComparing(m -> m.name.toLowerCase(Locale.ROOT)));
         return out;
+    }
+
+    private String shortSetting(ClientModule module) {
+        if (module.name.equals("Font Style")) return StarFonts.name((int) Math.round(module.setting));
+        if (module.name.equals("Client Profile")) return StarProfiles.name((int) Math.round(module.setting));
+        return trim(module.settingLabel, 11) + " " + format(module.setting);
+    }
+
+    private String trim(String value, int max) {
+        return value.length() <= max ? value : value.substring(0, Math.max(0, max - 1)) + "…";
     }
 
     private String format(double value) {
@@ -197,17 +230,17 @@ public final class CincoClickGuiScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         int l = left(), t = top();
-        int contentX = l + SIDE + 13, contentRight = l + W - 12;
-        int searchW = 165, searchX = contentRight - searchW, searchY = t + 11;
-        if (button == 0 && mx >= searchX && mx <= contentRight && my >= searchY && my <= searchY + 25) {
+        int contentX = l + SIDE + 16, contentRight = l + W - 14;
+        int searchW = 180, searchX = contentRight - searchW, searchY = t + 12;
+        if (button == 0 && mx >= searchX && mx <= contentRight && my >= searchY && my <= searchY + 29) {
             searchFocused = true;
             return true;
         }
         if (button == 0) searchFocused = false;
 
         for (ClientModule.Category category : ClientModule.Category.values()) {
-            int y = t + 54 + category.ordinal() * 30;
-            if (button == 0 && mx >= l + 10 && mx <= l + SIDE - 10 && my >= y && my <= y + 23) {
+            int y = t + 62 + category.ordinal() * 31;
+            if (button == 0 && mx >= l + 11 && mx <= l + SIDE - 10 && my >= y && my <= y + 24) {
                 CincoClient.selectedCategory = category;
                 scroll = 0;
                 return true;
@@ -215,28 +248,36 @@ public final class CincoClickGuiScreen extends Screen {
         }
 
         List<ClientModule> list = filteredModules();
-        int viewportTop = t + 52;
+        int viewportTop = t + 57;
+        int cardW = (contentRight - contentX - GAP) / 2;
+        int rowPitch = CARD_H + GAP;
         for (int i = 0; i < list.size(); i++) {
             ClientModule module = list.get(i);
-            int y = viewportTop + i * ROW - scroll;
-            if (mx < contentX || mx > contentRight || my < y || my > y + ROW - 5) continue;
+            int x = contentX + (i & 1) * (cardW + GAP);
+            int y = viewportTop + (i >> 1) * rowPitch - scroll;
+            if (mx < x || mx > x + cardW || my < y || my > y + CARD_H) continue;
 
+            if (button == 2) {
+                if (!FAVORITES.add(module.name)) FAVORITES.remove(module.name);
+                return true;
+            }
             if (button == 1) {
                 if (module.name.equals("Storage ESP")) MinecraftClient.getInstance().setScreen(new StorageEspSettingsScreen(module));
                 else MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(module));
                 return true;
             }
             if (button != 0) continue;
-
             if (module.name.equals("Color Wheel")) {
                 MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(module, this));
                 return true;
             }
-            int sliderX = contentRight - 196, sliderY = y + 28;
-            if (mx >= sliderX - 4 && mx <= sliderX + 104 && my >= sliderY && my <= sliderY + 12) {
+            int sliderX = x + 17, sliderY = y + 37, sliderW = cardW - 34;
+            if (mx >= sliderX - 4 && mx <= sliderX + sliderW + 4 && my >= sliderY && my <= y + CARD_H) {
                 draggingSlider = true;
                 draggingModule = module;
-                setFromMouse(module, mx, sliderX, 100);
+                draggingSliderX = sliderX;
+                draggingSliderW = sliderW;
+                setFromMouse(module, mx, sliderX, sliderW);
                 return true;
             }
             toggle(module);
@@ -267,14 +308,14 @@ public final class CincoClickGuiScreen extends Screen {
 
     private void setFromMouse(ClientModule module, double mouseX, int sliderX, int sliderWidth) {
         module.setSettingFromSlider((mouseX - sliderX) / (double) sliderWidth);
+        if (module.name.equals("Client Profile")) StarProfiles.apply((int) Math.round(module.setting));
         ConfigStore.save();
     }
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
         if (draggingSlider && draggingModule != null) {
-            int contentRight = left() + W - 12;
-            setFromMouse(draggingModule, mx, contentRight - 196, 100);
+            setFromMouse(draggingModule, mx, draggingSliderX, draggingSliderW);
             return true;
         }
         return super.mouseDragged(mx, my, button, dx, dy);
@@ -289,7 +330,7 @@ public final class CincoClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double horizontal, double vertical) {
-        scroll -= (int) (vertical * ROW * 2);
+        scroll -= (int) (vertical * 45);
         return true;
     }
 
@@ -304,31 +345,28 @@ public final class CincoClickGuiScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int key, int scan, int modifiers) {
-        if (searchFocused && key == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
-            search = search.substring(0, search.length() - 1);
-            scroll = 0;
-            return true;
-        }
-        if (key == GLFW.GLFW_KEY_SLASH) {
-            searchFocused = true;
-            return true;
-        }
-        if (key == GLFW.GLFW_KEY_RIGHT_SHIFT || key == GLFW.GLFW_KEY_ESCAPE) {
-            if (searchFocused && !search.isEmpty()) {
-                search = "";
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (searchFocused) {
+            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
+                search = search.substring(0, search.length() - 1);
+                scroll = 0;
+                return true;
+            }
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_ENTER) {
                 searchFocused = false;
                 return true;
             }
-            close();
-            return true;
         }
-        return super.keyPressed(key, scan, modifiers);
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    @Override
-    public void close() { MinecraftClient.getInstance().setScreen(null); }
+    private int mix(int a, int b, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int aa = (a >>> 24) & 255, ar = (a >>> 16) & 255, ag = (a >>> 8) & 255, ab = a & 255;
+        int ba = (b >>> 24) & 255, br = (b >>> 16) & 255, bg = (b >>> 8) & 255, bb = b & 255;
+        return ((int)(aa + (ba-aa)*t) << 24) | ((int)(ar + (br-ar)*t) << 16)
+                | ((int)(ag + (bg-ag)*t) << 8) | (int)(ab + (bb-ab)*t);
+    }
 
-    @Override
-    public boolean shouldPause() { return false; }
+    private int withAlpha(int color, int alpha) { return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0x00FFFFFF); }
 }

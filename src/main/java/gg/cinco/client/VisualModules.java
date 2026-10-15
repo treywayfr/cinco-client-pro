@@ -1,5 +1,6 @@
 package gg.cinco.client;
 
+import gg.cinco.client.mixin.SimpleOptionAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
 
@@ -15,22 +16,24 @@ public final class VisualModules {
 
     public static void tick(MinecraftClient client) {
         if (client == null || client.options == null) return;
+
         ClientModule bright = CincoClient.findModule("Fullbright");
         if (bright != null && bright.enabled) {
             if (!gammaCaptured) {
                 originalGamma = client.options.getGamma().getValue();
                 gammaCaptured = true;
             }
-            double gamma = Math.max(1.0, bright.setting);
-            if (Math.abs(client.options.getGamma().getValue() - gamma) > 0.001)
-                client.options.getGamma().setValue(gamma);
+            // Vanilla's SimpleOption validates gamma back into 0..1. Fullbright intentionally
+            // bypasses that UI-only validator so the module's 1..20 gamma slider actually matters.
+            double gamma = Math.max(1.0, Math.min(20.0, bright.setting));
+            ((SimpleOptionAccessor) (Object) client.options.getGamma()).cinco$setRawValue(gamma);
         } else if (gammaCaptured) {
-            client.options.getGamma().setValue(originalGamma);
+            ((SimpleOptionAccessor) (Object) client.options.getGamma()).cinco$setRawValue(originalGamma);
             gammaCaptured = false;
         }
+
         ClientModule fov = CincoClient.findModule("FOV Changer");
         boolean enabled = fov != null && fov.enabled;
-
         if (enabled) {
             if (!fovCaptured) {
                 originalFov = client.options.getFov().getValue();
@@ -41,9 +44,7 @@ public final class VisualModules {
             if (fov.setting3 >= 0.5) {
                 double easeTicks = Math.max(1.0, fov.setting2);
                 currentFov += (desired - currentFov) / easeTicks;
-            } else {
-                currentFov = desired;
-            }
+            } else currentFov = desired;
             int adjusted = (int) Math.round(currentFov);
             if (!client.options.getFov().getValue().equals(adjusted)) client.options.getFov().setValue(adjusted);
         } else if (fovCaptured) {
@@ -58,10 +59,6 @@ public final class VisualModules {
         return sky != null && sky.enabled;
     }
 
-    /**
-     * Presets: 1 Sunset, 2 Aurora, 3 Cyberpunk, 4 Cosmic, 5 Ember.
-     * The moving presets use the selected animation speed and intensity.
-     */
     public static Vec3d skyColor() {
         ClientModule module = CincoClient.findModule("Sky Changer");
         if (module == null || !module.enabled) return new Vec3d(0.35, 0.20, 0.55);
@@ -72,35 +69,16 @@ public final class VisualModules {
         double wave = (Math.sin(phase) + 1.0) * 0.5;
         double wave2 = (Math.sin(phase * 0.63 + 2.4) + 1.0) * 0.5;
         double r, g, b;
-
         switch (style) {
-            case 1 -> { // Sunset gold / rose
-                r = 0.92;
-                g = 0.24 + wave * 0.22;
-                b = 0.18 + wave2 * 0.18;
-            }
-            case 2 -> { // Aurora teal / emerald
-                r = 0.08 + wave2 * 0.12;
-                g = 0.38 + wave * 0.40;
-                b = 0.48 + wave2 * 0.38;
-            }
-            case 3 -> { // Cyberpunk violet / neon blue
-                r = 0.32 + wave * 0.38;
-                g = 0.08 + wave2 * 0.10;
-                b = 0.58 + wave * 0.36;
-            }
-            case 4 -> { // Cosmic hue cycling
-                double hue = (phase * 0.08) % 1.0;
-                double[] rgb = hsv(hue, 0.78, 0.95);
+            case 1 -> { r = 0.92; g = 0.24 + wave * 0.22; b = 0.18 + wave2 * 0.18; }
+            case 2 -> { r = 0.08 + wave2 * 0.12; g = 0.38 + wave * 0.40; b = 0.48 + wave2 * 0.38; }
+            case 3 -> { r = 0.32 + wave * 0.38; g = 0.08 + wave2 * 0.10; b = 0.58 + wave * 0.36; }
+            case 4 -> {
+                double[] rgb = hsv((phase * 0.08) % 1.0, 0.78, 0.95);
                 r = rgb[0]; g = rgb[1]; b = rgb[2];
             }
-            default -> { // Ember
-                r = 0.70 + wave * 0.30;
-                g = 0.13 + wave2 * 0.25;
-                b = 0.025 + wave * 0.055;
-            }
+            default -> { r = 0.70 + wave * 0.30; g = 0.13 + wave2 * 0.25; b = 0.025 + wave * 0.055; }
         }
-
         return new Vec3d(clamp(r * intensity), clamp(g * intensity), clamp(b * intensity));
     }
 
@@ -109,9 +87,7 @@ public final class VisualModules {
         return new Vec3d(clamp(sky.x * 0.75 + 0.10), clamp(sky.y * 0.75 + 0.08), clamp(sky.z * 0.75 + 0.12));
     }
 
-    private static double clamp(double value) {
-        return Math.max(0.0, Math.min(1.0, value));
-    }
+    private static double clamp(double value) { return Math.max(0.0, Math.min(1.0, value)); }
 
     private static double[] hsv(double hue, double saturation, double value) {
         double h = ((hue % 1.0) + 1.0) % 1.0;

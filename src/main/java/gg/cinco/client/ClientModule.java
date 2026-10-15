@@ -10,7 +10,7 @@ public final class ClientModule {
         Category(String label) { this.label = label; }
     }
 
-    public final String name;
+    public String name;
     public final String description;
     public final Category category;
 
@@ -63,9 +63,9 @@ public final class ClientModule {
         } else if (name.equals("Sky Changer")) {
             setting2Label = "Animation speed"; setting2 = 0.8; min2 = 0.1; max2 = 2.0; step2 = 0.1;
             setting3Label = "Intensity"; setting3 = 0.8; min3 = 0.2; max3 = 1.0; step3 = 0.1;
-        } else if (name.equals("GTA Skin Changer")) {
+        } else if (name.equals("GTA Skin Changer") || name.equals("Player Changer")) {
             setting2Label = "Outfit palette"; setting2 = 1; min2 = 1; max2 = 4; step2 = 1;
-            setting3Label = "Jacket detail"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
+            setting3Label = "High detail"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
         } else if (name.equals("Storage ESP")) {
             setting2Label = "Filter (1 all, 2 chest, 3 barrel, 4 shulker, 5 spawner, 6 ender)"; setting2 = 1; min2 = 1; max2 = 6; step2 = 1;
             setting3Label = "Show coordinates"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;

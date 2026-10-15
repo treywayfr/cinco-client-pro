@@ -7,7 +7,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import org.lwjgl.glfw.GLFW;
 
-/** Extra lifecycle wiring for the reliability/render overhaul. */
+/** Extra lifecycle wiring for Star Client's render, movement, and quality systems. */
 public final class CincoPatchClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
@@ -30,13 +30,38 @@ public final class CincoPatchClient implements ClientModInitializer {
         if (CincoClient.findModule("Free Cam") == null) {
             ClientModule freeCam = new ClientModule(
                     "Free Cam",
-                    "Detach the camera locally while your real player remains at the activation point",
+                    "Move only your local camera around loaded render-distance terrain",
                     ClientModule.Category.MOVEMENT,
                     false,
                     "Camera speed",
                     1.0, 0.2, 3.0, 0.2);
             freeCam.keyCode = GLFW.GLFW_KEY_C;
             CincoClient.MODULES.add(freeCam);
+            changedModules = true;
+        }
+
+        if (CincoClient.findModule("Font Style") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "Font Style", "Choose Star Client's interface typeface profile",
+                    ClientModule.Category.SETTINGS, true, "Font", 1, 1, 4, 1));
+            changedModules = true;
+        }
+        if (CincoClient.findModule("Performance Mode") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "Performance Mode", "Automatically reduce cosmetic render load when FPS falls below target",
+                    ClientModule.Category.SETTINGS, true, "FPS target", 75, 30, 240, 15));
+            changedModules = true;
+        }
+        if (CincoClient.findModule("GUI Sounds") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "GUI Sounds", "Soft interface feedback sounds", ClientModule.Category.SETTINGS,
+                    false, "Volume", 0.5, 0.0, 1.0, 0.1));
+            changedModules = true;
+        }
+        if (CincoClient.findModule("Client Profile") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "Client Profile", "Quick preset selector: Custom, PvP, DonutSMP, Visual, Performance",
+                    ClientModule.Category.SETTINGS, true, "Profile", 1, 1, 5, 1));
             changedModules = true;
         }
 
@@ -61,6 +86,7 @@ public final class CincoPatchClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             EnhancedWorldScan.tick(client);
             FreeCamController.tick(client);
+            FastXpController.tick(client);
         });
         HudRenderCallback.EVENT.register((ctx, tickCounter) ->
                 EnhancedEspHud.render(ctx, MinecraftClient.getInstance()));

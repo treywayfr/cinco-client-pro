@@ -48,9 +48,17 @@ public final class CincoTheme {
         return hsv(hue(), sat, value);
     }
 
-    public static int accent() { return tinted(0.95f, Math.min(1.0f, brightness())); }
+    private static float accentStrength() {
+        ClientModule glow = CincoClient.findModule("Accent Glow");
+        float strength = glow == null || !glow.enabled ? 0.60f : (float) Math.max(0.2, Math.min(1.0, glow.setting));
+        ClientModule animation = CincoClient.findModule("GUI Animation");
+        if (animation != null && animation.enabled) strength *= (float) Math.max(0.25, Math.min(1.0, animation.setting2));
+        return strength;
+    }
+
+    public static int accent() { return tinted(0.95f, Math.min(1.0f, brightness() * (0.65f + 0.35f * accentStrength()))); }
     public static int accentLight() { return tinted(0.32f, Math.min(1.0f, brightness())); }
-    public static int accentMuted() { return tinted(0.75f, Math.min(0.80f, brightness() * 0.82f)); }
+    public static int accentMuted() { return tinted(0.75f, Math.min(0.80f, brightness() * (0.55f + 0.30f * accentStrength()))); }
     public static int accentDark() { return tinted(0.85f, 0.30f); }
 
     private static int withPanelOpacity(int color) {

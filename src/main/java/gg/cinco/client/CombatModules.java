@@ -10,6 +10,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
+import net.minecraft.text.Text;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -45,12 +46,8 @@ public final class CombatModules {
 
         if (scannerEnabled()) {
             BaseScanner.tick(client);
-            if (enabled("Sus Chunk Finder") || enabled("Stash Radar") || enabled("Chunk Density")) {
-                SusChunkScanner.tick(client);
-            }
         } else {
             BaseScanner.reset();
-            SusChunkScanner.reset();
         }
     }
 

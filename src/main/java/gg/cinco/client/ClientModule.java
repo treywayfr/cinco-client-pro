@@ -67,8 +67,8 @@ public final class ClientModule {
             setting2Label = "Outfit palette"; setting2 = 1; min2 = 1; max2 = 4; step2 = 1;
             setting3Label = "Jacket detail"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
         } else if (name.equals("Storage ESP")) {
-            setting2Label = "Show labels"; setting2 = 1; min2 = 0; max2 = 1; step2 = 1;
-            setting3Label = "Storage tracers"; setting3 = 0; min3 = 0; max3 = 1; step3 = 1;
+            setting2Label = "Filter (1 all, 2 chest, 3 barrel, 4 shulker, 5 spawner, 6 ender)"; setting2 = 1; min2 = 1; max2 = 6; step2 = 1;
+            setting3Label = "Show coordinates"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;
         } else if (name.equals("Player ESP")) {
             setting2Label = "Name + distance"; setting2 = 1; min2 = 0; max2 = 1; step2 = 1;
             setting3Label = "Box outlines"; setting3 = 1; min3 = 0; max3 = 1; step3 = 1;

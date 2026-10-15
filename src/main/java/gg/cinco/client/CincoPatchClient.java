@@ -40,6 +40,21 @@ public final class CincoPatchClient implements ClientModInitializer {
             changedModules = true;
         }
 
+        if (CincoClient.findModule("Hand View") == null) {
+            ClientModule handView = new ClientModule(
+                    "Hand View",
+                    "Move and scale the first-person hand and held item view",
+                    ClientModule.Category.RENDER,
+                    false,
+                    "Forward",
+                    0.35, -1.0, 1.50, 0.05);
+            // Generic render settings are Scale + Opacity, which fit this module directly.
+            handView.setting2 = 1.0;
+            handView.setting3 = 1.0;
+            CincoClient.MODULES.add(handView);
+            changedModules = true;
+        }
+
         if (CincoClient.findModule("ESP Style") == null) {
             CincoClient.MODULES.add(new ClientModule(
                     "ESP Style", "Choose the shared player, storage and light ESP presentation",

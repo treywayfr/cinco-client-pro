@@ -116,7 +116,7 @@ public final class CincoClient implements ClientModInitializer {
         MODULES.clear();
         // COMBAT — keep automation explicit and off by default.
         add("Auto Crystal", "Attack nearby crystals and attempt a nearby crystal placement", ClientModule.Category.COMBAT, false, "Range", 4.0, 2.0, 6.0, 0.5);
-        add("Anchor Macro", "G key: charge a targeted uncharged anchor, then activate with a totem", ClientModule.Category.COMBAT, false, "Delay", 1, 1, 5, 1);
+        add("Anchor Macro", "Configured key: charge a targeted anchor, then activate with a totem", ClientModule.Category.COMBAT, false, "Delay", 1, 1, 5, 1);
         add("Auto Safe Anchor", "During an anchor macro, place glowstone at your feet when looking down", ClientModule.Category.COMBAT, false, "Look Angle", 70, 50, 85, 5);
         add("Auto Totem", "Move a totem into the offhand when health reaches the threshold", ClientModule.Category.COMBAT, false, "Health", 12, 4, 20, 2);
         add("Auto Eat", "Eat a hotbar food when hunger falls below the threshold", ClientModule.Category.COMBAT, false, "Hunger", 8, 2, 18, 2);

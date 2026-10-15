@@ -20,25 +20,34 @@ public final class CincoClient implements ClientModInitializer {
     public static boolean sprintAssistEnabled = false;
     private KeyBinding guiKey;
     private KeyBinding hudKey;
+    private KeyBinding anchorTriggerKey;
     private int tickCounter;
 
     @Override
     public void onInitializeClient() {
         registerModules();
         ConfigStore.load();
+        hudEnabled = isEnabled("Client HUD", true);
+        sprintAssistEnabled = isEnabled("Sprint Assist", false);
+
         guiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.cinco_client.open_gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, "category.cinco_client"));
         hudKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.cinco_client.toggle_hud", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_H, "category.cinco_client"));
+        anchorTriggerKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.cinco_client.anchor_macro", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "category.cinco_client"));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (guiKey.wasPressed()) client.setScreen(new CincoClickGuiScreen());
             while (hudKey.wasPressed()) {
                 hudEnabled = !hudEnabled;
                 ClientModule master = findModule("Client HUD");
                 if (master != null) master.enabled = hudEnabled;
-                if (client.player != null) client.player.sendMessage(Text.literal("§dCinco HUD " + (hudEnabled ? "enabled" : "disabled")), true);
+                if (client.player != null) client.player.sendMessage(Text.literal("Cinco HUD " + (hudEnabled ? "enabled" : "disabled")), true);
                 ConfigStore.save();
             }
+            while (anchorTriggerKey.wasPressed()) CombatModules.triggerAnchorMacro(client);
+
             if (sprintAssistEnabled && client.player != null && client.options.forwardKey.isPressed()) client.player.setSprinting(true);
             ClickRateTracker.tick(client);
             CombatModules.tick(client);
@@ -50,6 +59,11 @@ public final class CincoClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((ctx, tickCounter) -> CincoHud.render(ctx, MinecraftClient.getInstance()));
     }
 
+    private static boolean isEnabled(String name, boolean fallback) {
+        ClientModule m = findModule(name);
+        return m == null ? fallback : m.enabled;
+    }
+
     private static void add(String n, String d, ClientModule.Category c, boolean e,
                             String label, double value, double min, double max, double step) {
         MODULES.add(new ClientModule(n, d, c, e, label, value, min, max, step));
@@ -57,44 +71,74 @@ public final class CincoClient implements ClientModInitializer {
 
     private static void registerModules() {
         MODULES.clear();
-        add("Auto Crystal", "Break nearby crystals and place near a visible player", ClientModule.Category.COMBAT, false, "Range", 4.5, 2.0, 6.0, 0.5);
-        add("Anchor Macro", "Use the crosshair anchor; charges with hotbar glowstone", ClientModule.Category.COMBAT, false, "Delay", 4, 3, 12, 1);
-        add("Crystal Breaker", "Automatically attack nearby end crystals", ClientModule.Category.COMBAT, false, "Range", 4.5, 2.0, 6.0, 0.5);
+        // COMBAT — keep automation explicit and off by default.
+        add("Auto Crystal", "Attack nearby crystals and attempt a nearby crystal placement", ClientModule.Category.COMBAT, false, "Range", 4.0, 2.0, 6.0, 0.5);
+        add("Anchor Macro", "G key: charge a targeted uncharged anchor, then activate with a totem", ClientModule.Category.COMBAT, false, "Delay", 1, 1, 5, 1);
+        add("Auto Safe Anchor", "During an anchor macro, place glowstone at your feet when looking down", ClientModule.Category.COMBAT, false, "Look Angle", 70, 50, 85, 5);
+        add("Auto Totem", "Move a totem into the offhand when health reaches the threshold", ClientModule.Category.COMBAT, false, "Health", 12, 4, 20, 2);
+        add("Auto Eat", "Eat a hotbar food when hunger falls below the threshold", ClientModule.Category.COMBAT, false, "Hunger", 8, 2, 18, 2);
+        add("Offhand Manager", "Offhand management UI/settings foundation", ClientModule.Category.COMBAT, false, "Mode", 1, 1, 3, 1);
+        add("Auto Regear", "Regear checklist helper foundation", ClientModule.Category.COMBAT, false, "Preset", 1, 1, 4, 1);
+        add("Crystal Breaker", "Attack nearby end crystals", ClientModule.Category.COMBAT, false, "Range", 4.0, 2.0, 6.0, 0.5);
         add("Totem Reminder", "Warn when your offhand is not holding a totem", ClientModule.Category.COMBAT, false, "Interval", 5, 1, 15, 1);
-        add("Gapple Reminder", "Display a reminder to check your healing items", ClientModule.Category.COMBAT, false, "Interval", 8, 1, 20, 1);
-        add("Crystal Practice Timer", "Practice cadence helper; does not automate attacks", ClientModule.Category.COMBAT, false, "Seconds", 2, 1, 5, 1);
+        add("Gapple Reminder", "Warn when no golden apples remain", ClientModule.Category.COMBAT, false, "Interval", 8, 1, 20, 1);
+        add("Crystal Practice Timer", "Practice timing helper; no automated attack", ClientModule.Category.COMBAT, false, "Seconds", 2, 1, 5, 1);
 
+        // MOVEMENT
         add("Sprint Assist", "Sprint while the forward key is held", ClientModule.Category.MOVEMENT, false, "Mode", 1, 1, 2, 1);
-        add("Safe Walk Guide", "Movement-practice toggle placeholder", ClientModule.Category.MOVEMENT, false, "Sensitivity", 5, 1, 10, 1);
-        add("Elytra Reminder", "HUD reminder when not wearing an elytra", ClientModule.Category.MOVEMENT, false, "Interval", 10, 2, 20, 2);
+        add("Safe Walk Guide", "Movement-practice helper foundation", ClientModule.Category.MOVEMENT, false, "Sensitivity", 5, 1, 10, 1);
+        add("Elytra Reminder", "Warn when an elytra is not equipped", ClientModule.Category.MOVEMENT, false, "Interval", 10, 2, 20, 2);
+        add("Auto Swim", "Swimming convenience helper foundation", ClientModule.Category.MOVEMENT, false, "Mode", 1, 1, 2, 1);
+        add("Fall Alert", "Warn when you are falling quickly", ClientModule.Category.MOVEMENT, false, "Velocity", 0.8, 0.3, 1.5, 0.1);
 
-        add("Client HUD", "Master switch for the Cinco overlay", ClientModule.Category.RENDER, true, "Opacity", 0.88, 0.35, 1.0, 0.13);
+        // RENDER / HUD
+        add("Client HUD", "Master switch for the Cinco overlay", ClientModule.Category.RENDER, true, "Opacity", 0.95, 0.65, 1.0, 0.05);
         add("FPS Counter", "Display client FPS", ClientModule.Category.RENDER, true, "Scale", 1, 1, 3, 1);
         add("Coordinates", "Display XYZ coordinates", ClientModule.Category.RENDER, true, "Decimals", 1, 0, 2, 1);
         add("Direction", "Display facing direction", ClientModule.Category.RENDER, true, "Scale", 1, 1, 3, 1);
         add("Armor HUD", "Show armor durability percentage", ClientModule.Category.RENDER, true, "Scale", 1, 1, 3, 1);
         add("Potion Status", "Show active status-effect count", ClientModule.Category.RENDER, false, "Scale", 1, 1, 3, 1);
-        add("Container Radar HUD", "Show current base-scanner results", ClientModule.Category.RENDER, true, "Rows", 3, 1, 6, 1);
-        add("Purple Stars", "Animated purple stars in the ClickGUI", ClientModule.Category.RENDER, true, "Density", 2, 1, 3, 1);
-        add("Accent Glow", "Adjust interface accent intensity", ClientModule.Category.RENDER, true, "Intensity", 0.8, 0.2, 1.0, 0.2);
-        add("Compact HUD", "Tighter layout setting", ClientModule.Category.RENDER, false, "Padding", 4, 2, 10, 2);
-        add("Crosshair Guide", "Draw a simple crosshair overlay", ClientModule.Category.RENDER, false, "Size", 5, 3, 11, 2);
+        add("Container Radar HUD", "Show local scan results", ClientModule.Category.RENDER, true, "Rows", 3, 1, 6, 1);
+        add("Purple Stars", "Animated purple stars behind the GUI", ClientModule.Category.RENDER, true, "Density", 2, 1, 3, 1);
+        add("Accent Glow", "Control the interface accent intensity", ClientModule.Category.RENDER, true, "Intensity", 0.8, 0.2, 1.0, 0.2);
+        add("Compact HUD", "Use tighter HUD spacing", ClientModule.Category.RENDER, false, "Padding", 4, 2, 10, 2);
+        add("Crosshair Guide", "Draw a simple crosshair guide", ClientModule.Category.RENDER, false, "Size", 5, 3, 11, 2);
+        add("Target HUD", "Show distance to the entity under your crosshair", ClientModule.Category.RENDER, false, "Range", 6, 2, 12, 2);
+        add("Ping Display", "Show current player's latency when available", ClientModule.Category.RENDER, false, "Scale", 1, 1, 3, 1);
 
-        add("Base Finder", "Incrementally scan nearby loaded blocks for containers", ClientModule.Category.WORLD, false, "Radius", 32, 16, 64, 16);
-        add("Container Finder", "Alias toggle for the nearby container scan", ClientModule.Category.WORLD, false, "Radius", 32, 16, 64, 16);
+        // WORLD / DONUT SMP — only inspect information already loaded by Minecraft.
+        add("Base Finder", "Scan nearby loaded blocks for containers", ClientModule.Category.WORLD, false, "Radius", 32, 16, 64, 16);
+        add("Container Finder", "Find containers in the nearby loaded scan volume", ClientModule.Category.WORLD, false, "Radius", 32, 16, 64, 16);
+        add("Sus Chunk Finder", "Rank already-loaded chunks by unusual container/utility-block density", ClientModule.Category.WORLD, false, "Radius", 2, 1, 4, 1);
+        add("Portal Finder", "Find nearby nether portal blocks in loaded chunks", ClientModule.Category.WORLD, false, "Radius", 32, 16, 64, 16);
+        add("Spawner Finder", "Show known spawners in the local scan", ClientModule.Category.WORLD, false, "Radius", 32, 16, 64, 16);
+        add("Shulker Finder", "Show known shulker boxes in the local scan", ClientModule.Category.WORLD, false, "Radius", 32, 16, 64, 16);
+        add("Stash Radar", "Look for clusters of storage blocks in loaded chunks", ClientModule.Category.WORLD, false, "Min Blocks", 4, 2, 12, 1);
+        add("Chunk Density", "Show loaded-chunk scan density diagnostics", ClientModule.Category.WORLD, false, "Radius", 2, 1, 4, 1);
         add("Nearby Player List", "List visible players in the local world", ClientModule.Category.WORLD, false, "Range", 32, 8, 64, 8);
-        add("Block Notes", "Local target-block notes foundation", ClientModule.Category.WORLD, false, "Range", 8, 4, 16, 4);
+        add("Block Notes", "Show details for the block under your crosshair", ClientModule.Category.WORLD, false, "Range", 8, 4, 16, 4);
 
+        // UTILITY
         add("Config Auto-Save", "Persist module toggles and settings", ClientModule.Category.UTILITY, true, "Interval", 5, 1, 10, 1);
         add("Session Timer", "Show time since client initialization", ClientModule.Category.UTILITY, false, "Scale", 1, 1, 3, 1);
-        add("Keystrokes", "Show movement-key status foundation", ClientModule.Category.UTILITY, false, "Scale", 1, 1, 3, 1);
-        add("CPS Display", "Show click-rate foundation", ClientModule.Category.UTILITY, false, "Scale", 1, 1, 3, 1);
-        add("Safe Logout Reminder", "Local reminder to save before leaving", ClientModule.Category.UTILITY, false, "Interval", 10, 5, 30, 5);
+        add("Keystrokes", "Show movement-key states", ClientModule.Category.UTILITY, false, "Scale", 1, 1, 3, 1);
+        add("CPS Display", "Show click-rate per second", ClientModule.Category.UTILITY, false, "Scale", 1, 1, 3, 1);
+        add("Safe Logout Reminder", "Local reminder before disconnecting", ClientModule.Category.UTILITY, false, "Interval", 10, 5, 30, 5);
+        add("Auto Refill", "Hotbar refill helper foundation", ClientModule.Category.UTILITY, false, "Stack Size", 16, 8, 64, 8);
+        add("Inventory Checklist", "Display crystal, glowstone, totem and food counts", ClientModule.Category.UTILITY, false, "Rows", 4, 1, 8, 1);
 
-        add("Anchor Practice Timer", "Practice cadence helper; no automatic detonation", ClientModule.Category.PRACTICE, false, "Seconds", 2, 1, 5, 1);
-        add("Reach Trainer", "Local distance-reference setting", ClientModule.Category.PRACTICE, false, "Distance", 3.0, 2.0, 6.0, 0.5);
-        add("Cooldown Coach", "Reminder to watch attack cooldowns", ClientModule.Category.PRACTICE, false, "Interval", 3, 1, 8, 1);
-        add("Inventory Checklist", "Checklist-oriented HUD utility foundation", ClientModule.Category.PRACTICE, false, "Rows", 4, 1, 8, 1);
+        // PRACTICE
+        add("Anchor Practice Timer", "Practice timing helper; no automatic detonation", ClientModule.Category.PRACTICE, false, "Seconds", 2, 1, 5, 1);
+        add("Reach Trainer", "Show target distance as a local training reference", ClientModule.Category.PRACTICE, false, "Distance", 3.0, 2.0, 6.0, 0.5);
+        add("Cooldown Coach", "Show attack cooldown progress", ClientModule.Category.PRACTICE, false, "Interval", 3, 1, 8, 1);
+        add("Surround Trainer", "Surround-building practice reminder foundation", ClientModule.Category.PRACTICE, false, "Mode", 1, 1, 3, 1);
+        add("Pearl Reminder", "Remind when no ender pearls are in the hotbar", ClientModule.Category.PRACTICE, false, "Interval", 5, 1, 10, 1);
+
+        // SETTINGS — these options actually drive GUI typography, animation, and palette.
+        add("Bold Typeface", "Use Minecraft's clean uniform font with bold weight", ClientModule.Category.SETTINGS, true, "Weight", 1, 1, 1, 1);
+        add("Text Palette", "1 Orange, 2 Amber Gold, 3 Violet", ClientModule.Category.SETTINGS, true, "Palette", 1, 1, 3, 1);
+        add("GUI Animation", "Animate the panel entrance and border sweep", ClientModule.Category.SETTINGS, true, "Speed", 220, 100, 500, 40);
+        add("Panel Opacity", "Adjust how opaque the main panels appear", ClientModule.Category.SETTINGS, true, "Opacity", 1.0, 0.75, 1.0, 0.05);
     }
 
     public static ClientModule findModule(String name) {

@@ -53,7 +53,7 @@ public final class CincoHud {
 
         ctx.fill(x + 9, y + 8, x + 12, y + 33, CincoTheme.accent());
         ctx.drawText(client.textRenderer, hudText("CINCO CLIENT"), x + 19, y + 8, textColor(0xFFFFC078), false);
-        ctx.drawText(client.textRenderer, hudText("PURPLE NEBULA  /  v2.1"), x + 19, y + 23, textColor(0xFFFFB86B), false);
+        ctx.drawText(client.textRenderer, hudText("PURPLE NEBULA  /  v2.3"), x + 19, y + 23, textColor(0xFFFFB86B), false);
 
         int cursor = x + brandWidth;
         for (Stat stat : stats) {

@@ -81,6 +81,7 @@ public final class CincoPatchClient implements ClientModInitializer {
         }
 
         if (changedModules) ConfigStore.load();
+        applyNebulaLuxeDefaults();
         StorageEspConfig.load();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -95,5 +96,22 @@ public final class CincoPatchClient implements ClientModInitializer {
         });
         WorldRenderEvents.LAST.register(StorageEspWorldRenderer::render);
         WorldRenderEvents.LAST.register(CleanEspWorldRenderer::render);
+    }
+
+    /**
+     * Older builds shipped an orange-ish default Color Wheel. Only migrate the untouched old
+     * defaults; anyone who already customized their palette keeps their own colors.
+     */
+    private static void applyNebulaLuxeDefaults() {
+        ClientModule wheel = CincoClient.findModule("Color Wheel");
+        if (wheel == null) return;
+        boolean oldDefault = Math.abs(wheel.setting - 28.0) < 0.01
+                && Math.abs(wheel.setting2 - 0.90) < 0.011
+                && Math.abs(wheel.setting3 - 1.0) < 0.011;
+        if (!oldDefault) return;
+        wheel.setting = 286.0;
+        wheel.setting2 = 0.86;
+        wheel.setting3 = 1.0;
+        ConfigStore.save();
     }
 }

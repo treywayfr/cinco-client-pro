@@ -52,23 +52,21 @@ public abstract class ClientModuleTuningMixin {
             setting3Label = "Double hand slot";
             min3 = 1.0; max3 = 9.0; step3 = 1.0; setting3 = 1.0; defaultSetting3 = 1.0;
         } else if ("Hand View".equals(moduleName)) {
-            // Legacy definition only. CincoPatchClient removes this module after base registration.
             setting2Label = "Scale";
             min2 = 0.55; max2 = 1.80; step2 = 0.05; setting2 = 1.0; defaultSetting2 = 1.0;
             setting3Label = "Horizontal spacing";
             min3 = 0.0; max3 = 0.60; step3 = 0.05; setting3 = 0.20; defaultSetting3 = 0.20;
         } else if ("Sky Changer".equals(moduleName)) {
-            // Eight procedural animated sky families, including the flowing liquid-gold look.
-            settingLabel = "Animated sky";
+            settingLabel = "Deep space sky";
             max = 8.0;
-            setting2Label = "Flow speed";
-            min2 = 0.15; max2 = 2.50; step2 = 0.05;
-            if (setting2 < min2 || setting2 > max2) setting2 = 0.80;
-            defaultSetting2 = 0.80;
-            setting3Label = "Glow intensity";
-            min3 = 0.20; max3 = 1.0; step3 = 0.05;
-            if (setting3 < min3 || setting3 > max3) setting3 = 0.85;
-            defaultSetting3 = 0.85;
+            setting2Label = "Nebula motion";
+            min2 = 0.05; max2 = 1.60; step2 = 0.05;
+            if (setting2 < min2 || setting2 > max2) setting2 = 0.55;
+            defaultSetting2 = 0.55;
+            setting3Label = "Space intensity";
+            min3 = 0.25; max3 = 1.0; step3 = 0.05;
+            if (setting3 < min3 || setting3 > max3) setting3 = 0.90;
+            defaultSetting3 = 0.90;
         } else if ("Animations".equals(moduleName)) {
             settingLabel = "Effect";
             max = 8.0;
@@ -81,8 +79,8 @@ public abstract class ClientModuleTuningMixin {
             max = 8.0;
             setting2Label = "Accessory size";
             min2 = 0.60; max2 = 1.80; step2 = 0.05; setting2 = 1.0; defaultSetting2 = 1.0;
-            setting3Label = "Accessory motion";
-            min3 = 0.0; max3 = 2.50; step3 = 0.10; setting3 = 1.0; defaultSetting3 = 1.0;
+            setting3Label = "Smooth motion";
+            min3 = 0.0; max3 = 2.00; step3 = 0.10; setting3 = 0.75; defaultSetting3 = 0.75;
         } else if ("Spotify HUD".equals(moduleName)) {
             setting2Label = "Compact mode";
             min2 = 0; max2 = 1; step2 = 1; setting2 = 0; defaultSetting2 = 0;

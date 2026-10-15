@@ -53,6 +53,10 @@ public final class ConfigStore {
             if (data == null) return;
             for (ClientModule module : CincoClient.MODULES) {
                 State state = data.get(module.name);
+                // Player Changer was formerly called GTA Skin Changer. Accept either key so the
+                // rename never wipes the selected character, palette, keybind, or enabled state.
+                if (state == null && module.name.equals("GTA Skin Changer")) state = data.get("Player Changer");
+                if (state == null && module.name.equals("Player Changer")) state = data.get("GTA Skin Changer");
                 if (state == null) continue;
                 module.enabled = state.enabled;
                 module.setting = Math.max(module.min, Math.min(module.max, state.setting));

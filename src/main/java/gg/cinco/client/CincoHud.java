@@ -8,6 +8,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
+import net.minecraft.text.Style;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -41,23 +43,23 @@ public final class CincoHud {
         int h = 42;
 
         // Solid, high-contrast panels keep the HUD crisp at different Minecraft GUI scales.
-        ctx.fill(x - 1, y - 1, x + barWidth + 1, y + h + 1, 0xFF9B61FF);
+        ctx.fill(x - 1, y - 1, x + barWidth + 1, y + h + 1, 0xFFFF8C24);
         ctx.fill(x, y, x + barWidth, y + h, 0xFF100B1A);
         ctx.fill(x, y, x + brandWidth, y + h, 0xFF21152F);
-        ctx.fill(x, y, x + barWidth, y + 2, 0xFFC49AFF);
+        ctx.fill(x, y, x + barWidth, y + 2, 0xFFFF8C24);
         ctx.fill(x, y + h - 2, x + barWidth, y + h, 0xFF50336F);
 
         ctx.fill(x + 9, y + 8, x + 12, y + 33, 0xFFC49AFF);
-        ctx.drawText(client.textRenderer, Text.literal("CINCO CLIENT"), x + 19, y + 8, 0xFFFFFFFF, false);
-        ctx.drawText(client.textRenderer, Text.literal("PURPLE NEBULA  /  v2.1"), x + 19, y + 23, 0xFFD0B6FF, false);
+        ctx.drawText(client.textRenderer, hudText("CINCO CLIENT"), x + 19, y + 8, textColor(0xFFFFC078), false);
+        ctx.drawText(client.textRenderer, hudText("PURPLE NEBULA  /  v2.1"), x + 19, y + 23, textColor(0xFFFFB86B), false);
 
         int cursor = x + brandWidth;
         for (Stat stat : stats) {
             int cellWidth = cellWidth(client, stat);
             ctx.fill(cursor, y + 8, cursor + 1, y + h - 8, 0xFF413052);
             int tx = cursor + 10;
-            ctx.drawText(client.textRenderer, Text.literal(stat.label), tx, y + 7, 0xFFAD98C7, false);
-            ctx.drawText(client.textRenderer, Text.literal(stat.value), tx, y + 22, stat.valueColor, false);
+            ctx.drawText(client.textRenderer, hudText(stat.label), tx, y + 7, textColor(0xFFE88736), false);
+            ctx.drawText(client.textRenderer, hudText(stat.value), tx, y + 22, textColor(stat.valueColor), false);
             cursor += cellWidth;
         }
 
@@ -70,10 +72,10 @@ public final class CincoHud {
             int panelHeight = 9 + details.size() * lineHeight;
             ctx.fill(left - 1, top - 1, left + panelWidth + 1, top + panelHeight + 1, 0xFF63418A);
             ctx.fill(left, top, left + panelWidth, top + panelHeight, 0xFF100B1A);
-            ctx.fill(left, top, left + 3, top + panelHeight, 0xFFB58CFF);
+            ctx.fill(left, top, left + 3, top + panelHeight, 0xFFFF8C24);
             int textY = top + 6;
             for (HudLine line : details) {
-                ctx.drawText(client.textRenderer, Text.literal(line.text), left + 10, textY, line.color, false);
+                ctx.drawText(client.textRenderer, hudText(line.text), left + 10, textY, textColor(line.color), false);
                 textY += lineHeight;
             }
         }
@@ -90,7 +92,7 @@ public final class CincoHud {
             String format = coords.setting <= 0 ? "%.0f / %.0f / %.0f"
                     : coords.setting >= 2 ? "%.2f / %.2f / %.2f" : "%.1f / %.1f / %.1f";
             String value = String.format(Locale.ROOT, format, client.player.getX(), client.player.getY(), client.player.getZ());
-            stats.add(new Stat("XYZ", value, 0xFFDCCBFF));
+            stats.add(new Stat("XYZ", value, 0xFFFFC078));
         }
         if (on("Direction")) stats.add(new Stat("FACING", client.player.getHorizontalFacing().asString().toUpperCase(Locale.ROOT), 0xFFFFFFFF));
         if (on("Armor HUD")) {
@@ -102,7 +104,7 @@ public final class CincoHud {
                     count++;
                 }
             }
-            stats.add(new Stat("ARMOR", count == 0 ? "NONE" : (total / count) + "%", count > 0 && total / count < 25 ? 0xFFFFB16D : 0xFFC7FFD8));
+            stats.add(new Stat("ARMOR", count == 0 ? "NONE" : (total / count) + "%", count > 0 && total / count < 25 ? 0xFFFFB16D : 0xFFFFC078));
         }
         if (on("CPS Display")) stats.add(new Stat("CPS", Integer.toString(ClickRateTracker.getCps()), 0xFFFFFFFF));
         if (on("Potion Status")) stats.add(new Stat("EFFECTS", Integer.toString(client.player.getStatusEffects().size()), 0xFFDCCBFF));
@@ -159,7 +161,7 @@ public final class CincoHud {
             for (int i = 0; i < Math.min(3, players.size()); i++) {
                 PlayerEntity player = players.get(i);
                 lines.add(new HudLine("  " + player.getName().getString() + "  "
-                        + Math.round(client.player.distanceTo(player)) + "m", 0xFFCEB8ED));
+                        + Math.round(client.player.distanceTo(player)) + "m", 0xFFE89745));
             }
         }
         if ((on("Base Finder") || on("Container Finder")) && on("Container Radar HUD")) {
@@ -199,16 +201,16 @@ public final class CincoHud {
         key(ctx, client.options.leftKey.isPressed(), x, y + 18, "A");
         key(ctx, client.options.backKey.isPressed(), x + 27, y + 18, "S");
         key(ctx, client.options.rightKey.isPressed(), x + 54, y + 18, "D");
-        ctx.fill(x, y + 37, x + 76, y + 48, client.options.jumpKey.isPressed() ? 0xFF8550D8 : 0xFF342744);
-        Text jumpText = Text.literal("JUMP");
-        ctx.drawText(client.textRenderer, jumpText, x + 38 - client.textRenderer.getWidth(jumpText) / 2, y + 39, 0xFFFFFFFF, false);
+        ctx.fill(x, y + 37, x + 76, y + 48, client.options.jumpKey.isPressed() ? 0xFFB65B18 : 0xFF3A2112);
+        Text jumpText = hudText("JUMP");
+        ctx.drawText(client.textRenderer, jumpText, x + 38 - client.textRenderer.getWidth(jumpText) / 2, y + 39, textColor(0xFFFFFFFF), false);
     }
 
     private static void key(DrawContext ctx, boolean pressed, int x, int y, String label) {
         ctx.fill(x, y, x + 22, y + 16, pressed ? 0xFF8550D8 : 0xFF342744);
-        Text keyText = Text.literal(label);
+        Text keyText = hudText(label);
         var renderer = MinecraftClient.getInstance().textRenderer;
-        ctx.drawText(renderer, keyText, x + 11 - renderer.getWidth(keyText) / 2, y + 4, 0xFFFFFFFF, false);
+        ctx.drawText(renderer, keyText, x + 11 - renderer.getWidth(keyText) / 2, y + 4, textColor(0xFFFFFFFF), false);
     }
 
     private static void drawCrosshair(DrawContext ctx, MinecraftClient client, int size) {
@@ -217,6 +219,24 @@ public final class CincoHud {
         ctx.fill(cx + 2, cy, cx + size, cy + 1, 0xFFE0C9FF);
         ctx.fill(cx, cy - size, cx + 1, cy - 2, 0xFFE0C9FF);
         ctx.fill(cx, cy + 2, cx + 1, cy + size, 0xFFE0C9FF);
+    }
+
+    private static Text hudText(String value) {
+        ClientModule typography = module("Bold Typeface");
+        if (typography != null && typography.enabled) {
+            return Text.literal(value).setStyle(Style.EMPTY.withBold(true).withFont(Identifier.of("minecraft", "uniform")));
+        }
+        return Text.literal(value).setStyle(Style.EMPTY.withFont(Identifier.of("minecraft", "default")));
+    }
+
+    private static int textColor(int original) {
+        ClientModule palette = module("Text Palette");
+        int choice = palette == null || !palette.enabled ? 1 : (int) Math.round(palette.setting);
+        int r = (original >> 16) & 255, g = (original >> 8) & 255, b = original & 255;
+        boolean bright = (r * 299 + g * 587 + b * 114) / 1000 >= 170;
+        if (choice == 2) return bright ? 0xFFFFD36B : 0xFFE09A22;
+        if (choice >= 3) return bright ? 0xFFD9B3FF : 0xFFA87BDE;
+        return bright ? 0xFFFFC078 : 0xFFE88736;
     }
 
     private static boolean on(String name) {

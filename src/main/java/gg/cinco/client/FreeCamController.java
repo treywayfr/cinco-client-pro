@@ -36,7 +36,6 @@ public final class FreeCamController {
         if (!active || camera == null || activeWorld != client.world) enable(client);
         if (!active || camera == null || frozenPos == null) return;
 
-        // Keep the actual local player at the activation point while the detached camera moves.
         client.player.setPosition(frozenPos.x, frozenPos.y, frozenPos.z);
         client.player.setVelocity(Vec3d.ZERO);
         client.player.fallDistance = 0.0F;
@@ -79,6 +78,11 @@ public final class FreeCamController {
             vertical /= length3d;
         }
 
+        camera.prevX = camera.getX();
+        camera.prevY = camera.getY();
+        camera.prevZ = camera.getZ();
+        camera.prevYaw = freeYaw;
+        camera.prevPitch = freePitch;
         camera.setPosition(camera.getX() + dx * speed,
                 camera.getY() + vertical * speed,
                 camera.getZ() + dz * speed);
@@ -93,6 +97,8 @@ public final class FreeCamController {
         if (Math.abs(yawDelta) > 0.00001F || Math.abs(pitchDelta) > 0.00001F) {
             freeYaw = MathHelper.wrapDegrees(freeYaw + yawDelta);
             freePitch = MathHelper.clamp(freePitch + pitchDelta, -90.0F, 90.0F);
+            camera.prevYaw = freeYaw;
+            camera.prevPitch = freePitch;
             camera.setYaw(freeYaw);
             camera.setPitch(freePitch);
             camera.setHeadYaw(freeYaw);
@@ -116,9 +122,14 @@ public final class FreeCamController {
         UUID id = UUID.nameUUIDFromBytes("cinco-free-camera".getBytes(StandardCharsets.UTF_8));
         camera = new OtherClientPlayerEntity(client.world, new GameProfile(id, "CincoFreeCam"));
         camera.setPosition(client.player.getX(), client.player.getY(), client.player.getZ());
+        camera.prevX = camera.getX();
+        camera.prevY = camera.getY();
+        camera.prevZ = camera.getZ();
         camera.setInvisible(true);
         camera.setNoGravity(true);
         camera.noClip = true;
+        camera.prevYaw = freeYaw;
+        camera.prevPitch = freePitch;
         camera.setYaw(freeYaw);
         camera.setPitch(freePitch);
         camera.setHeadYaw(freeYaw);

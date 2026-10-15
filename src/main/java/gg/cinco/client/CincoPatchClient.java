@@ -7,8 +7,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import org.lwjgl.glfw.GLFW;
 
-import java.lang.reflect.Field;
-
 /** Extra lifecycle wiring for the reliability/render overhaul. */
 public final class CincoPatchClient implements ClientModInitializer {
     @Override
@@ -17,7 +15,8 @@ public final class CincoPatchClient implements ClientModInitializer {
 
         // Keep the existing object/settings so old configs migrate cleanly, but expose the much
         // cleaner user-facing name requested for the module.
-        renamePlayerChangerModule();
+        ClientModule legacyPlayerChanger = CincoClient.findModule("GTA Skin Changer");
+        if (legacyPlayerChanger != null) legacyPlayerChanger.name = "Player Changer";
 
         if (CincoClient.findModule("Light Finder") == null) {
             CincoClient.MODULES.add(new ClientModule(
@@ -69,18 +68,5 @@ public final class CincoPatchClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((ctx, tickCounter) ->
                 EnhancedEspHud.render(ctx, MinecraftClient.getInstance()));
         WorldRenderEvents.LAST.register(StorageEspWorldRenderer::render);
-    }
-
-    private static void renamePlayerChangerModule() {
-        ClientModule legacy = CincoClient.findModule("GTA Skin Changer");
-        if (legacy == null) return;
-        try {
-            Field name = ClientModule.class.getDeclaredField("name");
-            name.setAccessible(true);
-            name.set(legacy, "Player Changer");
-        } catch (ReflectiveOperationException ignored) {
-            // The compatibility mixin still understands the legacy name if a future JVM blocks
-            // the cosmetic rename rather than crashing the client.
-        }
     }
 }

@@ -56,6 +56,7 @@ public final class CincoColorWheelScreen extends Screen {
 
         int cx = l + 155, cy = t + 188, radius = 110;
         drawWheel(c, cx, cy, radius, (float) (wheel.setting3));
+        if (insideWheel(mouseX, mouseY, cx, cy, radius)) drawWheelHoverGlow(c, cx, cy, radius);
 
         int swatchX = l + 300, swatchY = t + 75;
         c.drawText(textRenderer, label("LIVE PREVIEW"), swatchX, swatchY, CincoTheme.secondaryText(), false);
@@ -73,6 +74,8 @@ public final class CincoColorWheelScreen extends Screen {
             float v = i / (float) (bw - 1);
             c.fill(bx + i, by, Math.min(bx + bw, bx + i + 3), by + 10, hsv((float) wheel.setting / 360.0f, (float) wheel.setting2, v));
         }
+        if (mouseX >= bx && mouseX <= bx + bw && mouseY >= by - 5 && mouseY <= by + 15)
+            drawRectHoverGlow(c, bx, by, bx + bw, by + 10);
         int marker = bx + (int) ((wheel.setting3 - wheel.min3) / (wheel.max3 - wheel.min3) * bw);
         c.fill(marker - 2, by - 4, marker + 3, by + 14, WHITE);
         c.drawText(textRenderer, label("The selection updates the GUI, module screens and HUD immediately."), swatchX, t + 266, CincoTheme.secondaryText(), false);
@@ -81,6 +84,34 @@ public final class CincoColorWheelScreen extends Screen {
         drawCentered(c, label("RESET ORANGE"), l + 80, t + H - 28, CincoTheme.primaryText());
         c.fill(l + W - 132, t + H - 36, l + W - 18, t + H - 13, CincoTheme.accentDark());
         drawCentered(c, label("BACK"), l + W - 75, t + H - 28, CincoTheme.primaryText());
+    }
+
+    private void drawWheelHoverGlow(DrawContext c, int cx, int cy, int radius) {
+        ClientModule glow = CincoClient.findModule("Hover Glow");
+        if (glow == null || !glow.enabled) return;
+        double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
+        double pulse = (Math.sin(System.currentTimeMillis() / (170.0 / speed)) + 1.0) * 0.5;
+        int alpha = (int) (70 + 150 * Math.max(0.2, Math.min(1.0, glow.setting)) * pulse);
+        int color = (alpha << 24) | (CincoTheme.accent() & 0x00FFFFFF);
+        for (int i = 0; i < 144; i++) {
+            double angle = Math.PI * 2.0 * i / 144.0;
+            int x = cx + (int) Math.round(Math.cos(angle) * (radius + 3));
+            int y = cy + (int) Math.round(Math.sin(angle) * (radius + 3));
+            c.fill(x - 2, y - 2, x + 3, y + 3, color);
+        }
+    }
+
+    private void drawRectHoverGlow(DrawContext c, int x, int y, int right, int bottom) {
+        ClientModule glow = CincoClient.findModule("Hover Glow");
+        if (glow == null || !glow.enabled) return;
+        double speed = Math.max(0.5, Math.min(2.5, glow.setting2));
+        double pulse = (Math.sin(System.currentTimeMillis() / (170.0 / speed)) + 1.0) * 0.5;
+        int alpha = (int) (55 + 150 * Math.max(0.2, Math.min(1.0, glow.setting)) * pulse);
+        int color = (alpha << 24) | (CincoTheme.accent() & 0x00FFFFFF);
+        c.fill(x - 2, y - 2, right + 2, y, color);
+        c.fill(x - 2, bottom, right + 2, bottom + 2, color);
+        c.fill(x - 2, y, x, bottom, color);
+        c.fill(right, y, right + 2, bottom, color);
     }
 
     private void drawWheel(DrawContext c, int cx, int cy, int radius, float value) {

@@ -79,8 +79,9 @@ public final class CjReferenceHandRenderer {
         if (texture != null) return texture;
         NativeImage image = new NativeImage(NativeImage.Format.RGBA, 2, 2, false);
         for (int y=0;y<2;y++) for (int x=0;x<2;x++) image.setColor(x,y,0xFFFFFFFF);
-        texture = MinecraftClient.getInstance().getTextureManager().registerDynamicTexture(
-                "star_cj_reference_hand_white", new NativeImageBackedTexture(() -> "star_cj_reference_hand_white", image));
+        texture = Identifier.of("cinco_client", "star_cj_reference_hand_white");
+        MinecraftClient.getInstance().getTextureManager().registerTexture(texture,
+                new NativeImageBackedTexture(() -> "star_cj_reference_hand_white", image));
         return texture;
     }
 

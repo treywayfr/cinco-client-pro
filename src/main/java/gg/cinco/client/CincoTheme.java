@@ -53,11 +53,18 @@ public final class CincoTheme {
     public static int accentMuted() { return tinted(0.75f, Math.min(0.80f, brightness() * 0.82f)); }
     public static int accentDark() { return tinted(0.85f, 0.30f); }
 
+    private static int withPanelOpacity(int color) {
+        ClientModule opacity = CincoClient.findModule("Panel Opacity");
+        double setting = opacity == null ? 1.0 : opacity.setting;
+        int alpha = (int) Math.round(Math.max(0.75, Math.min(1.0, setting)) * 255.0);
+        return (alpha << 24) | (color & 0x00FFFFFF);
+    }
+
     public static int background() { return tinted(0.22f, 0.025f); }
-    public static int panel() { return tinted(0.26f, 0.055f); }
-    public static int sidebar() { return tinted(0.30f, 0.075f); }
-    public static int card() { return tinted(0.34f, 0.105f); }
-    public static int cardHover() { return tinted(0.52f, 0.19f); }
+    public static int panel() { return withPanelOpacity(tinted(0.26f, 0.055f)); }
+    public static int sidebar() { return withPanelOpacity(tinted(0.30f, 0.075f)); }
+    public static int card() { return withPanelOpacity(tinted(0.34f, 0.105f)); }
+    public static int cardHover() { return withPanelOpacity(tinted(0.52f, 0.19f)); }
     public static int line() { return tinted(0.66f, 0.35f); }
     public static int sliderTrack() { return tinted(0.60f, 0.24f); }
     public static int enabled() { return tinted(0.85f, 0.68f); }

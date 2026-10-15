@@ -6,7 +6,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
@@ -325,7 +324,6 @@ public final class CombatModules {
         if (client.player == null || client.world == null || client.interactionManager == null) return;
         boolean rightDown = client.currentScreen == null && client.getWindow() != null
                 && GLFW.glfwGetMouseButton(client.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
-        boolean rightPressedThisTick = rightDown && !rightMouseWasDown;
         rightMouseWasDown = rightDown;
 
         // Auto Crystal only places from the user's own right-click and only when the crystal is held.
@@ -410,7 +408,7 @@ public final class CombatModules {
     private static int moduleSettingInt(String name, int fallback) {
         ClientModule module = CincoClient.findModule(name);
         if (module == null) return fallback;
-        if (name.equals("Anchor Macro")) return (int) module.setting2;
+        if (name.equals("Anchor Macro")) return (int) module.setting3;
         if (name.equals("Auto Totem")) return (int) module.setting2;
         return (int) module.setting;
     }

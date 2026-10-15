@@ -3,7 +3,7 @@ package gg.cinco.client.mixin;
 import gg.cinco.client.CharacterDetailOverlay;
 import gg.cinco.client.CharacterPremiumOverlay;
 import gg.cinco.client.CincoClient;
-import gg.cinco.client.CjCharacterRenderer;
+import gg.cinco.client.CjReferenceRenderer;
 import gg.cinco.client.GtaCharacterRenderer;
 import gg.cinco.client.GtaExpandedOutfitOverlay;
 import net.minecraft.client.MinecraftClient;
@@ -32,9 +32,10 @@ public abstract class PlayerEntityRendererMixin {
 
         int character = Math.max(1, Math.min(5, (int)Math.round(module.setting)));
         int outfit = Math.max(1, Math.min(6, (int)Math.round(module.setting2)));
+        boolean detailed = module.setting3 >= 0.5;
 
         if (character == 5) {
-            CjCharacterRenderer.render(player, bodyYaw, tickDelta, matrices, consumers, light, outfit);
+            CjReferenceRenderer.render(player, bodyYaw, tickDelta, matrices, consumers, light, outfit, detailed);
             ci.cancel();
             return;
         }
@@ -46,13 +47,7 @@ public abstract class PlayerEntityRendererMixin {
                 || client.gameRenderer.getCamera().getPos().squaredDistanceTo(player.getPos()) <= detailRangeSq;
         if (nearCamera) {
             CharacterDetailOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
-            double handSetting = module.setting3;
-            try {
-                module.setting3 = 1.0;
-                CharacterPremiumOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
-            } finally {
-                module.setting3 = handSetting;
-            }
+            if (detailed) CharacterPremiumOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
         }
         if (character == 1) {
             GtaExpandedOutfitOverlay.renderFranklin(player, bodyYaw, matrices, consumers, light, outfit);

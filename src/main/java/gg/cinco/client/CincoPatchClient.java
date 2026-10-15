@@ -16,6 +16,9 @@ public final class CincoPatchClient implements ClientModInitializer {
         ClientModule legacyPlayerChanger = CincoClient.findModule("GTA Skin Changer");
         if (legacyPlayerChanger != null) legacyPlayerChanger.name = "Player Changer";
 
+        // The old standalone Hand View was superseded by FOV Changer's Show Hand + rotation controls.
+        if (CincoClient.MODULES.removeIf(m -> m.name.equals("Hand View"))) changedModules = true;
+
         if (CincoClient.findModule("Light Finder") == null) {
             CincoClient.MODULES.add(new ClientModule(
                     "Light Finder",
@@ -40,15 +43,25 @@ public final class CincoPatchClient implements ClientModInitializer {
             changedModules = true;
         }
 
-        if (CincoClient.findModule("Hand View") == null) {
-            ClientModule handView = new ClientModule(
-                    "Hand View",
-                    "Move, separate and scale the first-person hands and held items",
+        if (CincoClient.findModule("Animations") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "Animations",
+                    "Cosmetic world effects inspired by the showcase: auras, jump circles, trails, runes and sparks",
                     ClientModule.Category.RENDER,
                     false,
-                    "Forward",
-                    0.35, -0.50, 1.50, 0.05);
-            CincoClient.MODULES.add(handView);
+                    "Effect",
+                    1, 1, 8, 1));
+            changedModules = true;
+        }
+
+        if (CincoClient.findModule("Custom Accessory") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "Custom Accessory",
+                    "Local-only animated accessories: wings, halo, crown, orbit stars, horns, rings and cape",
+                    ClientModule.Category.RENDER,
+                    false,
+                    "Accessory",
+                    1, 1, 8, 1));
             changedModules = true;
         }
 
@@ -121,6 +134,7 @@ public final class CincoPatchClient implements ClientModInitializer {
         }
 
         if (changedModules) ConfigStore.load();
+        StarSettingsMigration.apply();
         applyNebulaLuxeDefaults();
         StorageEspConfig.load();
 
@@ -136,8 +150,14 @@ public final class CincoPatchClient implements ClientModInitializer {
             StarExtraHud.render(ctx, client);
             StarSplash.render(ctx, client);
         });
+
+        // World cosmetics intentionally render late with depth testing: terrain stays in front while
+        // the animated sky remains behind the world and player cosmetics stay anchored in 3D space.
+        WorldRenderEvents.LAST.register(AnimatedSkyRenderer::render);
         WorldRenderEvents.LAST.register(StorageEspWorldRenderer::render);
         WorldRenderEvents.LAST.register(CleanEspWorldRenderer::render);
+        WorldRenderEvents.LAST.register(StarEffectRenderer::render);
+        WorldRenderEvents.LAST.register(CustomAccessoryRenderer::render);
     }
 
     private static void applyNebulaLuxeDefaults() {

@@ -18,14 +18,17 @@ public final class ClientModule {
     public final String settingLabel;
     public final double min, max, step;
     public double setting;
+    public final double defaultSetting;
 
     // Additional per-module controls, shown in the module detail screen and persisted.
     public final String setting2Label;
     public final double min2, max2, step2;
     public double setting2;
+    public final double defaultSetting2;
     public final String setting3Label;
     public final double min3, max3, step3;
     public double setting3;
+    public final double defaultSetting3;
 
     public boolean enabled;
     public int keyCode = GLFW.GLFW_KEY_UNKNOWN;
@@ -78,6 +81,9 @@ public final class ClientModule {
             setting2Label = "Interval"; setting2 = 10; min2 = 1; max2 = 60; step2 = 1;
             setting3Label = "Mode"; setting3 = 1; min3 = 1; max3 = 3; step3 = 1;
         }
+        this.defaultSetting = this.setting;
+        this.defaultSetting2 = this.setting2;
+        this.defaultSetting3 = this.setting3;
     }
 
     public void adjustSetting() { setting = advance(setting, min, max, step); }
@@ -103,9 +109,9 @@ public final class ClientModule {
     }
 
     public void resetSettings() {
-        setting = clamp(setting, min, max);
-        setting2 = clamp(setting2, min2, max2);
-        setting3 = clamp(setting3, min3, max3);
+        setting = defaultSetting;
+        setting2 = defaultSetting2;
+        setting3 = defaultSetting3;
     }
 
     private double clamp(double v, double lower, double upper) {

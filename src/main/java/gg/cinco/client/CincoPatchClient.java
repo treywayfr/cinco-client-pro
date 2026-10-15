@@ -43,15 +43,34 @@ public final class CincoPatchClient implements ClientModInitializer {
         if (CincoClient.findModule("Hand View") == null) {
             ClientModule handView = new ClientModule(
                     "Hand View",
-                    "Move and scale the first-person hand and held item view",
+                    "Move, separate and scale the first-person hands and held items",
                     ClientModule.Category.RENDER,
                     false,
                     "Forward",
-                    0.35, -1.0, 1.50, 0.05);
-            // Generic render settings are Scale + Opacity, which fit this module directly.
-            handView.setting2 = 1.0;
-            handView.setting3 = 1.0;
+                    0.35, -0.50, 1.50, 0.05);
             CincoClient.MODULES.add(handView);
+            changedModules = true;
+        }
+
+        if (CincoClient.findModule("Spotify HUD") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "Spotify HUD",
+                    "Show the current Spotify desktop track as a draggable Star HUD widget",
+                    ClientModule.Category.RENDER,
+                    false,
+                    "Refresh seconds",
+                    2.5, 1.0, 10.0, 0.5));
+            changedModules = true;
+        }
+
+        if (CincoClient.findModule("Region Map") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "Region Map",
+                    "Top-down loaded-chunk region map with storage and nearby-player markers",
+                    ClientModule.Category.WORLD,
+                    false,
+                    "Chunk radius",
+                    4, 2, 8, 1));
             changedModules = true;
         }
 
@@ -109,6 +128,7 @@ public final class CincoPatchClient implements ClientModInitializer {
             EnhancedWorldScan.tick(client);
             FreeCamController.tick(client);
             FastXpController.tick(client);
+            SpotifyHudController.tick(client);
         });
         HudRenderCallback.EVENT.register((ctx, tickCounter) -> {
             MinecraftClient client = MinecraftClient.getInstance();

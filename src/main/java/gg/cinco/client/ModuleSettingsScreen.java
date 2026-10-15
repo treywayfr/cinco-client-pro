@@ -133,7 +133,7 @@ public final class ModuleSettingsScreen extends Screen {
         int l = left(), t = top();
         if (mouseY >= t + 212 && mouseY <= t + 237) {
             ClientModule wheel = CincoClient.findModule("Color Wheel");
-            if (wheel != null) MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(wheel));
+            if (wheel != null) MinecraftClient.getInstance().setScreen(new CincoColorWheelScreen(wheel, this));
             return true;
         }
         int keyY = t + 244;

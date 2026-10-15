@@ -32,9 +32,14 @@ public final class CincoClickGuiScreen extends Screen {
     private int draggingSliderX;
     private int draggingSliderW;
     private final long openedAt = System.currentTimeMillis();
+    private boolean closing;
+    private long closeStarted;
     private final List<Star> stars = new ArrayList<>();
-    private final Map<String, Float> hoverAnim = new HashMap<>();
-    private final Map<String, Float> toggleAnim = new HashMap<>();
+    private final Map<String, StarAnimations.Track> hoverAnim = new HashMap<>();
+    private final Map<String, StarAnimations.Track> toggleAnim = new HashMap<>();
+    private final Map<String, StarAnimations.Track> categoryAnim = new HashMap<>();
+    private final Map<String, Long> clickAt = new HashMap<>();
+    private final StarAnimations.Track searchAnim = new StarAnimations.Track(0f);
 
     private static final class Star {
         final double x, phase, speed;
@@ -59,24 +64,36 @@ public final class CincoClickGuiScreen extends Screen {
     @Override
     public void render(DrawContext c, int mx, int my, float delta) {
         super.render(c, mx, my, delta);
+        MinecraftClient client = MinecraftClient.getInstance();
         long now = System.currentTimeMillis();
+
+        int openDuration = StarAnimations.duration(client, StarAnimations.MENU_OPEN_MS, true);
+        float open = StarAnimations.progress(now - openedAt, openDuration, StarAnimations.Curve.CUBIC_OUT);
+        if (closing) {
+            int closeDuration = StarAnimations.duration(client, StarAnimations.MENU_CLOSE_MS, true);
+            float close = StarAnimations.progress(now - closeStarted, closeDuration, StarAnimations.Curve.CUBIC_IN_OUT);
+            open = 1f - close;
+            if (close >= 1f) {
+                super.close();
+                return;
+            }
+        }
+
         c.fill(0, 0, width, height, 0xEE06050A);
         drawStars(c, now, delta);
 
         int l = left(), t = top();
-        ClientModule anim = CincoClient.findModule("GUI Animation");
-        double duration = anim == null || !anim.enabled ? 1.0 : Math.max(100.0, anim.setting);
-        float open = anim == null || !anim.enabled ? 1f : ease((float) Math.min(1.0, (now - openedAt) / duration));
-        int py = t + Math.round((1f - open) * 13f);
+        int py = t + Math.round((1f - open) * 18f);
 
-        // One shadow for the entire interface. No per-card shadow passes: this is much cheaper.
-        CincoDraw.softShadow(c, l, py, l + W, py + H, 18, CincoTheme.accent(), 52);
+        // One shadow for the entire interface. Performance tiers can remove it before FPS tanks.
+        if (StarPerformance.allowMenuShadow(client))
+            CincoDraw.softShadow(c, l, py, l + W, py + H, 18, CincoTheme.accent(), Math.round(52 * open));
         CincoDraw.bubble(c, l, py, l + W, py + H, 18, CincoTheme.accentMuted(), 0xF20B0911);
         CincoDraw.rounded(c, l + 6, py + 6, l + SIDE, py + H - 6, 14, 0xF00F0C17);
 
         // Brand block.
         CincoDraw.rounded(c, l + 14, py + 14, l + 46, py + 46, 12, CincoTheme.accentDark());
-        c.drawCenteredTextWithShadow(textRenderer, ui("★", true), l + 30, py + 25, CincoTheme.accentLight());
+        c.drawCenteredTextWithShadow(textRenderer, ui("★", true), l + 30, py + 25, CincoTheme.starGold());
         c.drawText(textRenderer, ui("STAR", true), l + 55, py + 17, 0xFFFFFFFF, false);
         c.drawText(textRenderer, ui("CLIENT", false), l + 55, py + 31, CincoTheme.secondaryText(), false);
 
@@ -84,18 +101,23 @@ public final class CincoClickGuiScreen extends Screen {
         for (ClientModule.Category category : ClientModule.Category.values()) {
             int y = catTop + category.ordinal() * 31;
             boolean selected = category == CincoClient.selectedCategory;
-            float pulse = selected ? 1f : 0f;
-            if (selected) {
-                CincoDraw.rounded(c, l + 11, y, l + SIDE - 10, y + 24, 9, withAlpha(CincoTheme.accentDark(), 205));
-                CincoDraw.rounded(c, l + 15, y + 7, l + 18, y + 17, 2, CincoTheme.accentLight());
+            float selectedAnim = animate(categoryAnim, "category:" + category.name(), selected ? 1f : 0f,
+                    selected ? 1f : 0f, StarAnimations.CATEGORY_MS, StarAnimations.Curve.CUBIC_IN_OUT, true, now);
+            if (selectedAnim > 0.01f) {
+                CincoDraw.rounded(c, l + 11, y, l + SIDE - 10, y + 24, 9,
+                        withAlpha(CincoTheme.accentDark(), Math.round(50 + 155 * selectedAnim)));
+                int railH = Math.max(2, Math.round(10f * selectedAnim));
+                int cy = y + 12;
+                CincoDraw.rounded(c, l + 15, cy - railH / 2, l + 18, cy + (railH + 1) / 2,
+                        2, mix(CincoTheme.magenta(), CincoTheme.cyan(), selectedAnim));
             }
             c.drawText(textRenderer, ui(category.label, selected), l + 25, y + 8,
-                    selected ? 0xFFFFFFFF : mix(0xFF827C91, CincoTheme.accentLight(), pulse), false);
+                    mix(0xFF827C91, 0xFFFFFFFF, selectedAnim), false);
         }
 
         int enabled = (int) CincoClient.MODULES.stream().filter(m -> m.enabled).count();
         CincoDraw.rounded(c, l + 12, py + H - 55, l + SIDE - 11, py + H - 13, 11, 0xCC171220);
-        c.drawText(textRenderer, ui("★  " + enabled + " ACTIVE", true), l + 20, py + H - 43, CincoTheme.accentLight(), false);
+        c.drawText(textRenderer, ui("★  " + enabled + " ACTIVE", true), l + 20, py + H - 43, CincoTheme.starGold(), false);
         ClientModule perf = CincoClient.findModule("Performance Mode");
         String perfText = perf != null && perf.enabled ? "ADAPTIVE FPS" : "QUALITY MODE";
         c.drawText(textRenderer, ui(perfText, false), l + 20, py + H - 28, 0xFF8C849A, false);
@@ -107,11 +129,15 @@ public final class CincoClickGuiScreen extends Screen {
                 contentX, py + 32, 0xFF827C91, false);
 
         int searchW = 180, searchX = contentRight - searchW, searchY = py + 12;
+        float sf = searchAnim.to(searchFocused ? 1f : 0f,
+                StarAnimations.duration(client, StarAnimations.SEARCH_FOCUS_MS, false),
+                StarAnimations.Curve.CUBIC_OUT, now);
         CincoDraw.bubble(c, searchX, searchY, contentRight, searchY + 29, 11,
-                searchFocused ? CincoTheme.accent() : 0xFF2A2434,
-                searchFocused ? 0xFF181020 : 0xFF120F18);
+                mix(0xFF2A2434, CincoTheme.cyan(), sf * 0.70f),
+                mix(0xFF120F18, 0xFF181020, sf));
         String s = search.isEmpty() ? "⌕ SEARCH MODULES" : search.toUpperCase(Locale.ROOT) + (searchFocused ? "  _" : "");
-        c.drawText(textRenderer, ui(s, false), searchX + 10, searchY + 10, search.isEmpty() ? 0xFF817A8C : 0xFFF5EFFF, false);
+        c.drawText(textRenderer, ui(s, false), searchX + 10, searchY + 10,
+                mix(0xFF817A8C, 0xFFF5EFFF, sf), false);
 
         List<ClientModule> list = filteredModules();
         int viewportTop = py + 57;
@@ -122,6 +148,7 @@ public final class CincoClickGuiScreen extends Screen {
         int rowPitch = CARD_H + GAP;
         int maxScroll = Math.max(0, rows * rowPitch - (viewportBottom - viewportTop));
         scroll = Math.max(0, Math.min(scroll, maxScroll));
+        int animationCap = StarPerformance.animatedCardCap(client);
 
         c.enableScissor(contentX - 2, viewportTop, contentRight + 2, viewportBottom);
         for (int i = 0; i < list.size(); i++) {
@@ -133,64 +160,79 @@ public final class CincoClickGuiScreen extends Screen {
             if (y + CARD_H < viewportTop || y > viewportBottom) continue;
 
             boolean hover = mx >= x && mx <= x + cardW && my >= y && my <= y + CARD_H;
-            float h = animate(hoverAnim, module.name, hover ? 1f : 0f, 0.20f);
-            float e = animate(toggleAnim, module.name, module.enabled ? 1f : 0f, 0.22f);
+            boolean animated = i < animationCap || hover;
+            boolean decorativeHover = hover && StarPerformance.allowDecorativeHover(client);
+            float h = animate(hoverAnim, module.name, decorativeHover ? 1f : 0f, 0f,
+                    decorativeHover ? StarAnimations.HOVER_IN_MS : StarAnimations.HOVER_OUT_MS,
+                    StarAnimations.Curve.CUBIC_OUT, false, now, animated);
+            float e = animate(toggleAnim, module.name, module.enabled ? 1f : 0f,
+                    module.enabled ? 1f : 0f, StarAnimations.TOGGLE_MS,
+                    StarAnimations.Curve.CUBIC_IN_OUT, true, now, animated);
+            float click = StarAnimations.clickPulse(clickAt.getOrDefault(module.name, 0L), now, client);
+            int drawY = y - Math.round(h * 2f) + Math.round(click);
 
-            int border = mix(0xFF282231, CincoTheme.accent(), h * 0.72f);
+            int border = mix(0xFF282231, CincoTheme.magenta(), h * 0.72f);
+            border = mix(border, CincoTheme.starGold(), click * 0.20f);
             int fill = mix(0xE5120F18, 0xF0211728, h);
-            CincoDraw.bubble(c, x, y, x + cardW, y + CARD_H, 12, border, fill);
+            CincoDraw.bubble(c, x, drawY, x + cardW, drawY + CARD_H, 12, border, fill);
 
-            // Thin animated status rail instead of expensive glows.
-            CincoDraw.rounded(c, x + 7, y + 8, x + 10, y + CARD_H - 8, 2,
-                    mix(0xFF373140, CincoTheme.accentLight(), e));
+            // Thin animated status rail instead of expensive per-card glows.
+            CincoDraw.rounded(c, x + 7, drawY + 8, x + 10, drawY + CARD_H - 8, 2,
+                    mix(0xFF373140, CincoTheme.cyan(), e));
 
             boolean favorite = FAVORITES.contains(module.name);
-            c.drawText(textRenderer, ui((favorite ? "★ " : "") + module.name, true), x + 17, y + 8,
+            c.drawText(textRenderer, ui((favorite ? "★ " : "") + module.name, true), x + 17, drawY + 8,
                     mix(0xFFAAA4B2, 0xFFFFFFFF, Math.max(h, e)), false);
-            c.drawText(textRenderer, ui(trim(module.description, 30), false), x + 17, y + 22,
+            c.drawText(textRenderer, ui(trim(module.description, 30), false), x + 17, drawY + 22,
                     mix(0xFF716B7B, 0xFFAAA2B5, h), false);
 
-            // Animated pill switch.
-            int sw = 34, sx = x + cardW - sw - 10, sy = y + 9;
+            // Toggle: 175 ms cubic transition; no overshoot so the knob never escapes its track.
+            int sw = 34, sx = x + cardW - sw - 10, sy = drawY + 9;
             CincoDraw.rounded(c, sx, sy, sx + sw, sy + 15, 8,
                     mix(0xFF312B38, CincoTheme.enabled(), e));
             int knob = sx + 3 + Math.round(e * (sw - 14));
             CincoDraw.rounded(c, knob, sy + 3, knob + 9, sy + 12, 5, 0xFFFFFFFF);
 
-            // Compact main-setting slider.
-            int sliderX = x + 17, sliderY = y + 43, sliderW = cardW - 34;
+            // Compact main-setting slider. Direct dragging remains immediate; visual emphasis is cheap.
+            int sliderX = x + 17, sliderY = drawY + 43, sliderW = cardW - 34;
             CincoDraw.rounded(c, sliderX, sliderY, sliderX + sliderW, sliderY + 3, 2, 0xFF2E2935);
             double f = (module.setting - module.min) / Math.max(0.0001, module.max - module.min);
             int fillX = sliderX + (int) Math.round(Math.max(0, Math.min(1, f)) * sliderW);
             if (fillX > sliderX) CincoDraw.rounded(c, sliderX, sliderY, fillX, sliderY + 3, 2, CincoTheme.accent());
-            CincoDraw.rounded(c, fillX - 2, sliderY - 2, fillX + 3, sliderY + 5, 3, CincoTheme.accentLight());
+            CincoDraw.rounded(c, fillX - 2, sliderY - 2, fillX + 3, sliderY + 5, 3,
+                    mix(CincoTheme.accentLight(), CincoTheme.starGold(), click * 0.30f));
             String settingText = shortSetting(module);
             int tw = textRenderer.getWidth(settingText);
-            c.drawText(textRenderer, ui(settingText, false), x + cardW - tw - 10, y + 32, 0xFF948DA0, false);
+            c.drawText(textRenderer, ui(settingText, false), x + cardW - tw - 10, drawY + 32, 0xFF948DA0, false);
         }
         c.disableScissor();
     }
 
-    private float animate(Map<String, Float> map, String key, float target, float speed) {
-        float current = map.getOrDefault(key, target);
-        current += (target - current) * speed;
-        if (Math.abs(target - current) < 0.003f) current = target;
-        map.put(key, current);
-        return current;
+    private float animate(Map<String, StarAnimations.Track> map, String key, float target, float initial,
+                          int baseDuration, StarAnimations.Curve curve, boolean essential, long now) {
+        return animate(map, key, target, initial, baseDuration, curve, essential, now, true);
     }
 
-    private float ease(float p) { return 1f - (1f - p) * (1f - p) * (1f - p); }
+    private float animate(Map<String, StarAnimations.Track> map, String key, float target, float initial,
+                          int baseDuration, StarAnimations.Curve curve, boolean essential, long now,
+                          boolean allowAnimation) {
+        StarAnimations.Track track = map.computeIfAbsent(key, k -> new StarAnimations.Track(initial));
+        int duration = allowAnimation ? StarAnimations.duration(MinecraftClient.getInstance(), baseDuration, essential) : 0;
+        return track.to(target, duration, curve, now);
+    }
 
     private void drawStars(DrawContext c, long now, float delta) {
         ClientModule density = CincoClient.findModule("Purple Stars");
         if (density != null && !density.enabled) return;
+        MinecraftClient client = MinecraftClient.getInstance();
         int requested = density == null ? stars.size() : (int) Math.round(stars.size() * density.setting / 3.0);
-        int amount = Math.min(Math.min(stars.size(), requested), StarPerformance.guiStarCap(MinecraftClient.getInstance()));
+        int amount = Math.min(Math.min(stars.size(), requested), StarPerformance.guiStarCap(client));
+        boolean lowMotion = StarPerformance.animationTier(client) == 0;
         for (int i = 0; i < amount; i++) {
             Star star = stars.get(i);
-            star.y += star.speed * Math.max(0.6, delta);
+            if (!lowMotion) star.y += star.speed * Math.max(0.6, delta);
             if (star.y > height) star.y = 0;
-            int alpha = 35 + (int) (((Math.sin(now / 620.0 + star.phase) + 1.0) * 0.5) * 90);
+            int alpha = lowMotion ? 42 : 35 + (int) (((Math.sin(now / 620.0 + star.phase) + 1.0) * 0.5) * 90);
             int x = (int) (star.x % Math.max(1, width));
             int y = (int) star.y;
             c.fill(x, y, x + 1, y + 1, (alpha << 24) | (CincoTheme.accentLight() & 0x00FFFFFF));
@@ -214,6 +256,12 @@ public final class CincoClickGuiScreen extends Screen {
     private String shortSetting(ClientModule module) {
         if (module.name.equals("Font Style")) return StarFonts.name((int) Math.round(module.setting));
         if (module.name.equals("Client Profile")) return StarProfiles.name((int) Math.round(module.setting));
+        if (module.name.equals("ESP Style")) return switch ((int) Math.round(module.setting)) {
+            case 2 -> "Neon";
+            case 3 -> "Minimal";
+            case 4 -> "Solid";
+            default -> "Clean";
+        };
         return trim(module.settingLabel, 11) + " " + format(module.setting);
     }
 
@@ -232,6 +280,7 @@ public final class CincoClickGuiScreen extends Screen {
         int l = left(), t = top();
         int contentX = l + SIDE + 16, contentRight = l + W - 14;
         int searchW = 180, searchX = contentRight - searchW, searchY = t + 12;
+        long now = System.currentTimeMillis();
         if (button == 0 && mx >= searchX && mx <= contentRight && my >= searchY && my <= searchY + 29) {
             searchFocused = true;
             return true;
@@ -257,6 +306,7 @@ public final class CincoClickGuiScreen extends Screen {
             int y = viewportTop + (i >> 1) * rowPitch - scroll;
             if (mx < x || mx > x + cardW || my < y || my > y + CARD_H) continue;
 
+            clickAt.put(module.name, now);
             if (button == 2) {
                 if (!FAVORITES.add(module.name)) FAVORITES.remove(module.name);
                 return true;
@@ -360,6 +410,18 @@ public final class CincoClickGuiScreen extends Screen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    @Override
+    public void close() {
+        if (closing) return;
+        int duration = StarAnimations.duration(MinecraftClient.getInstance(), StarAnimations.MENU_CLOSE_MS, true);
+        if (duration <= 0) {
+            super.close();
+            return;
+        }
+        closing = true;
+        closeStarted = System.currentTimeMillis();
+    }
+
     private int mix(int a, int b, float t) {
         t = Math.max(0f, Math.min(1f, t));
         int aa = (a >>> 24) & 255, ar = (a >>> 16) & 255, ag = (a >>> 8) & 255, ab = a & 255;
@@ -368,5 +430,7 @@ public final class CincoClickGuiScreen extends Screen {
                 | ((int)(ag + (bg-ag)*t) << 8) | (int)(ab + (bb-ab)*t);
     }
 
-    private int withAlpha(int color, int alpha) { return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0x00FFFFFF); }
+    private int withAlpha(int color, int alpha) {
+        return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0x00FFFFFF);
+    }
 }

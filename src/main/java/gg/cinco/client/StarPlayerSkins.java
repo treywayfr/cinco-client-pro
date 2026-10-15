@@ -50,7 +50,6 @@ public final class StarPlayerSkins {
         int green = switch(outfit){case 2->0xFF426A35;case 3->0xFF264D63;case 4->0xFF6A3532;case 5->0xFF27292D;case 6->0xFF8A734D;default->0xFF4E7B3A;};
         base(i, skin, white, green, hair, 0xFF2F2A25);
         face(i, skin, 0xFF161616, 0xFFFFFFFF, 0xFF8B4D3E);
-        // Round glasses + Peter-style chin line.
         rect(i, 9, 10, 3, 2, 0xFF161616); rect(i, 13, 10, 3, 2, 0xFF161616); rect(i, 12, 10, 1, 1, 0xFF161616);
         rect(i, 10, 14, 5, 1, 0xFF8A6A58);
     }
@@ -60,7 +59,6 @@ public final class StarPlayerSkins {
         int blue = 0xFF315FAE;
         base(i, yellow, orange, blue, yellow, 0xFFFFFFFF);
         face(i, yellow, 0xFF111111, 0xFFFFFFFF, 0xFF6B3A28);
-        // Spiky-hair illusion on the forehead/top UV.
         for (int x = 8; x < 16; x += 2) rect(i, x, 8, 1, 2 + ((x / 2) & 1), 0xFFFFE35A);
     }
 
@@ -89,35 +87,23 @@ public final class StarPlayerSkins {
         int denim = switch(outfit){case 2->0xFF344638;case 3->0xFF202833;case 6->0xFF2B2C32;default->0xFF263A55;};
         base(i, skin, top, denim, hair, 0xFF101216);
         face(i, skin, 0xFF111112, 0xFFE7E1DA, 0xFF704238);
-        // CJ-style short hair, white tank neckline, belt/shoe cues.
         rect(i, 8, 8, 8, 2, hair); rect(i, 9, 9, 6, 1, hair);
         if(outfit == 1){ rect(i, 22, 20, 4, 2, skin); rect(i, 23, 20, 2, 5, skin); }
         rect(i, 20, 31, 8, 1, 0xFF2A1C16);
     }
 
     private static void base(NativeImage i, int skin, int shirt, int pants, int hair, int shoes) {
-        // Head all six sides.
         rect(i, 8, 8, 8, 8, skin); rect(i, 0, 8, 8, 8, skin); rect(i, 16, 8, 8, 8, skin); rect(i, 24, 8, 8, 8, skin);
         rect(i, 8, 0, 8, 8, hair); rect(i, 16, 0, 8, 8, skin);
         rect(i, 8, 8, 8, 2, hair); rect(i, 0, 8, 8, 2, hair); rect(i, 16, 8, 8, 2, hair); rect(i, 24, 8, 8, 2, hair);
-
-        // Torso.
         rect(i, 20, 20, 8, 12, shirt); rect(i, 16, 20, 4, 12, shade(shirt,.86f)); rect(i, 28, 20, 4, 12, shade(shirt,.92f)); rect(i, 32, 20, 8, 12, shade(shirt,.80f));
         rect(i, 20, 16, 8, 4, lighten(shirt,.08f)); rect(i, 28, 16, 8, 4, shade(shirt,.72f));
-
-        // Right arm.
         rect(i, 44, 20, 4, 12, skin); rect(i, 40, 20, 4, 12, skin); rect(i, 48, 20, 4, 12, skin); rect(i, 52, 20, 4, 12, skin);
         rect(i, 44, 16, 4, 4, skin); rect(i, 48, 16, 4, 4, skin); rect(i, 44, 20, 4, 4, shirt);
-
-        // Left arm.
         rect(i, 36, 52, 4, 12, skin); rect(i, 32, 52, 4, 12, skin); rect(i, 40, 52, 4, 12, skin); rect(i, 44, 52, 4, 12, skin);
         rect(i, 36, 48, 4, 4, skin); rect(i, 40, 48, 4, 4, skin); rect(i, 36, 52, 4, 4, shirt);
-
-        // Right leg.
         rect(i, 4, 20, 4, 12, pants); rect(i, 0, 20, 4, 12, shade(pants,.86f)); rect(i, 8, 20, 4, 12, shade(pants,.92f)); rect(i, 12, 20, 4, 12, shade(pants,.80f));
         rect(i, 4, 16, 4, 4, pants); rect(i, 8, 16, 4, 4, pants); rect(i, 4, 29, 4, 3, shoes);
-
-        // Left leg.
         rect(i, 20, 52, 4, 12, pants); rect(i, 16, 52, 4, 12, shade(pants,.86f)); rect(i, 24, 52, 4, 12, shade(pants,.92f)); rect(i, 28, 52, 4, 12, shade(pants,.80f));
         rect(i, 20, 48, 4, 4, pants); rect(i, 24, 48, 4, 4, pants); rect(i, 20, 61, 4, 3, shoes);
     }
@@ -131,7 +117,12 @@ public final class StarPlayerSkins {
     }
 
     private static void rect(NativeImage i, int x, int y, int w, int h, int argb) {
-        i.fillRect(x, y, w, h, argb);
+        i.fillRect(x, y, w, h, argbToAbgr(argb));
+    }
+
+    private static int argbToAbgr(int argb) {
+        int a=(argb>>>24)&255,r=(argb>>>16)&255,g=(argb>>>8)&255,b=argb&255;
+        return (a<<24)|(b<<16)|(g<<8)|r;
     }
 
     private static int shade(int color, double k) {

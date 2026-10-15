@@ -53,7 +53,9 @@ public final class CincoClickGuiScreen extends Screen {
         ClientModule animationModule = CincoClient.findModule("GUI Animation");
         double duration = animationModule == null || !animationModule.enabled ? 1.0 : animationModule.setting;
         double animation = animationModule == null || !animationModule.enabled ? 1.0 : Math.min(1.0, (now - openedAt) / duration);
-        int lift = (int) ((1.0 - animation) * 10);
+        double animationAmount = animationModule == null || !animationModule.enabled
+                ? 1.0 : Math.max(0.0, Math.min(2.0, animationModule.setting3));
+        int lift = (int) ((1.0 - animation) * 10 * animationAmount);
         int panelY = t + lift;
 
         // Opaque surfaces deliberately prevent the world and stars showing through text and cards.

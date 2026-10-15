@@ -88,7 +88,7 @@ public final class CincoClient implements ClientModInitializer {
                     base.enabled = module.enabled;
                     containers.enabled = module.enabled;
                 }
-                if (!module.enabled) BaseScanner.reset();
+                if (!module.enabled && (base == null || !base.enabled) && (containers == null || !containers.enabled)) BaseScanner.reset();
             }
             if (client.player != null) {
                 client.player.sendMessage(Text.literal("Cinco: " + module.name + (module.enabled ? " enabled" : " disabled")), true);

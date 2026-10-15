@@ -32,7 +32,7 @@ public final class BaseScanner {
         else wantedRadius = module == null ? 32 : (int) module.setting;
         int px = client.player.getBlockX(), py = client.player.getBlockY(), pz = client.player.getBlockZ();
         long worldIdentity = System.identityHashCode(client.world);
-        if (!started || worldIdentity != lastWorldIdentity || Math.abs(px - centerX) > 12 || Math.abs(pz - centerZ) > 12 || wantedRadius != radius) {
+        if (!started || worldIdentity != lastWorldIdentity || Math.abs(px - centerX) > 12 || Math.abs(py - centerY) > 12 || Math.abs(pz - centerZ) > 12 || wantedRadius != radius) {
             centerX = px; centerY = py; centerZ = pz; radius = wantedRadius;
             cursor = 0; findings.clear(); seen.clear(); lastWorldIdentity = worldIdentity; started = true;
         }
@@ -40,7 +40,7 @@ public final class BaseScanner {
         int width = radius * 2 + 1;
         int height = 49;
         int volume = width * width * height;
-        int budget = module == null ? 1200 : (int) Math.max(200, Math.min(2400, module.setting2));
+        int budget = 6000; // complete scans promptly; never force-load chunks
         for (int i = 0; i < budget && cursor < volume; i++, cursor++) {
             int layer = cursor / (width * width);
             int within = cursor % (width * width);
@@ -50,7 +50,7 @@ public final class BaseScanner {
             BlockPos pos = new BlockPos(centerX + dx, centerY + dy, centerZ + dz);
             if (!client.world.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) continue;
             BlockState state = client.world.getBlockState(pos);
-            if (isInteresting(state) && findings.size() < 800) { BlockPos stable = pos.toImmutable(); if (seen.add(stable)) findings.add(stable); }
+            if (isInteresting(state) && findings.size() < 4000) { BlockPos stable = pos.toImmutable(); if (seen.add(stable)) findings.add(stable); }
         }
         if (cursor >= volume) {
             findings.sort(Comparator.comparingDouble(p -> {
@@ -59,8 +59,7 @@ public final class BaseScanner {
                 double dz = p.getZ() - client.player.getZ();
                 return dx * dx + dy * dy + dz * dz;
             }));
-            cursor = 0;
-            centerX = px; centerY = py; centerZ = pz;
+            cursor = volume; // retain completed results until the player moves; do not rescan stale positions
         }
     }
 

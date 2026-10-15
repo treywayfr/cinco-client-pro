@@ -3,9 +3,7 @@ package gg.cinco.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 
 import java.util.Locale;
 
@@ -18,44 +16,41 @@ public final class StorageEspSettingsScreen extends Screen {
     private boolean draggingRange;
 
     public StorageEspSettingsScreen(ClientModule module) {
-        super(Text.literal("Cinco Storage ESP Settings"));
+        super(Text.literal("Star Storage ESP Settings"));
         this.module = module;
     }
 
     private int left() { return (width - W) / 2; }
     private int top() { return (height - H) / 2; }
-
-    private Text text(String value, boolean bold) {
-        return Text.literal(value).setStyle(Style.EMPTY.withFont(Identifier.of("minecraft", "uniform")).withBold(bold));
-    }
+    private Text text(String value, boolean bold) { return StarFonts.text(value, bold); }
 
     @Override
     public void render(DrawContext c, int mouseX, int mouseY, float delta) {
         super.render(c, mouseX, mouseY, delta);
-        c.fill(0, 0, width, height, CincoTheme.background());
+        c.fill(0, 0, width, height, 0xF006050A);
         int l = left(), t = top();
 
-        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 90);
-        CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accent(), CincoTheme.panel());
+        CincoDraw.softShadow(c, l, t, l + W, t + H, 16, CincoTheme.accent(), 52);
+        CincoDraw.bubble(c, l, t, l + W, t + H, 16, CincoTheme.accentMuted(), 0xF20B0911);
 
-        c.drawText(textRenderer, text("STORAGE ESP", true), l + 20, t + 16, CincoTheme.primaryText(), false);
-        c.drawText(textRenderer, text("3D BLOCK HIGHLIGHTS  •  PER-TYPE TRACERS  •  CUSTOM COLORS", false),
-                l + 20, t + 32, CincoTheme.secondaryText(), false);
+        c.drawText(textRenderer, text("★  STORAGE ESP", true), l + 20, t + 16, 0xFFFFFFFF, false);
+        c.drawText(textRenderer, text("BLOCK OUTLINES  •  PLAYER TRACERS  •  PER-TYPE COLORS", false),
+                l + 20, t + 32, 0xFF91899D, false);
 
         int sx = l + 20, sy = t + 61, sw = W - 40;
         c.drawText(textRenderer, text("RANGE  " + (int) Math.round(module.setting) + "m", true),
-                sx, sy - 12, CincoTheme.primaryText(), false);
-        CincoDraw.rounded(c, sx, sy, sx + sw, sy + 7, 4, CincoTheme.sliderTrack());
+                sx, sy - 12, 0xFFF8F4FF, false);
+        CincoDraw.rounded(c, sx, sy, sx + sw, sy + 7, 4, 0xFF302A37);
         double fraction = (module.setting - module.min) / Math.max(0.001, module.max - module.min);
         int knob = sx + (int) Math.round(Math.max(0, Math.min(1, fraction)) * sw);
-        CincoDraw.rounded(c, sx, sy, knob, sy + 7, 4, CincoTheme.accent());
+        if (knob > sx) CincoDraw.rounded(c, sx, sy, knob, sy + 7, 4, CincoTheme.accent());
         CincoDraw.rounded(c, knob - 4, sy - 3, knob + 5, sy + 10, 5, CincoTheme.accentLight());
 
         int headerY = t + 83;
-        c.drawText(textRenderer, text("TYPE", true), l + 20, headerY, CincoTheme.secondaryText(), false);
-        c.drawText(textRenderer, text("HIGHLIGHT", true), l + 282, headerY, CincoTheme.secondaryText(), false);
-        c.drawText(textRenderer, text("TRACER", true), l + 386, headerY, CincoTheme.secondaryText(), false);
-        c.drawText(textRenderer, text("COLOR", true), l + 478, headerY, CincoTheme.secondaryText(), false);
+        c.drawText(textRenderer, text("TYPE", true), l + 20, headerY, 0xFF91899D, false);
+        c.drawText(textRenderer, text("HIGHLIGHT", true), l + 282, headerY, 0xFF91899D, false);
+        c.drawText(textRenderer, text("TRACER", true), l + 386, headerY, 0xFF91899D, false);
+        c.drawText(textRenderer, text("COLOR", true), l + 478, headerY, 0xFF91899D, false);
 
         int rowY = t + 100;
         StorageEspConfig.TypeKey[] types = StorageEspConfig.TypeKey.values();
@@ -65,16 +60,16 @@ public final class StorageEspSettingsScreen extends Screen {
             int y = rowY + i * ROW_H;
             boolean hover = mouseX >= l + 14 && mouseX <= l + W - 14 && mouseY >= y && mouseY <= y + 27;
             CincoDraw.rounded(c, l + 14, y, l + W - 14, y + 27, 9,
-                    hover ? CincoTheme.cardHover() : CincoTheme.card());
+                    hover ? 0xFF201725 : 0xE615111D);
 
             CincoDraw.rounded(c, l + 22, y + 7, l + 34, y + 19, 6, setting.color);
             c.drawText(textRenderer, text(type.label.toUpperCase(Locale.ROOT), false),
-                    l + 43, y + 9, CincoTheme.primaryText(), false);
+                    l + 43, y + 9, 0xFFF8F4FF, false);
 
             pill(c, l + 272, y + 5, 88, 17, setting.highlight ? "ON" : "OFF",
-                    setting.highlight ? CincoTheme.enabled() : CincoTheme.disabled());
+                    setting.highlight ? CincoTheme.enabled() : 0xFF332D39);
             pill(c, l + 378, y + 5, 72, 17, setting.tracer ? "ON" : "OFF",
-                    setting.tracer ? CincoTheme.enabled() : CincoTheme.disabled());
+                    setting.tracer ? CincoTheme.enabled() : 0xFF332D39);
             CincoDraw.bubble(c, l + 468, y + 5, l + 572, y + 22, 8,
                     setting.color, 0xD914111D);
             CincoDraw.rounded(c, l + 476, y + 9, l + 488, y + 18, 4, setting.color);
@@ -86,7 +81,7 @@ public final class StorageEspSettingsScreen extends Screen {
         button(c, l + 18, by, 118, 22, "RESET TYPES", mouseX, mouseY);
         button(c, l + W - 116, by, 98, 22, "BACK", mouseX, mouseY);
         c.drawText(textRenderer, text("Left click color = next  •  Right click color = previous", false),
-                l + 156, by + 7, CincoTheme.secondaryText(), false);
+                l + 156, by + 7, 0xFF91899D, false);
     }
 
     private void pill(DrawContext c, int x, int y, int w, int h, String label, int color) {
@@ -97,9 +92,9 @@ public final class StorageEspSettingsScreen extends Screen {
 
     private void button(DrawContext c, int x, int y, int w, int h, String label, int mx, int my) {
         boolean hover = mx >= x && mx <= x + w && my >= y && my <= y + h;
-        CincoDraw.rounded(c, x, y, x + w, y + h, 10, hover ? CincoTheme.cardHover() : CincoTheme.accentDark());
+        CincoDraw.rounded(c, x, y, x + w, y + h, 10, hover ? 0xFF291A32 : 0xFF1A1322);
         int tw = textRenderer.getWidth(label);
-        c.drawText(textRenderer, text(label, true), x + w / 2 - tw / 2, y + 7, CincoTheme.primaryText(), false);
+        c.drawText(textRenderer, text(label, true), x + w / 2 - tw / 2, y + 7, 0xFFF8F4FF, false);
     }
 
     @Override

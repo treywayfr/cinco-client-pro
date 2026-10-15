@@ -24,8 +24,8 @@ public abstract class ModuleSettingsMixin {
     private void star$friendlySettingNames(int which, double value, CallbackInfoReturnable<String> cir) {
         int selected=(int)Math.round(value);
         boolean changer=module.name.equals("Player Changer")||module.name.equals("GTA Skin Changer");
-        if(changer&&which==0){cir.setReturnValue(switch(selected){case 2->"Spiky Cartoon Kid";case 3->"Anime Heroine";case 4->"Tung Tung Sahur";case 5->"CJ / San Andreas";default->"Franklin / GTA V";});return;}
-        if(changer&&which==1){int character=Math.max(1,Math.min(5,(int)Math.round(module.setting)));if(character==5)cir.setReturnValue(switch(selected){case 2->"Grove Green";case 3->"Black Tee";case 4->"Red Street";case 5->"Green Jacket";case 6->"Gray Streetwear";default->"Classic White Tank";});else if(character==1)cir.setReturnValue(switch(selected){case 2->"Black Street";case 3->"Blue Jacket";case 4->"Burgundy";case 5->"Night Jacket";case 6->"Cream Streetwear";default->"Grove Green";});else cir.setReturnValue("Palette "+selected);return;}
+        if(changer&&which==0){cir.setReturnValue(switch(selected){case 2->"Bart Simpson";case 3->"Street Hero";case 4->"Anime Fighter";case 5->"CJ / San Andreas";default->"Peter Griffin";});return;}
+        if(changer&&which==1){int character=Math.max(1,Math.min(5,(int)Math.round(module.setting)));if(character==5)cir.setReturnValue(switch(selected){case 2->"Grove Green";case 3->"Black Tee";case 4->"Red Street";case 5->"Green Jacket";case 6->"Gray Streetwear";default->"Classic White Tank";});else cir.setReturnValue(switch(selected){case 2->"Alt 2";case 3->"Alt 3";case 4->"Alt 4";case 5->"Alt 5";case 6->"Alt 6";default->"Classic";});return;}
         if(changer&&which==2){cir.setReturnValue(selected>=1?"HIGH":"STANDARD");return;}
         if(module.name.equals("FOV Changer")&&which==1){cir.setReturnValue(selected>=1?"ON":"OFF");return;}
         if(module.name.equals("FOV Changer")&&which==2){cir.setReturnValue(selected+"°");return;}

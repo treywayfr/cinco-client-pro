@@ -1,9 +1,6 @@
 package gg.cinco.client;
 
-/**
- * Shared dynamic palette. The SETTINGS > Color Wheel module controls hue, saturation,
- * and brightness for the GUI, module editors, and in-game HUD.
- */
+/** Shared high-contrast neon palette driven by SETTINGS > Color Wheel. */
 public final class CincoTheme {
     private CincoTheme() {}
 
@@ -16,12 +13,12 @@ public final class CincoTheme {
 
     private static float saturation() {
         ClientModule m = wheel();
-        return (float) Math.max(0.10, Math.min(1.0, m == null ? 0.90 : m.setting2));
+        return (float) Math.max(0.10, Math.min(1.0, m == null ? 0.94 : m.setting2));
     }
 
     private static float brightness() {
         ClientModule m = wheel();
-        return (float) Math.max(0.15, Math.min(1.0, m == null ? 1.0 : m.setting3));
+        return (float) Math.max(0.20, Math.min(1.0, m == null ? 1.0 : m.setting3));
     }
 
     private static int hsv(float h, float s, float v) {
@@ -44,53 +41,48 @@ public final class CincoTheme {
     }
 
     private static int tinted(float saturationScale, float value) {
-        float sat = Math.max(0.0f, Math.min(1.0f, saturation() * saturationScale));
-        return hsv(hue(), sat, value);
+        return hsv(hue(), Math.max(0.0f, Math.min(1.0f, saturation() * saturationScale)), value);
     }
 
     private static float accentStrength() {
         ClientModule glow = CincoClient.findModule("Accent Glow");
-        float strength = glow == null || !glow.enabled ? 0.60f : (float) Math.max(0.2, Math.min(1.0, glow.setting));
-        ClientModule animation = CincoClient.findModule("GUI Animation");
-        if (animation != null && animation.enabled) strength *= (float) Math.max(0.25, Math.min(1.0, animation.setting2));
-        return strength;
+        return glow == null || !glow.enabled ? 0.82f : (float) Math.max(0.35, Math.min(1.0, glow.setting));
     }
 
-    public static int accent() { return tinted(0.95f, Math.min(1.0f, brightness() * (0.65f + 0.35f * accentStrength()))); }
-    public static int accentLight() { return tinted(0.32f, Math.min(1.0f, brightness())); }
-    public static int accentMuted() { return tinted(0.75f, Math.min(0.80f, brightness() * (0.55f + 0.30f * accentStrength()))); }
-    public static int accentDark() { return tinted(0.85f, 0.30f); }
+    // Brighter neon accent while keeping the panels dark enough to make it pop.
+    public static int accent() { return tinted(1.0f, Math.min(1.0f, 0.90f + 0.10f * accentStrength())); }
+    public static int accentLight() { return tinted(0.42f, 1.0f); }
+    public static int accentMuted() { return tinted(0.88f, Math.min(0.88f, 0.70f + 0.12f * accentStrength())); }
+    public static int accentDark() { return tinted(0.95f, 0.38f); }
 
     private static int withPanelOpacity(int color) {
         ClientModule opacity = CincoClient.findModule("Panel Opacity");
         double setting = opacity == null ? 1.0 : opacity.setting;
-        int alpha = (int) Math.round(Math.max(0.75, Math.min(1.0, setting)) * 255.0);
+        int alpha = (int) Math.round(Math.max(0.78, Math.min(1.0, setting)) * 255.0);
         return (alpha << 24) | (color & 0x00FFFFFF);
     }
 
-    public static int background() { return tinted(0.22f, 0.025f); }
-    public static int panel() { return withPanelOpacity(tinted(0.26f, 0.055f)); }
-    public static int sidebar() { return withPanelOpacity(tinted(0.30f, 0.075f)); }
-    public static int card() { return withPanelOpacity(tinted(0.34f, 0.105f)); }
-    public static int cardHover() { return withPanelOpacity(tinted(0.52f, 0.19f)); }
-    public static int line() { return tinted(0.66f, 0.35f); }
-    public static int sliderTrack() { return tinted(0.60f, 0.24f); }
-    public static int enabled() { return tinted(0.85f, 0.68f); }
-    public static int disabled() { return tinted(0.28f, 0.23f); }
+    public static int background() { return tinted(0.30f, 0.030f); }
+    public static int panel() { return withPanelOpacity(tinted(0.34f, 0.070f)); }
+    public static int sidebar() { return withPanelOpacity(tinted(0.40f, 0.095f)); }
+    public static int card() { return withPanelOpacity(tinted(0.46f, 0.135f)); }
+    public static int cardHover() { return withPanelOpacity(tinted(0.70f, 0.255f)); }
+    public static int line() { return tinted(0.82f, 0.52f); }
+    public static int sliderTrack() { return tinted(0.70f, 0.32f); }
+    public static int enabled() { return tinted(1.0f, 0.86f); }
+    public static int disabled() { return tinted(0.34f, 0.26f); }
 
     public static int primaryText() {
-        // Near-white tint keeps labels readable while following the selected hue.
-        return hsv(hue(), Math.min(0.48f, saturation() * 0.58f), Math.max(0.78f, brightness()));
+        return hsv(hue(), Math.min(0.22f, saturation() * 0.26f), 1.0f);
     }
 
     public static int secondaryText() {
-        return hsv(hue(), Math.min(0.72f, saturation() * 0.82f), Math.max(0.58f, brightness() * 0.88f));
+        return hsv(hue(), Math.min(0.58f, saturation() * 0.64f), Math.max(0.82f, brightness() * 0.96f));
     }
 
-    /** Preserve warning/success readability while applying the selected hue to ordinary UI copy. */
     public static int textColor(int original) {
         int r = (original >> 16) & 255, g = (original >> 8) & 255, b = original & 255;
         int luminance = (r * 299 + g * 587 + b * 114) / 1000;
-        return luminance >= 160 ? primaryText() : secondaryText();
+        return luminance >= 150 ? primaryText() : secondaryText();
     }
 }

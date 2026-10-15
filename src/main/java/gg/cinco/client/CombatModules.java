@@ -329,7 +329,7 @@ public final class CombatModules {
     }
 
     private static boolean scannerEnabled() {
-        return enabled("Base Finder") || enabled("Container Finder") || enabled("Sus Chunk Finder")
+        return enabled("Storage ESP") || enabled("Base Finder") || enabled("Container Finder") || enabled("Sus Chunk Finder")
                 || enabled("Portal Finder") || enabled("Spawner Finder") || enabled("Shulker Finder")
                 || enabled("Stash Radar") || enabled("Chunk Density");
     }

@@ -13,14 +13,20 @@ import java.util.Locale;
 /** HSV color wheel. Hue and saturation come from clicking/dragging the disk; brightness uses a slider. */
 public final class CincoColorWheelScreen extends Screen {
     private final ClientModule wheel;
+    private final Screen parent;
     private boolean draggingWheel;
     private boolean draggingBrightness;
     private static final int W = 560, H = 360;
     private static final int WHITE = 0xFFFFFFFF;
 
     public CincoColorWheelScreen(ClientModule wheel) {
+        this(wheel, new ModuleSettingsScreen(wheel));
+    }
+
+    public CincoColorWheelScreen(ClientModule wheel, Screen parent) {
         super(Text.literal("Cinco Color Wheel"));
         this.wheel = wheel;
+        this.parent = parent;
     }
 
     private int left() { return (width - W) / 2; }
@@ -206,7 +212,7 @@ public final class CincoColorWheelScreen extends Screen {
 
     @Override
     public void close() {
-        MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(wheel));
+        MinecraftClient.getInstance().setScreen(parent);
     }
 
     @Override

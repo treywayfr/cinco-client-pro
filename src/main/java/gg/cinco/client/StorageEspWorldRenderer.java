@@ -15,7 +15,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
-/** Thin Minecraft-style through-wall outlines for storage blocks, with per-type colors/tracers. */
+/** Thin Minecraft-style through-wall outlines for storage blocks, with straight or snake tracers. */
 public final class StorageEspWorldRenderer {
     private StorageEspWorldRenderer() {}
 
@@ -34,6 +34,7 @@ public final class StorageEspWorldRenderer {
         float anchorZ = (float) (anchor.z - camera.z);
         double range = module.setting;
         double rangeSq = range * range;
+        double snakeTime = System.nanoTime() / 1_000_000_000.0;
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -87,10 +88,17 @@ public final class StorageEspWorldRenderer {
             if (setting.tracer) {
                 int tracerAlpha = style == 3 ? 82 : style == 2 ? 175 : 135;
                 int tracer = withAlpha(setting.color, Math.min(tracerAlpha, (outline >>> 24) & 0xFF));
-                // Static block center -> one shared camera-forward endpoint. This keeps every tracer
-                // converging at the crosshair instead of wobbling toward the player's feet/eye.
-                emitLine(buffer, matrix, (float) dx, (float) dy, (float) dz,
-                        anchorX, anchorY, anchorZ, tracer);
+                if (setting.snakeTracer) {
+                    emitSnake(buffer, matrix,
+                            (float) dx, (float) dy, (float) dz,
+                            anchorX, anchorY, anchorZ,
+                            tracer, pos.asLong(), snakeTime);
+                } else {
+                    // Static block center -> one shared camera-forward endpoint. This keeps every tracer
+                    // converging at the crosshair instead of wobbling toward the player's feet/eye.
+                    emitLine(buffer, matrix, (float) dx, (float) dy, (float) dz,
+                            anchorX, anchorY, anchorZ, tracer);
+                }
             }
             rendered++;
         }
@@ -115,6 +123,75 @@ public final class StorageEspWorldRenderer {
                 -Math.sin(pitch),
                 Math.cos(yaw) * cosPitch);
         return camera.add(forward.multiply(0.34));
+    }
+
+    /**
+     * Builds a smooth animated tracer that bends like a snake.io body while still ending exactly
+     * at the crosshair anchor. The wave tapers to zero at both ends so storage blocks and the
+     * crosshair stay visually locked instead of shaking.
+     */
+    private static void emitSnake(BufferBuilder b, Matrix4f m,
+                                  float x0, float y0, float z0,
+                                  float x1, float y1, float z1,
+                                  int color, long seed, double time) {
+        double dx = x1 - x0;
+        double dy = y1 - y0;
+        double dz = z1 - z0;
+        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (length < 0.001) return;
+
+        double nx = dx / length;
+        double ny = dy / length;
+        double nz = dz / length;
+
+        // First perpendicular basis vector. Horizontal lines use world-up; near-vertical lines
+        // switch basis so the cross product never collapses.
+        double px = -nz;
+        double py = 0.0;
+        double pz = nx;
+        double plen = Math.sqrt(px * px + pz * pz);
+        if (plen < 0.08) {
+            px = 0.0;
+            py = nz;
+            pz = -ny;
+            plen = Math.sqrt(py * py + pz * pz);
+        }
+        if (plen < 0.001) return;
+        px /= plen;
+        py /= plen;
+        pz /= plen;
+
+        // Second perpendicular gives the snake a tiny 3-D corkscrew instead of a flat sine wave.
+        double qx = ny * pz - nz * py;
+        double qy = nz * px - nx * pz;
+        double qz = nx * py - ny * px;
+
+        int segments = Math.max(12, Math.min(28, (int) Math.round(length * 1.35)));
+        double amplitude = Math.min(0.30, 0.075 + length * 0.0065);
+        double phase = time * 4.8 + (seed & 0xFFFFL) * 0.0017;
+
+        float lastX = x0;
+        float lastY = y0;
+        float lastZ = z0;
+        int baseAlpha = (color >>> 24) & 0xFF;
+        for (int i = 1; i <= segments; i++) {
+            double t = i / (double) segments;
+            double taper = Math.sin(Math.PI * t);
+            double wave = Math.sin(t * Math.PI * 8.0 - phase) * amplitude * taper;
+            double curl = Math.cos(t * Math.PI * 4.0 - phase * 0.72) * amplitude * 0.34 * taper;
+
+            float cx = (float) (x0 + dx * t + px * wave + qx * curl);
+            float cy = (float) (y0 + dy * t + py * wave + qy * curl);
+            float cz = (float) (z0 + dz * t + pz * wave + qz * curl);
+
+            double pulse = 0.78 + 0.22 * Math.sin(phase + t * Math.PI * 6.0);
+            int segAlpha = Math.max(28, Math.min(255, (int) Math.round(baseAlpha * pulse)));
+            int segmentColor = withAlpha(color, segAlpha);
+            emitLine(b, m, lastX, lastY, lastZ, cx, cy, cz, segmentColor);
+            lastX = cx;
+            lastY = cy;
+            lastZ = cz;
+        }
     }
 
     private static int style() {

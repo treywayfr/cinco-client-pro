@@ -8,12 +8,19 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = ModuleSettingsScreen.class, remap = false)
 public abstract class ModuleSettingsMixin {
     @Shadow @Final private ClientModule module;
+
+    @ModifyConstant(method = "drawSlider", constant = @Constant(stringValue = "First-person hands"), remap = false)
+    private String star$renameLegacyPlayerHandSetting(String original) {
+        return "Model detail";
+    }
 
     @Inject(method = "displaySetting", at = @At("HEAD"), cancellable = true, remap = false)
     private void star$friendlySettingNames(int which, double value, CallbackInfoReturnable<String> cir) {
@@ -52,6 +59,26 @@ public abstract class ModuleSettingsMixin {
             } else {
                 cir.setReturnValue("Palette " + selected);
             }
+            return;
+        }
+        if (changer && which == 2) {
+            cir.setReturnValue(selected >= 1 ? "HIGH" : "STANDARD");
+            return;
+        }
+        if (module.name.equals("FOV Changer") && which == 1) {
+            cir.setReturnValue(selected >= 1 ? "ON" : "OFF");
+            return;
+        }
+        if (module.name.equals("FOV Changer") && which == 2) {
+            cir.setReturnValue(selected + "°");
+            return;
+        }
+        if (module.name.equals("Auto Totem") && which == 1) {
+            cir.setReturnValue(selected >= 1 ? "ON" : "OFF");
+            return;
+        }
+        if (module.name.equals("Auto Totem") && which == 2) {
+            cir.setReturnValue("SLOT " + Math.max(1, Math.min(9, selected)));
             return;
         }
         if (module.name.equals("Storage ESP") && which == 1) {

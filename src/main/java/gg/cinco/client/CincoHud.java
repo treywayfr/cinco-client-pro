@@ -3,6 +3,9 @@ package gg.cinco.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.ShulkerBoxBlock;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -160,6 +163,33 @@ public final class CincoHud {
                 PlayerEntity player = players.get(i);
                 lines.add(new HudLine("  " + player.getName().getString() + "  "
                         + Math.round(client.player.distanceTo(player)) + "m", 0xFFE89745));
+            }
+        }
+        if (on("Storage ESP")) {
+            ClientModule storage = module("Storage ESP");
+            int filter = storage == null ? 1 : (int) storage.setting2;
+            double maxRange = storage == null ? 48 : storage.setting;
+            List<BlockPos> matches = new ArrayList<>();
+            for (BlockPos pos : BaseScanner.getFindings()) {
+                if (client.player.squaredDistanceTo(net.minecraft.util.math.Vec3d.ofCenter(pos)) > maxRange * maxRange) continue;
+                BlockState state = client.world.getBlockState(pos);
+                boolean chest = state.isOf(Blocks.CHEST) || state.isOf(Blocks.TRAPPED_CHEST);
+                boolean barrel = state.isOf(Blocks.BARREL);
+                boolean shulker = state.getBlock() instanceof ShulkerBoxBlock;
+                boolean spawner = state.isOf(Blocks.SPAWNER);
+                boolean ender = state.isOf(Blocks.ENDER_CHEST);
+                if (filter == 1 ? (chest || barrel || shulker || spawner || ender)
+                        : filter == 2 ? chest : filter == 3 ? barrel
+                        : filter == 4 ? shulker : filter == 5 ? spawner : ender) matches.add(pos);
+            }
+            lines.add(new HudLine("STORAGE RADAR  " + matches.size() + " MATCHES  /  "
+                    + BaseScanner.getProgressPercent() + "% SCANNED", 0xFFFFC078));
+            for (int i = 0; i < Math.min(5, matches.size()); i++) {
+                BlockPos pos = matches.get(i);
+                String name = client.world.getBlockState(pos).getBlock().getName().getString();
+                String detail = storage != null && storage.setting3 < 0.5 ? name
+                        : name + "  " + pos.getX() + " " + pos.getY() + " " + pos.getZ();
+                lines.add(new HudLine("  " + detail, 0xFFDCCBFF));
             }
         }
         if ((on("Base Finder") || on("Container Finder")) && on("Container Radar HUD")) {

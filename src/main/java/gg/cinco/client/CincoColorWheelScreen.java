@@ -7,7 +7,7 @@ import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 /** Star Client HSV color wheel with adaptive rendering cost. */
-public final class CincoColorWheelScreen extends Screen {
+public final class CincoColorWheelScreen extends StarLegacyScreen {
     private static final int W = 540, H = 350;
     private static final int WHITE = 0xFFFFFFFF;
     private final ClientModule wheel;

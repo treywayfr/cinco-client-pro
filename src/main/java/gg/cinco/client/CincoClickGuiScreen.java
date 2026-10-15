@@ -14,14 +14,6 @@ import java.util.Locale;
 
 public final class CincoClickGuiScreen extends Screen {
     private static final int W = 680, H = 430, SIDE = 132, ROW = 55;
-    private static final int BACKGROUND = 0xFF080611;
-    private static final int PANEL = 0xFF100C1A;
-    private static final int SIDEBAR = 0xFF151020;
-    private static final int CARD = 0xFF1A1424;
-    private static final int CARD_HOVER = 0xFF2A1D3A;
-    private static final int PURPLE = 0xFFFF8C24;
-    private static final int TEXT = 0xFFFFC078;
-    private static final int MUTED = 0xFFE89745;
 
     private int scroll;
     private final long openedAt = System.currentTimeMillis();
@@ -54,7 +46,7 @@ public final class CincoClickGuiScreen extends Screen {
         // Paint vanilla's background first. Never draw it over the custom controls.
         super.render(c, mx, my, delta);
         long now = System.currentTimeMillis();
-        c.fill(0, 0, width, height, BACKGROUND);
+        c.fill(0, 0, width, height, CincoTheme.background());
         drawStars(c, now, delta);
 
         int l = left(), t = top();
@@ -65,49 +57,49 @@ public final class CincoClickGuiScreen extends Screen {
         int panelY = t + lift;
 
         // Opaque surfaces deliberately prevent the world and stars showing through text and cards.
-        c.fill(l - 2, panelY - 2, l + W + 2, panelY + H + 2, 0xFFFF8C24);
-        c.fill(l, panelY, l + W, panelY + H, panelColor(PANEL));
-        c.fill(l, panelY, l + W, panelY + 3, PURPLE);
-        c.fill(l, panelY + 3, l + SIDE, panelY + H, panelColor(SIDEBAR));
-        c.fill(l + SIDE, panelY + 3, l + SIDE + 1, panelY + H, 0xFF4B2B16);
+        c.fill(l - 2, panelY - 2, l + W + 2, panelY + H + 2, CincoTheme.accent());
+        c.fill(l, panelY, l + W, panelY + H, CincoTheme.panel());
+        c.fill(l, panelY, l + W, panelY + 3, CincoTheme.accent());
+        c.fill(l, panelY + 3, l + SIDE, panelY + H, CincoTheme.sidebar());
+        c.fill(l + SIDE, panelY + 3, l + SIDE + 1, panelY + H, CincoTheme.line());
 
         // Brand header
-        c.fill(l + 12, panelY + 11, l + 15, panelY + 39, PURPLE);
-        c.drawText(textRenderer, uiText("CINCO CLIENT"), l + 23, panelY + 12, uiColor(TEXT), false);
-        c.drawText(textRenderer, uiText("PURPLE NEBULA  /  v2.1"), l + 23, panelY + 27, uiColor(PURPLE), false);
-        c.fill(l + W - 111, panelY + 13, l + W - 14, panelY + 34, 0xFF29180C);
-        drawCenteredTextSharp(c, uiText("SHARP UI  •  READY"), l + W - 62, panelY + 20, 0xFFFFD18C);
+        c.fill(l + 12, panelY + 11, l + 15, panelY + 39, CincoTheme.accent());
+        c.drawText(textRenderer, uiText("CINCO CLIENT"), l + 23, panelY + 12, uiColor(CincoTheme.primaryText()), false);
+        c.drawText(textRenderer, uiText("CincoTheme.accent() NEBULA  /  v2.1"), l + 23, panelY + 27, uiColor(CincoTheme.accent()), false);
+        c.fill(l + W - 111, panelY + 13, l + W - 14, panelY + 34, CincoTheme.panel());
+        drawCenteredTextSharp(c, uiText("SHARP UI  •  READY"), l + W - 62, panelY + 20, CincoTheme.primaryText());
 
         int catY = panelY + 58;
         for (ClientModule.Category category : ClientModule.Category.values()) {
             int y = catY + category.ordinal() * 34;
             boolean selected = category == CincoClient.selectedCategory;
             if (selected) {
-                c.fill(l + 8, y - 5, l + SIDE - 8, y + 22, 0xFF4A2A16);
-                c.fill(l + 8, y - 5, l + 11, y + 22, PURPLE);
+                c.fill(l + 8, y - 5, l + SIDE - 8, y + 22, CincoTheme.accentDark());
+                c.fill(l + 8, y - 5, l + 11, y + 22, CincoTheme.accent());
             } else {
-                c.fill(l + 14, y + 7, l + 17, y + 10, 0xFF8C5125);
+                c.fill(l + 14, y + 7, l + 17, y + 10, CincoTheme.accentMuted());
             }
-            c.drawText(textRenderer, uiText(category.label), l + 24, y + 3, uiColor(selected ? TEXT : MUTED), false);
+            c.drawText(textRenderer, uiText(category.label), l + 24, y + 3, uiColor(selected ? CincoTheme.primaryText() : CincoTheme.secondaryText()), false);
         }
 
         int enabled = (int) CincoClient.MODULES.stream().filter(m -> m.enabled).count();
-        c.fill(l + 12, panelY + H - 58, l + SIDE - 12, panelY + H - 57, 0xFF663A1A);
+        c.fill(l + 12, panelY + H - 58, l + SIDE - 12, panelY + H - 57, CincoTheme.accentDark());
         c.drawText(textRenderer, uiText("CLIENT STATUS"), l + 15, panelY + H - 46, uiColor(0xFFE88736), false);
-        c.drawText(textRenderer, uiText(enabled + " modules enabled"), l + 15, panelY + H - 31, uiColor(TEXT), false);
+        c.drawText(textRenderer, uiText(enabled + " modules enabled"), l + 15, panelY + H - 31, uiColor(CincoTheme.primaryText()), false);
         c.drawText(textRenderer, uiText("RIGHT SHIFT  /  ESC"), l + 15, panelY + H - 17, uiColor(0xFF9F8ABF), false);
 
         int contentX = l + SIDE + 16;
         c.drawText(textRenderer, uiText(CincoClient.selectedCategory.label + " MODULES"),
-                contentX, panelY + 13, uiColor(TEXT), false);
+                contentX, panelY + 13, uiColor(CincoTheme.primaryText()), false);
         c.drawText(textRenderer, uiText("LEFT CLICK: TOGGLE  •  RIGHT CLICK: FULL SETTINGS"),
-                contentX, panelY + 28, uiColor(MUTED), false);
+                contentX, panelY + 28, uiColor(CincoTheme.secondaryText()), false);
 
         int searchX = l + W - 213, searchY = panelY + 10;
-        c.fill(searchX, searchY, searchX + 194, searchY + 23, panelColor(searchFocused ? 0xFF573019 : 0xFF29180C));
-        c.fill(searchX, searchY, searchX + 2, searchY + 23, searchFocused ? PURPLE : 0xFF9C571C);
+        c.fill(searchX, searchY, searchX + 194, searchY + 23, panelColor(searchFocused ? CincoTheme.cardHover() : CincoTheme.panel()));
+        c.fill(searchX, searchY, searchX + 2, searchY + 23, searchFocused ? CincoTheme.accent() : CincoTheme.accentMuted());
         c.drawText(textRenderer, uiText((search.isEmpty() ? "SEARCH MODULES" : search.toUpperCase(Locale.ROOT))
-                + (searchFocused ? " _" : "")), searchX + 9, searchY + 7, uiColor(TEXT), false);
+                + (searchFocused ? " _" : "")), searchX + 9, searchY + 7, uiColor(CincoTheme.primaryText()), false);
 
         List<ClientModule> list = filteredModules();
         int viewportTop = panelY + 47, viewportBottom = panelY + H - 15;
@@ -121,23 +113,23 @@ public final class CincoClickGuiScreen extends Screen {
             int y = viewportTop + i * ROW - scroll;
             if (y + ROW < viewportTop || y > viewportBottom) continue;
             boolean hovered = mx >= contentX && mx <= l + W - 13 && my >= y && my <= y + ROW - 5;
-            c.fill(contentX, y, l + W - 13, y + ROW - 5, panelColor(hovered ? CARD_HOVER : CARD));
-            c.fill(contentX, y, contentX + 3, y + ROW - 5, module.enabled ? PURPLE : 0xFF7A431B);
-            c.drawText(textRenderer, uiText(module.name), contentX + 11, y + 6, uiColor(module.enabled ? TEXT : 0xFFFFBC72), false);
-            c.drawText(textRenderer, uiText(module.description), contentX + 11, y + 20, uiColor(MUTED), false);
+            c.fill(contentX, y, l + W - 13, y + ROW - 5, hovered ? CincoTheme.cardHover() : CincoTheme.card());
+            c.fill(contentX, y, contentX + 3, y + ROW - 5, module.enabled ? CincoTheme.accent() : CincoTheme.disabled());
+            c.drawText(textRenderer, uiText(module.name), contentX + 11, y + 6, uiColor(module.enabled ? CincoTheme.primaryText() : CincoTheme.secondaryText()), false);
+            c.drawText(textRenderer, uiText(module.description), contentX + 11, y + 20, uiColor(CincoTheme.secondaryText()), false);
 
             int sliderX = l + W - 285, sliderWidth = 78, sliderY = y + 39;
-            c.fill(sliderX, sliderY, sliderX + sliderWidth, sliderY + 3, 0xFF6D3C1B);
+            c.fill(sliderX, sliderY, sliderX + sliderWidth, sliderY + 3, CincoTheme.sliderTrack());
             double fraction = (module.setting - module.min) / Math.max(.0001, module.max - module.min);
             int knob = sliderX + (int) (Math.max(0, Math.min(1, fraction)) * sliderWidth);
-            c.fill(sliderX, sliderY, knob, sliderY + 3, PURPLE);
+            c.fill(sliderX, sliderY, knob, sliderY + 3, CincoTheme.accent());
             c.fill(knob - 2, sliderY - 2, knob + 3, sliderY + 5, 0xFFFFFFFF);
             c.drawText(textRenderer, uiText(module.settingLabel + ": " + format(module.setting)),
-                    sliderX + sliderWidth + 8, y + 35, uiColor(0xFFFFB86B), false);
+                    sliderX + sliderWidth + 8, y + 35, uiColor(CincoTheme.secondaryText()), false);
 
             int toggleX = l + W - 79;
-            c.fill(toggleX, y + 9, toggleX + 57, y + 26, module.enabled ? 0xFFB65B18 : 0xFF49301C);
-            drawCenteredTextSharp(c, uiText(module.enabled ? "ON" : "OFF"), toggleX + 28, y + 14, TEXT);
+            c.fill(toggleX, y + 9, toggleX + 57, y + 26, module.enabled ? CincoTheme.enabled() : CincoTheme.disabled());
+            drawCenteredTextSharp(c, uiText(module.enabled ? "ON" : "OFF"), toggleX + 28, y + 14, CincoTheme.primaryText());
         }
         c.disableScissor();
 
@@ -156,13 +148,7 @@ public final class CincoClickGuiScreen extends Screen {
     }
 
     private int uiColor(int original) {
-        ClientModule palette = CincoClient.findModule("Text Palette");
-        int choice = palette == null || !palette.enabled ? 1 : (int) Math.round(palette.setting);
-        int r = (original >> 16) & 255, g = (original >> 8) & 255, b = original & 255;
-        boolean bright = (r * 299 + g * 587 + b * 114) / 1000 >= 170;
-        if (choice == 2) return bright ? 0xFFFFD36B : 0xFFE09A22;
-        if (choice >= 3) return bright ? 0xFFD9B3FF : 0xFFA87BDE;
-        return bright ? 0xFFFFC078 : 0xFFE88736;
+        return CincoTheme.textColor(original);
     }
 
     private int panelColor(int rgb) {

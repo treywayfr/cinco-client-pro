@@ -84,6 +84,8 @@ public final class ClientModule {
             setting2Label = "Interval"; setting2 = 10; min2 = 1; max2 = 60; step2 = 1;
             setting3Label = "Mode"; setting3 = 1; min3 = 1; max3 = 3; step3 = 1;
         }
+        if (name.equals("Open GUI")) keyCode = GLFW.GLFW_KEY_RIGHT_SHIFT;
+        else if (name.equals("Toggle HUD")) keyCode = GLFW.GLFW_KEY_H;
         this.defaultSetting = this.setting;
         this.defaultSetting2 = this.setting2;
         this.defaultSetting3 = this.setting3;

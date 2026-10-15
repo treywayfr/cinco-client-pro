@@ -7,6 +7,7 @@
     "ClientWorldSkyMixin",
     "PlayerEntityRendererMixin",
     "PlayerChangerArmMixin",
+    "HandViewMixin",
     "CombatModulesMixin",
     "CincoClientMixin",
     "EntityGlowMixin",
@@ -18,7 +19,8 @@
     "FreeCamMouseMixin",
     "FreeCamMovementMixin",
     "ChatHudEditorMixin",
-    "StarActionBarMixin"
+    "StarActionBarMixin",
+    "StarGuiBackgroundMixin"
   ],
   "injectors": {
     "defaultRequire": 1

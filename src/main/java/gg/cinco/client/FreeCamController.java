@@ -5,17 +5,15 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-/** Stable local-only detached camera with independent movement and mouse look. */
+/** Perspective-only detached camera. The real network player is never teleported by Free Cam. */
 public final class FreeCamController {
     private static OtherClientPlayerEntity camera;
     private static ClientWorld activeWorld;
     private static boolean active;
-    private static Vec3d frozenPos;
     private static float savedYaw;
     private static float savedPitch;
     private static float freeYaw;
@@ -32,25 +30,22 @@ public final class FreeCamController {
             disable(client);
             return;
         }
-
         if (!active || camera == null || activeWorld != client.world) enable(client);
-        if (!active || camera == null || frozenPos == null) return;
+        if (!active || camera == null) return;
 
-        client.player.setPosition(frozenPos.x, frozenPos.y, frozenPos.z);
-        client.player.setVelocity(Vec3d.ZERO);
-        client.player.fallDistance = 0.0F;
+        // Never touch the real player's position. The movement mixin only suppresses local input
+        // while this detached camera is active, so the server-side player remains exactly where it is.
         client.player.setYaw(savedYaw);
         client.player.setPitch(savedPitch);
         client.player.setHeadYaw(savedYaw);
 
         camera.noClip = true;
         camera.setNoGravity(true);
-        camera.setVelocity(Vec3d.ZERO);
+        camera.setVelocity(0.0, 0.0, 0.0);
         camera.setYaw(freeYaw);
         camera.setPitch(freePitch);
         camera.setHeadYaw(freeYaw);
         if (client.getCameraEntity() != camera) client.setCameraEntity(camera);
-
         if (client.currentScreen != null) return;
 
         double base = Math.max(0.05, module.setting) * 0.24;
@@ -64,19 +59,11 @@ public final class FreeCamController {
 
         double yaw = Math.toRadians(freeYaw);
         double dx = -Math.sin(yaw) * forward + Math.cos(yaw) * strafe;
-        double dz =  Math.cos(yaw) * forward + Math.sin(yaw) * strafe;
+        double dz = Math.cos(yaw) * forward + Math.sin(yaw) * strafe;
         double horizontal = Math.hypot(dx, dz);
-        if (horizontal > 0.0001) {
-            dx /= horizontal;
-            dz /= horizontal;
-        }
-
+        if (horizontal > 0.0001) { dx /= horizontal; dz /= horizontal; }
         double length3d = Math.sqrt(dx * dx + dz * dz + vertical * vertical);
-        if (length3d > 1.0) {
-            dx /= length3d;
-            dz /= length3d;
-            vertical /= length3d;
-        }
+        if (length3d > 1.0) { dx /= length3d; dz /= length3d; vertical /= length3d; }
 
         camera.prevX = camera.getX();
         camera.prevY = camera.getY();
@@ -88,10 +75,9 @@ public final class FreeCamController {
                 camera.getZ() + dz * speed);
     }
 
-    /** Called after Minecraft processes a mouse-look update. */
+    /** Capture vanilla mouse deltas without allowing them to rotate the real player. */
     public static void syncMouseLook(MinecraftClient client) {
         if (!active || camera == null || client == null || client.player == null) return;
-
         float yawDelta = MathHelper.wrapDegrees(client.player.getYaw() - savedYaw);
         float pitchDelta = client.player.getPitch() - savedPitch;
         if (Math.abs(yawDelta) > 0.00001F || Math.abs(pitchDelta) > 0.00001F) {
@@ -111,17 +97,15 @@ public final class FreeCamController {
     private static void enable(MinecraftClient client) {
         if (client.player == null || client.world == null) return;
         if (active) disable(client);
-
         activeWorld = client.world;
-        frozenPos = client.player.getPos();
         savedYaw = client.player.getYaw();
         savedPitch = client.player.getPitch();
         freeYaw = savedYaw;
         freePitch = savedPitch;
 
-        UUID id = UUID.nameUUIDFromBytes("cinco-free-camera".getBytes(StandardCharsets.UTF_8));
-        camera = new OtherClientPlayerEntity(client.world, new GameProfile(id, "CincoFreeCam"));
-        camera.setPosition(client.player.getX(), client.player.getY(), client.player.getZ());
+        UUID id = UUID.nameUUIDFromBytes("star-free-camera".getBytes(StandardCharsets.UTF_8));
+        camera = new OtherClientPlayerEntity(client.world, new GameProfile(id, "StarFreeCam"));
+        camera.setPosition(client.player.getX(), client.player.getEyeY(), client.player.getZ());
         camera.prevX = camera.getX();
         camera.prevY = camera.getY();
         camera.prevZ = camera.getZ();
@@ -141,15 +125,12 @@ public final class FreeCamController {
         if (!active) return;
         if (client != null && client.player != null) {
             client.setCameraEntity(client.player);
-            if (frozenPos != null) client.player.setPosition(frozenPos.x, frozenPos.y, frozenPos.z);
-            client.player.setVelocity(Vec3d.ZERO);
             client.player.setYaw(savedYaw);
             client.player.setPitch(savedPitch);
             client.player.setHeadYaw(savedYaw);
         }
         camera = null;
         activeWorld = null;
-        frozenPos = null;
         active = false;
     }
 }

@@ -2,6 +2,8 @@ package gg.cinco.client.mixin;
 
 import gg.cinco.client.ClientModule;
 import gg.cinco.client.ModuleSettingsScreen;
+import gg.cinco.client.StarFonts;
+import gg.cinco.client.StarProfiles;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -14,7 +16,7 @@ public abstract class ModuleSettingsMixin {
     @Shadow @Final private ClientModule module;
 
     @Inject(method = "displaySetting", at = @At("HEAD"), cancellable = true, remap = false)
-    private void cinco$friendlySettingNames(int which, double value, CallbackInfoReturnable<String> cir) {
+    private void star$friendlySettingNames(int which, double value, CallbackInfoReturnable<String> cir) {
         int selected = (int) Math.round(value);
         if ((module.name.equals("Player Changer") || module.name.equals("GTA Skin Changer")) && which == 0) {
             cir.setReturnValue(switch (selected) {
@@ -34,6 +36,14 @@ public abstract class ModuleSettingsMixin {
                 case 6 -> "Ender Chests";
                 default -> "All Storage";
             });
+            return;
+        }
+        if (module.name.equals("Font Style") && which == 0) {
+            cir.setReturnValue(StarFonts.name(selected));
+            return;
+        }
+        if (module.name.equals("Client Profile") && which == 0) {
+            cir.setReturnValue(StarProfiles.name(selected));
         }
     }
 }

@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
+import org.lwjgl.glfw.GLFW;
 
 /** Extra lifecycle wiring for the reliability/render overhaul without disturbing the polished GUI. */
 public final class CincoPatchClient implements ClientModInitializer {
@@ -21,13 +22,15 @@ public final class CincoPatchClient implements ClientModInitializer {
             added = true;
         }
         if (CincoClient.findModule("Free Cam") == null) {
-            CincoClient.MODULES.add(new ClientModule(
+            ClientModule freeCam = new ClientModule(
                     "Free Cam",
                     "Detach the local camera and fly it around while your real player stays still",
                     ClientModule.Category.MOVEMENT,
                     false,
                     "Camera speed",
-                    1.0, 0.2, 3.0, 0.2));
+                    1.0, 0.2, 3.0, 0.2);
+            freeCam.keyCode = GLFW.GLFW_KEY_C;
+            CincoClient.MODULES.add(freeCam);
             added = true;
         }
         if (added) ConfigStore.load();

@@ -63,9 +63,13 @@ public final class ModuleSettingsScreen extends Screen {
         c.drawText(textRenderer, label(binding), l + 29, keyY + 27, BRIGHT, false);
 
         c.fill(l + 18, t + H - 37, l + 145, t + H - 13, 0xFF633316);
-        c.drawCenteredTextWithShadow(textRenderer, label("RESET SETTINGS"), l + 81, t + H - 29, BRIGHT);
+        drawCenteredSharp(c, label("RESET SETTINGS"), l + 81, t + H - 29, BRIGHT);
         c.fill(l + W - 135, t + H - 37, l + W - 18, t + H - 13, 0xFF633316);
-        c.drawCenteredTextWithShadow(textRenderer, label("BACK"), l + W - 76, t + H - 29, BRIGHT);
+        drawCenteredSharp(c, label("BACK"), l + W - 76, t + H - 29, BRIGHT);
+    }
+
+    private void drawCenteredSharp(DrawContext c, Text text, int centerX, int y, int color) {
+        c.drawText(textRenderer, text, centerX - textRenderer.getWidth(text) / 2, y, color, false);
     }
 
     private void drawSlider(DrawContext c, int l, int t, int which,

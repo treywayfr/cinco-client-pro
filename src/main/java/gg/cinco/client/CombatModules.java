@@ -25,6 +25,7 @@ public final class CombatModules {
     private static boolean rightMouseWasDown;
     private static int anchorPlacementTicks;
     private static int pearlRestoreTicks;
+    private static int pearlCooldown;
     private static int pearlPreviousSlot;
     private static int pearlThrownSlot;
     private static boolean pearlShouldRestore;
@@ -50,6 +51,7 @@ public final class CombatModules {
         if (safeAnchorCooldown > 0) safeAnchorCooldown--;
         if (autoEatCooldown > 0) autoEatCooldown--;
         if (crystalPlaceCooldown > 0) crystalPlaceCooldown--;
+        if (pearlCooldown > 0) pearlCooldown--;
         if (anchorCooldown > 0) anchorCooldown--;
         tickPearlRestore(client);
 
@@ -343,7 +345,7 @@ public final class CombatModules {
         }
 
         // Break nearby crystals rapidly while Auto Crystal is being used, or continuously for Crystal Breaker.
-        if (allowPlace && !rightDown) return;
+        if (allowPlace && (!rightDown || !client.player.getMainHandStack().isOf(Items.END_CRYSTAL))) return;
         if (!allowPlace && !enabled("Crystal Breaker")) return;
         if (crystalCooldown > 0) return;
         ClientModule crystalSettings = CincoClient.findModule(allowPlace ? "Auto Crystal" : "Crystal Breaker");
@@ -372,6 +374,10 @@ public final class CombatModules {
             return;
         }
         if (client.player == null || client.world == null || client.interactionManager == null || client.currentScreen != null) return;
+        if (pearlCooldown > 0) {
+            notify(client, "Pearl macro cooling down.");
+            return;
+        }
         if (pearlRestoreTicks > 0) {
             notify(client, "Pearl macro is already finishing its previous throw.");
             return;
@@ -389,6 +395,7 @@ public final class CombatModules {
         client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
         client.player.swingHand(Hand.MAIN_HAND);
         pearlRestoreTicks = Math.max(1, module == null ? 2 : (int) module.setting2);
+        pearlCooldown = module == null ? 0 : (int) module.setting;
         notify(client, "Pearl thrown.");
     }
 

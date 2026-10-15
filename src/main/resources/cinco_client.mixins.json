@@ -13,7 +13,9 @@
     "GameRendererFullbrightMixin",
     "SimpleOptionAccessor",
     "PlayerChangerAliasMixin",
-    "ModuleSettingsMixin"
+    "ModuleSettingsMixin",
+    "FreeCamMouseMixin",
+    "FreeCamMovementMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -46,7 +46,10 @@ public final class ClientModule {
         this.step = step;
 
         // Sensible extra controls for every module; key gameplay options have specific labels/ranges.
-        if (name.equals("Anchor Macro")) {
+        if (name.equals("Color Wheel")) {
+            setting2Label = "Saturation"; setting2 = 0.90; min2 = 0.10; max2 = 1.0; step2 = 0.05;
+            setting3Label = "Brightness"; setting3 = 1.0; min3 = 0.15; max3 = 1.0; step3 = 0.05;
+        } else if (name.equals("Anchor Macro")) {
             setting2Label = "Charge retries"; setting2 = 2; min2 = 1; max2 = 4; step2 = 1;
             setting3Label = "Switch delay"; setting3 = 1; min3 = 0; max3 = 5; step3 = 1;
             keyCode = GLFW.GLFW_KEY_G;

@@ -14,7 +14,8 @@ import java.util.Map;
 
 public final class ConfigStore {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("cinco-client.json");
+    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("star-client.json");
+    private static final Path LEGACY_FILE = FabricLoader.getInstance().getConfigDir().resolve("cinco-client.json");
     private ConfigStore() {}
 
     private static final class State {
@@ -46,15 +47,14 @@ public final class ConfigStore {
     }
 
     public static void load() {
-        if (!Files.exists(FILE)) return;
+        Path source = Files.exists(FILE) ? FILE : LEGACY_FILE;
+        if (!Files.exists(source)) return;
         try {
             Type type = new TypeToken<Map<String, State>>() {}.getType();
-            Map<String, State> data = GSON.fromJson(Files.readString(FILE), type);
+            Map<String, State> data = GSON.fromJson(Files.readString(source), type);
             if (data == null) return;
             for (ClientModule module : CincoClient.MODULES) {
                 State state = data.get(module.name);
-                // Player Changer was formerly called GTA Skin Changer. Accept either key so the
-                // rename never wipes the selected character, palette, keybind, or enabled state.
                 if (state == null && module.name.equals("GTA Skin Changer")) state = data.get("Player Changer");
                 if (state == null && module.name.equals("Player Changer")) state = data.get("GTA Skin Changer");
                 if (state == null) continue;
@@ -68,6 +68,10 @@ public final class ConfigStore {
             if (sprint != null) CincoClient.sprintAssistEnabled = sprint.enabled;
             ClientModule hud = CincoClient.findModule("Client HUD");
             if (hud != null) CincoClient.hudEnabled = hud.enabled;
+
+            // First launch after the rename automatically writes a Star-branded copy. The legacy
+            // file is left alone so users can roll back an older build without losing settings.
+            if (!source.equals(FILE)) save();
         } catch (Exception ignored) {
             // Ignore malformed config and continue with defaults.
         }

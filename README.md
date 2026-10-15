@@ -1,46 +1,46 @@
-# CINCO CLIENT — Ember Edition
+# CINCO CLIENT — Ember Edition 2.3.0
 
 **Target:** Minecraft Java Edition 1.21.1 · Fabric · Java 21
 
-Cinco Client has an animated purple-star ClickGUI, a global HSV color wheel, bold typography, configurable module settings, local HUD widgets, PvP helpers, and local loaded-area world scans.
+Cinco Client combines an animated purple-star ClickGUI, the global HSV color wheel, bold themeable typography, expandable per-module settings, saved keyboard bindings, PvP quick-actions, local HUDs, FOV control, animated sky presets, and a generated local battle-royale-inspired skin.
 
-## Quick build (Windows)
+## Build and install (Windows)
 1. Install JDK 21: https://adoptium.net/temurin/releases/?version=21 (Windows x64, JDK, version 21, MSI installer).
-2. Download this repository as ZIP and extract it.
-3. Open the extracted folder and double-click `build-cinco.bat`. It uses Gradle 8.10.2 if installed, or downloads it into a local `.tools` folder.
-4. After `BUILD SUCCESSFUL`, find `build\libs\cinco-client-2.0.0.jar`.
-
-Install that JAR and Fabric API for Minecraft 1.21.1 in `%appdata%\.minecraft\mods`. Launch the Fabric 1.21.1 profile.
+2. Download the repository ZIP and extract it.
+3. Open the extracted folder and double-click `build-cinco.bat`. It uses Gradle 8.10.2 if installed, or downloads it into the local `.tools` folder.
+4. After `BUILD SUCCESSFUL`, find `build\libs\cinco-client-2.3.0.jar`.
+5. Put the JAR and Fabric API for Minecraft 1.21.1 in `%appdata%\.minecraft\mods` and launch the Fabric 1.21.1 profile.
 
 ## Controls
-- **Right Shift:** open/close GUI by default (remappable under SETTINGS → Open GUI)
-- **H:** toggle HUD by default (remappable under SETTINGS → Toggle HUD)
-- **Mouse wheel:** scroll modules
-- **Left-click a module card:** toggle it (the Color Wheel card opens the picker)
-- **Drag a card slider:** change its main setting
-- **Right-click a module card:** open its full settings
-- **Click MODULE KEYBIND, then press a keyboard key:** assign that module's hotkey
-- **Delete/Backspace while capturing a key:** clear its binding
-- **Escape while capturing:** cancel key capture
-- **Slash (/):** focus search
-- **Escape/Right Shift:** close the GUI
+- **Right Shift:** open the GUI by default (remappable via SETTINGS → Open GUI).
+- **H:** toggle the HUD by default (remappable via SETTINGS → Toggle HUD).
+- **Right-click a module card:** open expanded settings.
+- **Click its keybind field, then press a key:** assign a module key; Delete clears it and Escape cancels.
+- **Click the Color Wheel card:** open the global hue/saturation/brightness picker.
+- **Mouse wheel:** scroll modules; **/** focuses module search; **Escape** closes screens.
+- **Left-click a module card:** toggle it; drag sliders to change its main setting.
 
-Each module has three sliders (primary and two extra settings), an independently saved hotkey, enable state, and reset-to-defaults action. Right-click the Color Wheel card under SETTINGS to open its detail page, or simply left-click that card to open the full hue/saturation/brightness wheel. Drag around the wheel to change hue and saturation; drag the brightness strip to change brightness. These colors update the ClickGUI, module editor, and in-game HUD immediately, and persist across restarts. Settings and keybinds persist in `.minecraft/config/cinco-client.json`.
+Module toggles, all three settings per module, and keyboard bindings are saved to `.minecraft/config/cinco-client.json`.
 
-Anchor Macro starts with **G**. When the module is enabled, its configured key runs its sequence; if it is disabled, the first press arms it and the next press runs it.
+## PvP modules
+- **Anchor Macro (G by default):** enable it, aim at a placeable block (or an existing respawn anchor), then press its chosen key. The macro places the anchor when needed, switches to glowstone to charge it, waits for the charge to register, then selects a totem and activates it. It refuses to run in the Nether because respawn anchors behave differently there. You need an anchor, glowstone and totem in the hotbar.
+- **Auto Crystal:** enable it, hold end crystals, aim at an obsidian/bedrock base, and hold right-click. It attempts repeated placement while the button is held and rapidly attacks nearby crystals during that action.
+- **Crystal Breaker:** attacks nearby crystals while enabled.
+- **Key Pearl (V by default):** enable it and press its assigned key. It selects a hotbar pearl and throws it, optionally restoring your previous slot after the configurable delay.
+- **Auto Totem, Auto Eat, Auto Safe Anchor, reminders and practice helpers:** adjustable module settings; test gameplay automation in a private world first.
 
-## Module categories
-- **Combat:** Auto Crystal, Anchor Macro, Auto Safe Anchor, Auto Totem, Auto Eat, Offhand Manager, Auto Regear, Crystal Breaker, reminders, practice timer
-- **Movement:** Sprint Assist, Safe Walk Guide, Elytra Reminder, Auto Swim, Fall Alert
-- **Render:** Client HUD, FPS, coordinates, direction, armor, potion status, local scan radar, purple stars, accent glow, compact HUD, crosshair guide, target HUD, ping display
-- **World:** Base Finder, Container Finder, Sus Chunk Finder, Portal Finder, Spawner Finder, Shulker Finder, Stash Radar, Chunk Density, Nearby Player List, Block Notes
-- **Utility:** Config Auto-Save, Session Timer, Keystrokes, CPS, Safe Logout Reminder, Auto Refill, Inventory Checklist
-- **Practice:** Anchor Practice Timer, Reach Trainer, Cooldown Coach, Surround Trainer, Pearl Reminder
-- **Settings:** Color Wheel, Open GUI keybind, Toggle HUD keybind, Bold Typeface, GUI Animation, Panel Opacity
+## Visual modules
+- **FOV Changer:** sets FOV while enabled, with an optional smooth transition.
+- **Sky Changer:** animated presets: **Sunset, Aurora, Cyberpunk, Cosmic, Ember**. Speed and intensity are configurable; sky/cloud colors are client-side.
+- **Fortnite Style:** swaps only your local player's rendered skin texture to a generated battle-royale-inspired tactical outfit. Outfit style, suit palette and visor are configurable. It does not alter your actual Mojang account skin or other players' skins.
+- **Hover Glow:** animated accent glow on hovered module cards, detail sliders and color controls. Intensity, pulse speed and width are adjustable.
+- **Color Wheel:** changes hue, saturation and brightness across the ClickGUI, module editors, HUD panels and accents.
+- **HUD and render modules:** FPS, coordinates, direction, armor, potion count, click rate, keystrokes, crosshair guide and nearby-block readouts.
 
-Some entries are configuration/visual foundations. Check each module in the detail screen for its current options.
+## World scanning notes
+Base Finder, Container Finder, Sus Chunk Finder and related scanners inspect only block states already present in the client-loaded area. They don't load distant chunks, reveal unloaded bases, or bypass server protections.
 
-## Accuracy and safety notes
-World scanners inspect only block states already available in Minecraft's client-loaded area; they do not reveal unloaded chunks or bypass server protections. Anchor and combat automation can consume items, cause self-damage, or conflict with server rules. Test in a private world/server where permitted. No anti-cheat bypass or external-process injection is included.
+## Important notes
+Gameplay automation may consume items, cause self-damage, or violate server rules. Use it only where your server rules permit it. The generated skin is a client-side visual override, not an account-skin upload. Some less-used modules remain HUD/config foundations rather than full gameplay implementations.
 
-The repository's GitHub Actions workflow builds the source and publishes the resulting mod JAR as a downloadable artifact when compilation succeeds.
+GitHub Actions builds the mod and publishes the JAR as an artifact when compilation succeeds.

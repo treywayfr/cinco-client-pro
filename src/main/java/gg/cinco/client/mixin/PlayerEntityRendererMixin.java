@@ -29,14 +29,21 @@ public abstract class PlayerEntityRendererMixin {
         if (module != null && module.enabled && player == client.player) {
             GtaCharacterRenderer.render(player, bodyYaw, tickDelta, matrices, consumers, light);
 
-            // Detail uses camera-distance LOD instead of a user toggle. That keeps the close-up
-            // characters rich while avoiding the old FPS hit when Free Cam is far away.
+            // Detail uses camera-distance LOD instead of a user toggle. setting3 is now reserved
+            // for the first-person hand option, so premium body detail is forced on only for this
+            // close-range render call and immediately restored afterward.
             double detailRangeSq = 18.0 * 18.0;
             boolean nearCamera = client.gameRenderer.getCamera() == null
                     || client.gameRenderer.getCamera().getPos().squaredDistanceTo(player.getPos()) <= detailRangeSq;
             if (nearCamera) {
                 CharacterDetailOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
-                CharacterPremiumOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
+                double handSetting = module.setting3;
+                try {
+                    module.setting3 = 1.0;
+                    CharacterPremiumOverlay.render(player, bodyYaw, tickDelta, matrices, consumers, light);
+                } finally {
+                    module.setting3 = handSetting;
+                }
             }
             ci.cancel();
         }

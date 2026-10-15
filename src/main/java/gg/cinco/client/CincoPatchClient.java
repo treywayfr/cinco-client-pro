@@ -9,7 +9,7 @@ import net.minecraft.client.MinecraftClient;
 public final class CincoPatchClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        // Add the underground block-light detector as one clean world module.
+        boolean added = false;
         if (CincoClient.findModule("Light Finder") == null) {
             CincoClient.MODULES.add(new ClientModule(
                     "Light Finder",
@@ -18,12 +18,24 @@ public final class CincoPatchClient implements ClientModInitializer {
                     false,
                     "Range",
                     48, 16, 96, 8));
-            // CincoClient loaded the existing modules before this second entry point added Light Finder.
-            // Loading again is safe and allows a saved Light Finder state to be restored too.
-            ConfigStore.load();
+            added = true;
         }
+        if (CincoClient.findModule("Free Cam") == null) {
+            CincoClient.MODULES.add(new ClientModule(
+                    "Free Cam",
+                    "Detach the local camera and fly it around while your real player stays still",
+                    ClientModule.Category.MOVEMENT,
+                    false,
+                    "Camera speed",
+                    1.0, 0.2, 3.0, 0.2));
+            added = true;
+        }
+        if (added) ConfigStore.load();
 
-        ClientTickEvents.END_CLIENT_TICK.register(EnhancedWorldScan::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            EnhancedWorldScan.tick(client);
+            FreeCamController.tick(client);
+        });
         HudRenderCallback.EVENT.register((ctx, tickCounter) ->
                 EnhancedEspHud.render(ctx, MinecraftClient.getInstance()));
     }

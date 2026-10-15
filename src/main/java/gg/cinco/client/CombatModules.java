@@ -18,9 +18,17 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import org.lwjgl.glfw.GLFW;
 
 public final class CombatModules {
     private static int crystalCooldown;
+    private static int crystalPlaceCooldown;
+    private static boolean rightMouseWasDown;
+    private static int anchorPlacementTicks;
+    private static int pearlRestoreTicks;
+    private static int pearlPreviousSlot;
+    private static int pearlThrownSlot;
+    private static boolean pearlShouldRestore;
     private static int anchorCooldown;
     private static int anchorStage; // 0 idle, 1 charge once, 2 activate
     private static int anchorWait;
@@ -39,10 +47,12 @@ public final class CombatModules {
 
     public static void tick(MinecraftClient client) {
         if (crystalCooldown > 0) crystalCooldown--;
-        if (anchorCooldown > 0) anchorCooldown--;
         if (autoTotemCooldown > 0) autoTotemCooldown--;
         if (safeAnchorCooldown > 0) safeAnchorCooldown--;
         if (autoEatCooldown > 0) autoEatCooldown--;
+        if (crystalPlaceCooldown > 0) crystalPlaceCooldown--;
+        if (anchorCooldown > 0) anchorCooldown--;
+        tickPearlRestore(client);
 
         if (enabled("Auto Crystal") || enabled("Crystal Breaker")) tickAutoCrystal(client, enabled("Auto Crystal"));
         tickAnchorSequence(client);
@@ -71,27 +81,72 @@ public final class CombatModules {
             notify(client, "Anchor Macro is disabled in the Nether to avoid activating a respawn anchor there.");
             return;
         }
-        if (!(client.crosshairTarget instanceof BlockHitResult hit)
-                || hit.getType() != HitResult.Type.BLOCK
-                || !client.world.getBlockState(hit.getBlockPos()).isOf(Blocks.RESPAWN_ANCHOR)) {
-            notify(client, "Aim at a placed respawn anchor, then press this module's configured key.");
+        if (anchorStage != 0) {
+            notify(client, "Anchor sequence already running.");
             return;
         }
-        activeAnchor = hit.getBlockPos().toImmutable();
-        previousCharges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
-        anchorDelay = Math.max(1, (int) moduleSetting("Anchor Macro", 1));
+        if (!(client.crosshairTarget instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) {
+            notify(client, "Aim at a block to place an anchor, or aim at an existing anchor.");
+            return;
+        }
+
+        anchorDelay = Math.max(0, (int) moduleSetting("Anchor Macro", 1));
         anchorRetries = 0;
         anchorWait = 0;
         safeGlowstonePlaced = false;
-        anchorStage = previousCharges > 0 ? 2 : 1;
-        if (previousCharges > 0) anchorWait = Math.max(0, (int) moduleSetting("Anchor Macro", 3));
-        notify(client, previousCharges > 0 ? "Anchor sequence: activating charged anchor..." : "Anchor sequence started.");
+
+        BlockPos target = hit.getBlockPos();
+        if (client.world.getBlockState(target).isOf(Blocks.RESPAWN_ANCHOR)) {
+            activeAnchor = target.toImmutable();
+            previousCharges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
+            anchorStage = previousCharges > 0 ? 2 : 1;
+            anchorWait = previousCharges > 0 ? Math.max(0, (int) moduleSetting("Anchor Macro", 2)) : 0;
+            notify(client, "Anchor sequence started on existing anchor.");
+            return;
+        }
+
+        BlockPos placePos = target.offset(hit.getSide());
+        if (!client.world.getBlockState(placePos).isAir()) {
+            notify(client, "Can't place anchor there — the adjacent block space isn't empty.");
+            return;
+        }
+        int anchorSlot = findHotbarItem(client, Items.RESPAWN_ANCHOR);
+        if (anchorSlot < 0 || findHotbarItem(client, Items.GLOWSTONE) < 0 || findHotbarItem(client, Items.TOTEM_OF_UNDYING) < 0) {
+            notify(client, "Put a respawn anchor, glowstone, and totem in your hotbar first.");
+            return;
+        }
+        activeAnchor = placePos.toImmutable();
+        previousCharges = 0;
+        client.player.getInventory().selectedSlot = anchorSlot;
+        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
+        client.player.swingHand(Hand.MAIN_HAND);
+        anchorStage = 3; // wait for the server/client world to show the placed anchor
+        anchorPlacementTicks = 8;
+        anchorWait = Math.max(1, anchorDelay);
+        notify(client, "Anchor placed — charging and totem activation sequence started.");
     }
 
     private static void tickAnchorSequence(MinecraftClient client) {
         if (anchorStage == 0 || client.player == null || client.world == null || client.interactionManager == null) return;
-        if (activeAnchor == null || !client.world.getBlockState(activeAnchor).isOf(Blocks.RESPAWN_ANCHOR)) {
+        if (activeAnchor == null) {
             resetAnchor();
+            return;
+        }
+        if (anchorStage != 3 && !client.world.getBlockState(activeAnchor).isOf(Blocks.RESPAWN_ANCHOR)) {
+            resetAnchor();
+            return;
+        }
+        if (anchorStage == 3) {
+            if (client.world.getBlockState(activeAnchor).isOf(Blocks.RESPAWN_ANCHOR)) {
+                previousCharges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
+                anchorStage = previousCharges > 0 ? 2 : 1;
+                anchorWait = Math.max(0, anchorDelay);
+                return;
+            }
+            if (--anchorPlacementTicks <= 0) {
+                notify(client, "Anchor placement didn't register. Check that the block is placeable.");
+                resetAnchor();
+            }
             return;
         }
 
@@ -119,22 +174,31 @@ public final class CombatModules {
             BlockHitResult anchorHit = anchorHit(activeAnchor);
             client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, anchorHit);
             client.player.swingHand(Hand.MAIN_HAND);
-            anchorStage = 2;
-            anchorWait = anchorDelay + Math.max(0, (int) moduleSetting("Anchor Macro", 3));
+            anchorStage = 4; // wait for server confirmation before switching to the totem
+            anchorWait = Math.max(1, anchorDelay + (int) moduleSetting("Anchor Macro", 2));
             anchorRetries++;
             return;
         }
 
-        if (anchorStage == 2) {
+        if (anchorStage == 4) {
             int charges = client.world.getBlockState(activeAnchor).get(RespawnAnchorBlock.CHARGES);
-            if (charges == 0 && previousCharges == 0 && anchorRetries < moduleSettingInt("Anchor Macro", 2)) {
+            if (charges > 0) {
+                anchorStage = 2;
+                anchorWait = Math.max(0, (int) moduleSetting("Anchor Macro", 2));
+            } else if (anchorRetries < moduleSettingInt("Anchor Macro", 3)) {
                 anchorStage = 1;
-                anchorWait = anchorDelay;
-                return;
+                anchorWait = Math.max(0, anchorDelay);
+            } else {
+                notify(client, "Anchor charging wasn't confirmed. Macro stopped before activation.");
+                resetAnchor();
             }
+            return;
+        }
+
+        if (anchorStage == 2) {
             int totemSlot = findHotbarItem(client, Items.TOTEM_OF_UNDYING);
             if (totemSlot < 0) {
-                notify(client, "Anchor is charged. Put a totem in your hotbar and run the configured key again to activate.");
+                notify(client, "Put a totem in your hotbar to finish the anchor sequence.");
                 resetAnchor();
                 return;
             }
@@ -173,6 +237,7 @@ public final class CombatModules {
     private static void resetAnchor() {
         anchorStage = 0;
         anchorWait = 0;
+        anchorPlacementTicks = 0;
         activeAnchor = null;
         anchorRetries = 0;
         safeGlowstonePlaced = false;
@@ -257,59 +322,83 @@ public final class CombatModules {
     }
 
     private static void tickAutoCrystal(MinecraftClient client, boolean allowPlace) {
-        if (client.player == null || client.world == null || client.interactionManager == null || crystalCooldown > 0) return;
-        ClientModule module = CincoClient.findModule(allowPlace ? "Auto Crystal" : "Crystal Breaker");
-        double range = module == null ? 4.0 : module.setting;
-        EndCrystalEntity crystal = null;
-        double best = range * range;
-        for (EndCrystalEntity endCrystal : client.world.getEntitiesByClass(EndCrystalEntity.class,
-                client.player.getBoundingBox().expand(range), Entity::isAlive)) {
-            double dist = client.player.squaredDistanceTo(endCrystal);
-            if (dist < best) { best = dist; crystal = endCrystal; }
-        }
-        if (crystal != null) {
-            client.interactionManager.attackEntity(client.player, crystal);
-            client.player.swingHand(Hand.MAIN_HAND);
-            crystalCooldown = Math.max(1, module == null ? 2 : (int) module.setting2);
-            return;
-        }
-        if (!allowPlace) return;
-        PlayerEntity target = null;
-        int targetMode = module == null ? 1 : (int) module.setting3;
-        if (targetMode == 2 && client.crosshairTarget instanceof EntityHitResult entityHit
-                && entityHit.getEntity() instanceof PlayerEntity aimed && aimed != client.player && aimed.isAlive()) {
-            if (client.player.squaredDistanceTo(aimed) <= range * range) target = aimed;
-        } else {
-            double targetDistance = range * range;
-            float lowestHealth = Float.MAX_VALUE;
-            for (PlayerEntity player : client.world.getPlayers()) {
-                if (player == client.player || !player.isAlive() || player.isSpectator()) continue;
-                double dist = client.player.squaredDistanceTo(player);
-                if (dist > range * range) continue;
-                if (targetMode == 3) {
-                    if (player.getHealth() < lowestHealth) { lowestHealth = player.getHealth(); target = player; }
-                } else if (dist < targetDistance) {
-                    targetDistance = dist;
-                    target = player;
+        if (client.player == null || client.world == null || client.interactionManager == null) return;
+        boolean rightDown = client.currentScreen == null && client.getWindow() != null
+                && GLFW.glfwGetMouseButton(client.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+        boolean rightPressedThisTick = rightDown && !rightMouseWasDown;
+        rightMouseWasDown = rightDown;
+
+        // Auto Crystal only places from the user's own right-click and only when the crystal is held.
+        if (allowPlace && rightDown && client.player.getMainHandStack().isOf(Items.END_CRYSTAL) && crystalPlaceCooldown <= 0) {
+            if (client.crosshairTarget instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK) {
+                BlockPos base = hit.getBlockPos();
+                boolean crystalBase = client.world.getBlockState(base).isOf(Blocks.OBSIDIAN)
+                        || client.world.getBlockState(base).isOf(Blocks.BEDROCK);
+                if (crystalBase && client.world.getBlockState(base.up()).isAir()
+                        && client.world.getBlockState(base.up(2)).isAir()) {
+                    client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
+                    client.player.swingHand(Hand.MAIN_HAND);
+                    ClientModule module = CincoClient.findModule("Auto Crystal");
+                    crystalPlaceCooldown = module == null ? 1 : Math.max(1, (int) module.setting + 1);
                 }
             }
         }
-        if (target == null) return;
-        int crystalSlot = findHotbarItem(client, Items.END_CRYSTAL);
-        if (crystalSlot < 0) return;
-        client.player.getInventory().selectedSlot = crystalSlot;
-        BlockPos targetPos = target.getBlockPos();
-        for (int dy = -1; dy <= 1; dy++) for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
-            BlockPos base = targetPos.add(dx, dy, dz);
-            if (!client.world.getBlockState(base).isOf(Blocks.OBSIDIAN)
-                    && !client.world.getBlockState(base).isOf(Blocks.BEDROCK)) continue;
-            if (!client.world.getBlockState(base.up()).isAir() || !client.world.getBlockState(base.up(2)).isAir()) continue;
-            if (client.player.squaredDistanceTo(Vec3d.ofCenter(base)) > range * range) continue;
-            BlockHitResult hit = new BlockHitResult(new Vec3d(base.getX() + .5, base.getY() + 1.0, base.getZ() + .5), Direction.UP, base, false);
-            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hit);
+
+        // Break nearby crystals rapidly while Auto Crystal is being used, or continuously for Crystal Breaker.
+        if (allowPlace && !rightDown) return;
+        if (!allowPlace && !enabled("Crystal Breaker")) return;
+        if (crystalCooldown > 0) return;
+        double range = 4.5;
+        EndCrystalEntity nearest = null;
+        double best = range * range;
+        for (EndCrystalEntity entity : client.world.getEntitiesByClass(EndCrystalEntity.class,
+                client.player.getBoundingBox().expand(range), Entity::isAlive)) {
+            double distance = client.player.squaredDistanceTo(entity);
+            if (distance < best) {
+                best = distance;
+                nearest = entity;
+            }
+        }
+        if (nearest != null) {
+            client.interactionManager.attackEntity(client.player, nearest);
             client.player.swingHand(Hand.MAIN_HAND);
-            crystalCooldown = Math.max(1, module == null ? 5 : (int) module.setting2);
+            ClientModule module = CincoClient.findModule(allowPlace ? "Auto Crystal" : "Crystal Breaker");
+            crystalCooldown = module == null ? 1 : Math.max(1, (int) module.setting2);
+        }
+    }
+
+    public static void triggerPearl(MinecraftClient client) {
+        if (!enabled("Key Pearl")) {
+            notify(client, "Enable Key Pearl in the GUI first.");
             return;
+        }
+        if (client.player == null || client.world == null || client.interactionManager == null || client.currentScreen != null) return;
+        if (pearlRestoreTicks > 0) {
+            notify(client, "Pearl macro is already finishing its previous throw.");
+            return;
+        }
+        int pearlSlot = findHotbarItem(client, Items.ENDER_PEARL);
+        if (pearlSlot < 0) {
+            notify(client, "Put an ender pearl in your hotbar first.");
+            return;
+        }
+        ClientModule module = CincoClient.findModule("Key Pearl");
+        pearlPreviousSlot = client.player.getInventory().selectedSlot;
+        pearlThrownSlot = pearlSlot;
+        pearlShouldRestore = module != null && module.setting3 >= 0.5;
+        client.player.getInventory().selectedSlot = pearlSlot;
+        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+        client.player.swingHand(Hand.MAIN_HAND);
+        pearlRestoreTicks = Math.max(1, module == null ? 2 : (int) module.setting2);
+        notify(client, "Pearl thrown.");
+    }
+
+    private static void tickPearlRestore(MinecraftClient client) {
+        if (pearlRestoreTicks <= 0 || client.player == null) return;
+        pearlRestoreTicks--;
+        if (pearlRestoreTicks == 0 && pearlShouldRestore
+                && client.player.getInventory().selectedSlot == pearlThrownSlot) {
+            client.player.getInventory().selectedSlot = pearlPreviousSlot;
         }
     }
 

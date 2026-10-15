@@ -7,6 +7,7 @@
   "authors": ["Trey / Cinco"],
   "license": "MIT",
   "environment": "client",
+  "mixins": ["cinco_client.mixins.json"],
   "entrypoints": { "client": ["gg.cinco.client.CincoClient"] },
   "depends": {
     "fabricloader": ">=0.16.5",

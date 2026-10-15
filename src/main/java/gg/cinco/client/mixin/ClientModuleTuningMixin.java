@@ -39,7 +39,23 @@ public abstract class ClientModuleTuningMixin {
             min2 = 1.0; max2 = 6.0; step2 = 1.0;
             if (setting2 < min2 || setting2 > max2) setting2 = 1.0;
             defaultSetting2 = 1.0;
+            // First-person hand visibility is no longer owned by Player Changer.
+            setting3Label = "Model detail";
+            min3 = 0.0; max3 = 1.0; step3 = 1.0; setting3 = 1.0; defaultSetting3 = 1.0;
+        } else if ("FOV Changer".equals(moduleName)) {
+            // Custom FOV now owns the global first-person hand controls.
+            setting2Label = "Show hand";
+            min2 = 0.0; max2 = 1.0; step2 = 1.0; setting2 = 1.0; defaultSetting2 = 1.0;
+            setting3Label = "Hand / item rotation";
+            min3 = -90.0; max3 = 90.0; step3 = 5.0; setting3 = 0.0; defaultSetting3 = 0.0;
+        } else if ("Auto Totem".equals(moduleName)) {
+            // Primary setting remains the health trigger. These two slots now control double-hand.
+            setting2Label = "Double hand";
+            min2 = 0.0; max2 = 1.0; step2 = 1.0; setting2 = 0.0; defaultSetting2 = 0.0;
+            setting3Label = "Double hand slot";
+            min3 = 1.0; max3 = 9.0; step3 = 1.0; setting3 = 1.0; defaultSetting3 = 1.0;
         } else if ("Hand View".equals(moduleName)) {
+            // Legacy definition kept only for old configs; the module is removed after init.
             setting2Label = "Scale";
             min2 = 0.55; max2 = 1.80; step2 = 0.05; setting2 = 1.0; defaultSetting2 = 1.0;
             setting3Label = "Horizontal spacing";

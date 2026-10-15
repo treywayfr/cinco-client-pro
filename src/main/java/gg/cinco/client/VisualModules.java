@@ -7,6 +7,7 @@ import net.minecraft.util.math.Vec3d;
 public final class VisualModules {
     private static boolean fovCaptured;
     private static int originalFov = 70;
+    private static double currentFov = 70.0;
 
     private VisualModules() {}
 
@@ -18,12 +19,21 @@ public final class VisualModules {
         if (enabled) {
             if (!fovCaptured) {
                 originalFov = client.options.getFov().getValue();
+                currentFov = originalFov;
                 fovCaptured = true;
             }
-            int desired = (int) Math.round(fov.setting);
-            if (!client.options.getFov().getValue().equals(desired)) client.options.getFov().setValue(desired);
+            double desired = fov.setting;
+            if (fov.setting3 >= 0.5) {
+                double easeTicks = Math.max(1.0, fov.setting2);
+                currentFov += (desired - currentFov) / easeTicks;
+            } else {
+                currentFov = desired;
+            }
+            int adjusted = (int) Math.round(currentFov);
+            if (!client.options.getFov().getValue().equals(adjusted)) client.options.getFov().setValue(adjusted);
         } else if (fovCaptured) {
             client.options.getFov().setValue(originalFov);
+            currentFov = originalFov;
             fovCaptured = false;
         }
     }

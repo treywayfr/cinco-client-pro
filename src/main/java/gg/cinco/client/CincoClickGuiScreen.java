@@ -70,7 +70,7 @@ public final class CincoClickGuiScreen extends Screen {
         c.drawText(textRenderer, Text.literal("CINCO CLIENT"), l + 23, panelY + 12, TEXT, false);
         c.drawText(textRenderer, Text.literal("PURPLE NEBULA  /  v2.1"), l + 23, panelY + 27, PURPLE, false);
         c.fill(l + W - 111, panelY + 13, l + W - 14, panelY + 34, 0xFF21172E);
-        c.drawCenteredText(textRenderer, Text.literal("SHARP UI  •  READY"), l + W - 62, panelY + 20, 0xFFE8DAFF);
+        drawCenteredTextSharp(c, Text.literal("SHARP UI  •  READY"), l + W - 62, panelY + 20, 0xFFE8DAFF);
 
         int catY = panelY + 58;
         for (ClientModule.Category category : ClientModule.Category.values()) {
@@ -133,8 +133,7 @@ public final class CincoClickGuiScreen extends Screen {
 
             int toggleX = l + W - 79;
             c.fill(toggleX, y + 9, toggleX + 57, y + 26, module.enabled ? 0xFF8550D8 : 0xFF41364E);
-            c.drawCenteredText(textRenderer, Text.literal(module.enabled ? "ON" : "OFF"),
-                    toggleX + 28, y + 14, TEXT);
+            drawCenteredTextSharp(c, Text.literal(module.enabled ? "ON" : "OFF"), toggleX + 28, y + 14, TEXT);
         }
         c.disableScissor();
 
@@ -142,6 +141,11 @@ public final class CincoClickGuiScreen extends Screen {
         int glintX = l + 8 + (int) ((now / 12L) % (W - 16));
         c.fill(glintX, panelY, Math.min(l + W, glintX + 28), panelY + 3, 0xFFFFFFFF);
         super.render(c, mx, my, delta);
+    }
+
+
+    private void drawCenteredTextSharp(DrawContext context, Text value, int centerX, int y, int color) {
+        context.drawText(textRenderer, value, centerX - textRenderer.getWidth(value) / 2, y, color, false);
     }
 
     private void drawStars(DrawContext c, long now, float delta) {

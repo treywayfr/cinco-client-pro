@@ -37,6 +37,8 @@ public final class StorageEspConfig {
     public static final class Entry {
         public boolean highlight = true;
         public boolean tracer = false;
+        /** When enabled, the tracer becomes an animated segmented snake instead of a straight line. */
+        public boolean snakeTracer = false;
         public int color;
         public Entry() {}
         Entry(int color) { this.color = color; }

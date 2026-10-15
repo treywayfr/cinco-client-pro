@@ -1,10 +1,12 @@
 package gg.cinco.client;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Compatibility bridge for Star's existing GUI code on Minecraft 1.21.11.
@@ -29,6 +31,22 @@ public abstract class StarLegacyScreen extends Screen {
     }
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null) {
+                // Orbit HUD mirrors movement keys while the GUI is open. Clear them before closing
+                // so no movement key can remain logically held after returning to the game.
+                client.options.forwardKey.setPressed(false);
+                client.options.backKey.setPressed(false);
+                client.options.leftKey.setPressed(false);
+                client.options.rightKey.setPressed(false);
+                client.options.jumpKey.setPressed(false);
+                client.options.sneakKey.setPressed(false);
+                client.options.sprintKey.setPressed(false);
+                client.setScreen(null);
+            }
+            return true;
+        }
         return false;
     }
 

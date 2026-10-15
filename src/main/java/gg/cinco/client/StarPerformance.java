@@ -42,11 +42,12 @@ public final class StarPerformance {
         return animationTier(client) > 0;
     }
 
+    /** Persistent purple starfield budget. Stars are tiny fill calls, so full mode can stay dense. */
     public static int guiStarCap(MinecraftClient client) {
         return switch (animationTier(client)) {
-            case 0 -> 8;
-            case 1 -> 20;
-            default -> 42;
+            case 0 -> 36;
+            case 1 -> 72;
+            default -> 128;
         };
     }
 

@@ -8,7 +8,7 @@
     "AutoTotemDoubleHandMixin",
     "CincoClientMixin",
     "GuiLaunchGuardMixin",
-    "PlayerEntityRendererMixin",
+    "LivingEntityRendererSkinMixin",
     "PlayerChangerAliasMixin",
     "ModuleSettingsMixin",
     "ClientModuleTuningMixin",

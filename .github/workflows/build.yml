@@ -29,6 +29,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: star-client-3.0.2-mc1.21.11-GUI-HUD-POLISH
-          path: build/libs/star-client-3.0.2.jar
+          name: star-client-3.0.3-mc1.21.11-PERFORMANCE
+          path: build/libs/star-client-3.0.3.jar
           if-no-files-found: error

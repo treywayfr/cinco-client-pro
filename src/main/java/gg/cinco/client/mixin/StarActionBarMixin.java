@@ -1,6 +1,6 @@
 package gg.cinco.client.mixin;
 
-import net.minecraft.client.MinecraftClient;
+import gg.cinco.client.StarHudSilencer;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
@@ -10,28 +10,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Locale;
 
-/** Star Client keeps local action-bar feedback icon-only instead of filling the HUD with text. */
+/** Removes Star/Cinco macro action-bar chatter while leaving unrelated server action bars alone. */
 @Mixin(ClientPlayerEntity.class)
 public abstract class StarActionBarMixin {
-    @Inject(method = "sendMessage(Lnet/minecraft/text/Text;Z)V", at = @At("HEAD"), cancellable = true)
-    private void star$iconOnlyActionBar(Text message, boolean overlay, CallbackInfo ci) {
-        if (!overlay) return;
+    @Inject(method = "sendMessage(Lnet/minecraft/text/Text;Z)V", at = @At("HEAD"), cancellable = true, require = 0)
+    private void star$silenceMacroActionBar(Text message, boolean overlay, CallbackInfo ci) {
+        if (!overlay || message == null) return;
         String lower = message.getString().toLowerCase(Locale.ROOT);
-        String icon;
-        int color;
-        if (lower.contains("missing") || lower.contains("can't") || lower.contains("cannot")
-                || lower.contains("failed") || lower.contains("error") || lower.contains("enable ")) {
-            icon = "⚠"; color = 0xFFFFC85A;
-        } else if (lower.contains("disabled") || lower.contains("stopped") || lower.contains("cancel")) {
-            icon = "✕"; color = 0xFFFF6C87;
-        } else if (lower.contains("enabled") || lower.contains("success") || lower.contains("placed")
-                || lower.contains("ready")) {
-            icon = "★"; color = 0xFFFFF08A;
-        } else {
-            icon = "✦"; color = 0xFFDFA7FF;
-        }
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.inGameHud != null) client.inGameHud.setOverlayMessage(Text.literal(icon).styled(s -> s.withColor(color).withBold(true)), false);
+        boolean starMessage = lower.contains("cinco") || lower.contains("star")
+                || lower.contains("pearl thrown") || lower.contains("pearl macro")
+                || lower.contains("anchor macro") || lower.contains("anchor sequence")
+                || lower.contains("anchor placed") || lower.contains("safe anchor")
+                || lower.contains("auto totem");
+        if (!starMessage) return;
+        StarHudSilencer.silenceFor(60);
         ci.cancel();
     }
 }

@@ -10,6 +10,7 @@
     "GuiLaunchGuardMixin",
     "LivingEntityRendererSkinMixin",
     "ClickGuiSearchFixMixin",
+    "LockerClearMixin",
     "PlayerChangerAliasMixin",
     "ModuleSettingsMixin",
     "ClientModuleTuningMixin",

@@ -15,6 +15,8 @@ public final class StarModelClient implements ClientModInitializer {
             if(skin.setting3<0||skin.setting3>1){skin.setting3=1.0;changed=true;}
             if(changed)ConfigStore.save();
         }
+        // Start the real GTASA-derived CJ mesh/atlas loader before the player opens Locker or F5.
+        GtaCjImportedModel.bootstrap();
         WorldRenderEvents.BEFORE_TRANSLUCENT.register(StarPlayerModelWorldRenderer::render);
         WorldRenderEvents.BEFORE_TRANSLUCENT.register(PremiumCosmeticDetailRenderer::render);
     }

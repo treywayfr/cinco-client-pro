@@ -13,7 +13,8 @@
     "client": [
       "gg.cinco.client.CincoClient",
       "gg.cinco.client.CincoPatchClient",
-      "gg.cinco.client.StarHotbarClient"
+      "gg.cinco.client.StarHotbarClient",
+      "gg.cinco.client.StarModelClient"
     ]
   },
   "depends": {

@@ -14,6 +14,8 @@
     "ClientModuleTuningMixin",
     "PatchModuleCleanupMixin",
     "ChatHudEditorMixin",
+    "StarActionBarMixin",
+    "HeldItemTooltipMixin",
     "SusChunkSettingsRedirectMixin"
   ],
   "injectors": {

@@ -1,132 +1,128 @@
 package gg.cinco.client;
 
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.texture.NativeImage;
+import net.minecraft.client.texture.NativeImageBackedTexture;
+import net.minecraft.util.Identifier;
 
-import java.util.HashMap;
-import java.util.Map;
-
-/** Shared Star Client UI primitives with cached 8x supersampled rounded profiles. */
+/**
+ * Shared Star Client UI primitives.
+ *
+ * Rounded rectangles use a cached 8x-supersampled alpha mask uploaded once to the GPU. Runtime
+ * rendering is a nine-slice (4 corner texture draws + 3 disjoint fills), so translucent glass has
+ * perfectly even alpha with no horizontal banding and the UI stays fast.
+ */
 public final class CincoDraw {
     private static final int AA_SCALE = 8;
-    private static final int PROFILE_BANDS = 12;
-    private static final Map<Integer, byte[]> ROUNDED_TEXTURE_CACHE = new HashMap<>();
-    private static final Map<Integer, RoundedProfile> PROFILE_CACHE = new HashMap<>();
-
-    private record RoundedProfile(int[] y0, int[] y1, int[] inset) {}
+    private static final int MASK_SIZE = 64;
+    private static final int MASK_HALF = MASK_SIZE / 2;
+    private static Identifier roundedMask;
 
     private CincoDraw() {}
 
-    /**
-     * Smooth high-performance rounded rectangle. The 8x mask is generated once per radius and
-     * collapsed to non-overlapping horizontal spans. This keeps translucent glass perfectly even
-     * (no dark scanline/banding artifacts) while retaining the fast 3.0.7 performance model.
-     */
-    public static void rounded(DrawContext context, int left, int top, int right, int bottom, int radius, int color) {
-        int width = right - left, height = bottom - top;
+    public static void rounded(DrawContext context, int left, int top, int right, int bottom,
+                               int radius, int color) {
+        int width = right - left;
+        int height = bottom - top;
         if (width <= 0 || height <= 0) return;
         color = accentPink(color);
 
-        int requested = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
-        int r = height <= 64 ? Math.max(requested, Math.min(width, height) / 2) : requested;
-        r = Math.max(0, Math.min(r, Math.min(width, height) / 2));
+        int r = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
         if (r <= 2) {
             context.fill(left, top, right, bottom, color);
             return;
         }
 
-        RoundedProfile p = roundedProfile(r);
-
-        // Middle section is drawn exactly once. No translucent overlap.
-        if (height > r * 2) context.fill(left, top + r, right, bottom - r, color);
-
-        // Each AA-derived corner band is one full-width span, mirrored top/bottom. Because bands do
-        // not overlap, alpha stays uniform even for very transparent HUD panels.
-        for (int i = 0; i < p.inset.length; i++) {
-            int y0 = p.y0[i], y1 = p.y1[i], inset = p.inset[i];
-            if (y1 <= y0 || inset >= width / 2) continue;
-            int top0 = top + y0, top1 = top + y1;
-            int bottom0 = bottom - y1, bottom1 = bottom - y0;
-            context.fill(left + inset, top0, right - inset, top1, color);
-            if (bottom0 != top0) context.fill(left + inset, bottom0, right - inset, bottom1, color);
-        }
-    }
-
-    private static RoundedProfile roundedProfile(int radius) {
-        RoundedProfile cached = PROFILE_CACHE.get(radius);
-        if (cached != null) return cached;
-
-        byte[] mask = generateRoundedTexture(radius);
-        int bands = Math.min(PROFILE_BANDS, Math.max(3, radius));
-        int[] y0 = new int[bands], y1 = new int[bands], inset = new int[bands];
-
-        for (int b = 0; b < bands; b++) {
-            double t0 = b / (double) bands;
-            double t1 = (b + 1) / (double) bands;
-            int from = (int) Math.floor(radius * (1.0 - Math.cos(t0 * Math.PI / 2.0)));
-            int to = (int) Math.ceil(radius * (1.0 - Math.cos(t1 * Math.PI / 2.0)));
-            from = Math.max(0, Math.min(radius - 1, from));
-            to = Math.max(from + 1, Math.min(radius, to));
-            y0[b] = from;
-            y1[b] = to;
-
-            int sum = 0, rows = 0;
-            for (int py = from; py < to; py++) {
-                int boundary = radius;
-                for (int px = 0; px < radius; px++) {
-                    if ((mask[py * radius + px] & 0xFF) >= 128) { boundary = px; break; }
-                }
-                sum += boundary;
-                rows++;
-            }
-            inset[b] = rows == 0 ? radius : Math.max(0, Math.min(radius, Math.round(sum / (float) rows)));
+        ensureRoundedTexture();
+        if (roundedMask == null) {
+            // Extremely defensive fallback if a texture manager is not ready yet.
+            context.fill(left + r, top, right - r, bottom, color);
+            context.fill(left, top + r, left + r, bottom - r, color);
+            context.fill(right - r, top + r, right, bottom - r, color);
+            return;
         }
 
-        RoundedProfile profile = new RoundedProfile(y0, y1, inset);
-        PROFILE_CACHE.put(radius, profile);
-        return profile;
+        // Three DISJOINT fills. No alpha stacking = no darker horizontal stripes.
+        if (right - r > left + r) context.fill(left + r, top, right - r, bottom, color);
+        if (bottom - r > top + r) {
+            context.fill(left, top + r, left + r, bottom - r, color);
+            context.fill(right - r, top + r, right, bottom - r, color);
+        }
+
+        // Four AA corners, stretched to the requested radius. The source is a 64x64 white circle
+        // with 8x supersampled alpha coverage, so tinting preserves smooth translucent edges.
+        drawCorner(context, left, top, 0, 0, r, color);                         // TL
+        drawCorner(context, right - r, top, MASK_HALF, 0, r, color);             // TR
+        drawCorner(context, left, bottom - r, 0, MASK_HALF, r, color);            // BL
+        drawCorner(context, right - r, bottom - r, MASK_HALF, MASK_HALF, r, color);// BR
     }
 
-    /** Cached 8x supersampled quarter-circle coverage texture for one corner radius. */
-    private static byte[] generateRoundedTexture(int radius) {
-        byte[] cached = ROUNDED_TEXTURE_CACHE.get(radius);
-        if (cached != null) return cached;
+    private static void drawCorner(DrawContext context, int x, int y, int u, int v, int size, int color) {
+        context.drawTexture(RenderPipelines.GUI_TEXTURED, roundedMask,
+                x, y, (float) u, (float) v,
+                size, size, MASK_HALF, MASK_HALF, MASK_SIZE, MASK_SIZE, color);
+    }
 
-        byte[] texture = new byte[radius * radius];
+    private static void ensureRoundedTexture() {
+        if (roundedMask != null) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || client.getTextureManager() == null) return;
+
+        NativeImage image = generateRoundedTexture();
+        Identifier id = Identifier.of("cinco_client", "dynamic/ui_rounded_mask_v2");
+        NativeImageBackedTexture texture = new NativeImageBackedTexture(() -> "Star UI Rounded Mask", image);
+        client.getTextureManager().registerTexture(id, texture);
+        texture.upload();
+        roundedMask = id;
+    }
+
+    /** 8x-supersampled white circle used as the four rounded-corner quadrants. */
+    private static NativeImage generateRoundedTexture() {
+        NativeImage image = new NativeImage(MASK_SIZE, MASK_SIZE, false);
         int samples = AA_SCALE * AA_SCALE;
-        double rr = radius * (double) radius;
-        for (int py = 0; py < radius; py++) {
-            for (int px = 0; px < radius; px++) {
+        double cx = MASK_SIZE / 2.0;
+        double cy = MASK_SIZE / 2.0;
+        double radius = MASK_SIZE / 2.0;
+        double rr = radius * radius;
+
+        for (int py = 0; py < MASK_SIZE; py++) {
+            for (int px = 0; px < MASK_SIZE; px++) {
                 int inside = 0;
                 for (int sy = 0; sy < AA_SCALE; sy++) {
                     for (int sx = 0; sx < AA_SCALE; sx++) {
                         double fx = px + (sx + 0.5) / AA_SCALE;
                         double fy = py + (sy + 0.5) / AA_SCALE;
-                        double dx = radius - fx;
-                        double dy = radius - fy;
+                        double dx = fx - cx;
+                        double dy = fy - cy;
                         if (dx * dx + dy * dy <= rr) inside++;
                     }
                 }
-                texture[py * radius + px] = (byte) Math.max(0, Math.min(255,
-                        (int) Math.round(255.0 * inside / samples)));
+                int alpha = Math.max(0, Math.min(255, (int) Math.round(255.0 * inside / samples)));
+                image.setColorArgb(px, py, (alpha << 24) | 0x00FFFFFF);
             }
         }
-        ROUNDED_TEXTURE_CACHE.put(radius, texture);
-        return texture;
+        return image;
     }
 
     public static void bubble(DrawContext context, int left, int top, int right, int bottom, int radius,
                               int borderColor, int fillColor) {
         rounded(context, left, top, right, bottom, radius, borderColor);
         if (right - left > 2 && bottom - top > 2) {
-            rounded(context, left + 1, top + 1, right - 1, bottom - 1, Math.max(1, radius - 1), fillColor);
+            rounded(context, left + 1, top + 1, right - 1, bottom - 1,
+                    Math.max(1, radius - 1), fillColor);
         }
     }
 
     public static void softShadow(DrawContext context, int left, int top, int right, int bottom,
                                   int radius, int rgb, int alpha) {
-        int a = Math.max(2, alpha / 5);
-        rounded(context, left - 2, top - 2, right + 2, bottom + 2,
-                radius + 2, (a << 24) | (rgb & 0x00FFFFFF));
+        int a1 = Math.max(1, alpha / 7);
+        int a2 = Math.max(1, alpha / 11);
+        rounded(context, left - 3, top - 3, right + 3, bottom + 3,
+                radius + 3, (a1 << 24) | (rgb & 0x00FFFFFF));
+        rounded(context, left - 6, top - 6, right + 6, bottom + 6,
+                radius + 6, (a2 << 24) | (rgb & 0x00FFFFFF));
     }
 
     public static void line(DrawContext context, int x0, int y0, int x1, int y1, int color, int thickness) {
@@ -145,7 +141,10 @@ public final class CincoDraw {
     }
 
     private static int accentPink(int color) {
-        int a = (color >>> 24) & 255, r = (color >>> 16) & 255, g = (color >>> 8) & 255, b = color & 255;
+        int a = (color >>> 24) & 255;
+        int r = (color >>> 16) & 255;
+        int g = (color >>> 8) & 255;
+        int b = color & 255;
         if (r >= 210 && g >= 70 && g <= 190 && b <= 125) return (a << 24) | 0xFF55C8;
         return color;
     }

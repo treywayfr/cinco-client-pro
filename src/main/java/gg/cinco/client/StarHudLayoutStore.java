@@ -22,7 +22,7 @@ public final class StarHudLayoutStore {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("star-hud.json");
-    private static final Path POLISH_MARKER = FabricLoader.getInstance().getConfigDir().resolve("star-hud-reference-v4.flag");
+    private static final Path POLISH_MARKER = FabricLoader.getInstance().getConfigDir().resolve("star-hud-reference-v5.flag");
     private static final Map<String, State> STATES = new LinkedHashMap<>();
     private static boolean loaded;
     private static boolean polishedChecked;
@@ -34,36 +34,37 @@ public final class StarHudLayoutStore {
         return STATES.computeIfAbsent(id, key -> new State(defaultX, defaultY, 1.0f));
     }
 
-    /** One-time migration to the exact reference composition. */
+    /** One-time migration to the approved HUD composition; user edits remain persistent afterward. */
     public static void applyPolishedDefaults(int screenW, int screenH) {
         ensureLoaded();
         if (polishedChecked) return;
         polishedChecked = true;
         if (Files.exists(POLISH_MARKER)) return;
 
-        int left=12;
+        int left=14;
         STATES.put("brand", new State(left, 12, 1.0f));
-        STATES.put("coords", new State(left, 55, 1.0f));
-        STATES.put("region_map", new State(left, 91, 1.0f));
-        STATES.put("potion_hud", new State(left, 228, 1.0f));
-        STATES.put("fps", new State(left, 274, 1.0f));
-        STATES.put("armor", new State(left, 311, 1.0f));
-        STATES.put("inventory", new State(left, 348, 1.0f));
+        STATES.put("coords", new State(left, 54, 1.0f));
+        STATES.put("region_map", new State(left, 88, 1.0f));
+        STATES.put("potion_hud", new State(left, 218, 1.0f));
+        STATES.put("fps", new State(left, 263, 1.0f));
+        STATES.put("armor", new State(left, 298, 1.0f));
+        STATES.put("radar", new State(left, 333, 1.0f));
 
-        STATES.put("status_bar", new State(Math.max(12,screenW/2-148), 12, 1.0f));
-        STATES.put("spotify_hud", new State(Math.max(12,screenW-282), 12, 1.0f));
-        STATES.put("module_list", new State(Math.max(12,screenW-188), 126, 1.0f));
+        STATES.put("status_bar", new State(Math.max(12,screenW/2-146), 12, 1.0f));
+        STATES.put("spotify_hud", new State(Math.max(12,screenW-236), 18, 1.0f));
+        STATES.put("module_list", new State(Math.max(12,screenW-160), 116, 1.0f));
 
-        // Less-prominent utility widgets start tucked near the lower-left instead of colliding.
-        String[] utility={"direction","potions","cps","session","keys","ping","target","radar","players"};
-        int x=12,y=Math.max(390,screenH-48);
-        for(int i=0;i<utility.length;i++){
-            STATES.put(utility[i],new State(x,y,0.90f));
-            x+=118;
-            if(x>screenW-115){x=12;y-=27;}
+        // Optional utility widgets stay out of the reference stack unless the user moves them there.
+        String[] utility={"direction","potions","cps","session","keys","ping","target","inventory","players"};
+        int x=14,y=Math.max(376,screenH-38);
+        for(String id:utility){
+            STATES.put(id,new State(x,y,0.88f));
+            x+=108;
+            if(x>screenW-104){x=14;y-=28;}
         }
+
         save();
-        try { Files.createDirectories(POLISH_MARKER.getParent()); Files.writeString(POLISH_MARKER,"4"); } catch (Exception ignored) {}
+        try { Files.createDirectories(POLISH_MARKER.getParent()); Files.writeString(POLISH_MARKER,"5"); } catch (Exception ignored) {}
     }
 
     public static void save() {

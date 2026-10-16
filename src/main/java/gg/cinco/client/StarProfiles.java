@@ -11,7 +11,7 @@ public final class StarProfiles {
             set("Player ESP", true); set("Tracers", false); set("Storage ESP", false);
             set("Fullbright", true); set("Performance Mode", true); setValue("ESP Style", 1);
         } else if (profile == 3) { // DonutSMP
-            set("Storage ESP", true); set("Light Finder", true); set("Sus Chunk Finder", true);
+            set("Storage ESP", true); set("Light Finder", true); set("Sus Chunk", true); set("Spawner Notifier", true);
             set("Fullbright", true); set("Player ESP", true); set("Tracers", false);
             set("Performance Mode", true); setValue("ESP Style", 1);
         } else if (profile == 4) { // Visual
@@ -20,7 +20,7 @@ public final class StarProfiles {
             set("Performance Mode", false); setValue("ESP Style", 2);
         } else if (profile == 5) { // Performance
             set("Purple Stars", false); set("Hover Glow", false); set("Light Finder", false);
-            set("Sus Chunk Finder", false); set("Storage ESP", false); set("Performance Mode", true);
+            set("Sus Chunk", false); set("Spawner Notifier", false); set("Storage ESP", false); set("Performance Mode", true);
             setValue("ESP Style", 3);
         }
         ConfigStore.save();

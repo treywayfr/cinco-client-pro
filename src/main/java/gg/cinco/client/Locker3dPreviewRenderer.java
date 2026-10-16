@@ -35,7 +35,9 @@ public final class Locker3dPreviewRenderer {
         m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(yaw));
         double sec=System.nanoTime()/1_000_000_000.0;
         float swing=(float)(sec*2.1),amount=.16f;
-        StarPlayerModels.render(character,m,consumers,new StarPlayerModels.Pose(swing,amount,0,0,(float)sec),true);
+        StarPlayerModels.Pose pose=new StarPlayerModels.Pose(swing,amount,0,0,(float)(sec*20.0));
+        if(character==1)GtaCjImportedModel.render(m,consumers,pose);
+        else StarPlayerModels.render(character,m,consumers,pose,true);
         if(kind!=null)renderCosmeticGeometry(m,consumers,kind,style,color,size,sec);
         consumers.draw();
         c.disableScissor();

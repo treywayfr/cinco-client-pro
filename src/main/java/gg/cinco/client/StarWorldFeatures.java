@@ -51,10 +51,11 @@ public final class StarWorldFeatures {
         int wantedRadius = chunkRadius * 16;
         int px = client.player.getBlockX(), py = client.player.getBlockY(), pz = client.player.getBlockZ();
         long identity = System.identityHashCode(client.world);
-        if (!started || identity != worldIdentity || Math.abs(px-centerX) > 16 || Math.abs(pz-centerZ) > 16 || Math.abs(py-centerY) > 32 || wantedRadius != radiusBlocks) {
+        boolean worldChanged = started && identity != worldIdentity;
+        if (!started || worldChanged || Math.abs(px-centerX) > 16 || Math.abs(pz-centerZ) > 16 || Math.abs(py-centerY) > 32 || wantedRadius != radiusBlocks) {
+            if (worldChanged) NOTIFIED_SPAWNERS.clear();
             centerX=px; centerY=py; centerZ=pz; radiusBlocks=wantedRadius; cursor=0; worldIdentity=identity; started=true;
             SUS_BLOCKS.clear(); SUS_CHUNKS.clear(); SUS_SEEN.clear(); SPAWNERS.clear();
-            if (identity != worldIdentity) NOTIFIED_SPAWNERS.clear();
         }
 
         int width = radiusBlocks * 2 + 1;
@@ -124,10 +125,23 @@ public final class StarWorldFeatures {
             }
         } else {
             for (MutableChunk chunk : SUS_CHUNKS.values()) {
-                float x=(float)(chunk.x*16-camera.x), z=(float)(chunk.z*16-camera.z), y=(float)(chunk.topY+1.15-camera.y);
-                square(lines,x,y,z,x+16,z+16,color,2.6f);
+                float x=(float)(chunk.x*16-camera.x), z=(float)(chunk.z*16-camera.z), y=(float)(chunk.topY+1.18-camera.y);
+                chunkMarker(lines,x,y,z,color);
             }
         }
+    }
+
+    private static void chunkMarker(VertexConsumer b,float x,float y,float z,int c){
+        float x1=x+16,z1=z+16;
+        square(b,x,y,z,x1,z1,c,3.4f);
+        square(b,x+0.35f,y+0.10f,z+0.35f,x1-0.35f,z1-0.35f,c,1.8f);
+        line(b,x,y,z,x1,y,z1,c,2.2f);
+        line(b,x1,y,z,x,y,z1,c,2.2f);
+        line(b,x+8,y,z,x+8,y,z1,c,1.5f);
+        line(b,x,y,z+8,x1,y,z+8,c,1.5f);
+        float down=y-3.0f;
+        line(b,x,y,z,x,down,z,c,2.0f);line(b,x1,y,z,x1,down,z,c,2.0f);
+        line(b,x1,y,z1,x1,down,z1,c,2.0f);line(b,x,y,z1,x,down,z1,c,2.0f);
     }
 
     public static void renderHud(DrawContext ctx, MinecraftClient client) {

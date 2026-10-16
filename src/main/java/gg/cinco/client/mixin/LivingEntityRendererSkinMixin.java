@@ -2,6 +2,7 @@ package gg.cinco.client.mixin;
 
 import gg.cinco.client.CincoClient;
 import gg.cinco.client.ClientModule;
+import gg.cinco.client.GtaCjImportedModel;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
@@ -14,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Suppress only the vanilla LOCAL third-person player body when a Star Locker model is active. */
+/** Suppress only the vanilla LOCAL third-person player body when a Star Locker model is ready to replace it. */
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererSkinMixin {
     @Inject(method="render(Lnet/minecraft/client/render/entity/state/LivingEntityRenderState;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;Lnet/minecraft/client/render/state/CameraRenderState;)V",at=@At("HEAD"),cancellable=true,require=0)
@@ -28,10 +29,11 @@ public abstract class LivingEntityRendererSkinMixin {
         if(module==null)module=CincoClient.findModule("GTA Skin Changer");
         if(module==null||!module.enabled)return;
 
-        // 1.21.11's render-state position is interpolated while Entity#getX/Y/Z is tick-position.
-        // Comparing those positions caused the vanilla body to intermittently escape cancellation in F5.
-        // PlayerEntityRenderState carries the actual entity id, so use the exact local-player identity instead.
         if(playerState.id!=client.player.getId())return;
+        int character=Math.max(1,Math.min(2,(int)Math.round(module.setting)));
+        // Do not make the player invisible during CJ's one-time download/parse. Vanilla remains visible
+        // until the real model + texture are fully registered, then replacement becomes atomic.
+        if(character==1&&!GtaCjImportedModel.ready())return;
         ci.cancel();
     }
 }

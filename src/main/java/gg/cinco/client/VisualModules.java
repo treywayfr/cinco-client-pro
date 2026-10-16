@@ -1,6 +1,5 @@
 package gg.cinco.client;
 
-import gg.cinco.client.mixin.SimpleOptionAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
 
@@ -23,10 +22,12 @@ public final class VisualModules {
                 originalGamma = client.options.getGamma().getValue();
                 gammaCaptured = true;
             }
-            double gamma = Math.max(1.0, Math.min(20.0, bright.setting));
-            ((SimpleOptionAccessor) (Object) client.options.getGamma()).cinco$setRawValue(gamma);
+            // 1.21.11: use SimpleOption's supported setter instead of loading an accessor mixin.
+            // Vanilla validates gamma to its supported range, which is preferable to crashing the client.
+            double gamma = Math.max(0.0, Math.min(1.0, bright.setting));
+            client.options.getGamma().setValue(gamma);
         } else if (gammaCaptured) {
-            ((SimpleOptionAccessor) (Object) client.options.getGamma()).cinco$setRawValue(originalGamma);
+            client.options.getGamma().setValue(Math.max(0.0, Math.min(1.0, originalGamma)));
             gammaCaptured = false;
         }
 
@@ -80,14 +81,14 @@ public final class VisualModules {
         double breathe = 0.90 + 0.10 * (0.5 + 0.5 * Math.sin(phase * 0.16));
         double r, g, b;
         switch (style) {
-            case 2 -> { r = 0.008; g = 0.013; b = 0.045; } // blue galaxy
-            case 3 -> { r = 0.020; g = 0.006; b = 0.050; } // violet nebula
-            case 4 -> { r = 0.030; g = 0.005; b = 0.030; } // rose nebula
-            case 5 -> { r = 0.004; g = 0.020; b = 0.040; } // ice cosmos
-            case 6 -> { r = 0.004; g = 0.026; b = 0.021; } // emerald cosmos
-            case 7 -> { r = 0.004; g = 0.003; b = 0.013; } // midnight void
-            case 8 -> { r = 0.018; g = 0.008; b = 0.034; } // prismatic galaxy
-            default -> { r = 0.010; g = 0.005; b = 0.030; } // deep space purple
+            case 2 -> { r = 0.008; g = 0.013; b = 0.045; }
+            case 3 -> { r = 0.020; g = 0.006; b = 0.050; }
+            case 4 -> { r = 0.030; g = 0.005; b = 0.030; }
+            case 5 -> { r = 0.004; g = 0.020; b = 0.040; }
+            case 6 -> { r = 0.004; g = 0.026; b = 0.021; }
+            case 7 -> { r = 0.004; g = 0.003; b = 0.013; }
+            case 8 -> { r = 0.018; g = 0.008; b = 0.034; }
+            default -> { r = 0.010; g = 0.005; b = 0.030; }
         }
         double lift = (0.62 + 0.38 * intensity) * breathe;
         return new Vec3d(clamp(r * lift), clamp(g * lift), clamp(b * lift));
@@ -99,7 +100,6 @@ public final class VisualModules {
         return new Vec3d(clamp(sky.x * 0.30), clamp(sky.y * 0.30), clamp(sky.z * 0.36));
     }
 
-    // Retained for compatibility with older code/config-aware helpers.
     public static int skyFilamentColor() {
         return switch (skyStyle()) {
             case 2 -> 0xFF709CFF;

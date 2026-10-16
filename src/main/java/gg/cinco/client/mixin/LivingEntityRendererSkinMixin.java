@@ -27,9 +27,11 @@ public abstract class LivingEntityRendererSkinMixin {
         ClientModule module=CincoClient.findModule("Player Changer");
         if(module==null)module=CincoClient.findModule("GTA Skin Changer");
         if(module==null||!module.enabled)return;
-        double dx=playerState.x-client.player.getX(),dy=playerState.y-client.player.getY(),dz=playerState.z-client.player.getZ();
-        if(dx*dx+dy*dy+dz*dz>.35)return;
-        if(playerState.displayName!=null&&!playerState.displayName.getString().equals(client.player.getDisplayName().getString()))return;
+
+        // 1.21.11's render-state position is interpolated while Entity#getX/Y/Z is tick-position.
+        // Comparing those positions caused the vanilla body to intermittently escape cancellation in F5.
+        // PlayerEntityRenderState carries the actual entity id, so use the exact local-player identity instead.
+        if(playerState.id!=client.player.getId())return;
         ci.cancel();
     }
 }

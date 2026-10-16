@@ -14,15 +14,22 @@ public final class StarBackground {
     private static final int TEX_W = 512;
     private static final int TEX_H = 288;
     private static Identifier galaxyTexture;
-    private static final Star[] OVERLAY = new Star[28];
+    private static final Star[] OVERLAY = new Star[34];
+    private static final Orbiter[] ORBITERS = new Orbiter[]{
+            new Orbiter(.05,.13,.095,0xFF8B4BFF,.010,0.4),
+            new Orbiter(.91,.26,.072,0xFFFF4FD6,-.008,2.1),
+            new Orbiter(.78,.83,.052,0xFF5E82FF,.006,4.0)
+    };
 
-    private record Star(double x,double y,double phase,int size,int rgb) {}
+    private record Star(double x,double y,double phase,int size,int rgb,double speed) {}
+    private record Orbiter(double x,double y,double size,int rgb,double speed,double phase) {}
 
     static {
         Random r = new Random(0x57A2C11EL);
         for (int i=0;i<OVERLAY.length;i++) {
             int rgb = switch (i%4) { case 0 -> 0xFFFFFF; case 1 -> 0xFF83E8; case 2 -> 0xC692FF; default -> 0x8DB7FF; };
-            OVERLAY[i] = new Star(r.nextDouble(), r.nextDouble(), r.nextDouble()*Math.PI*2, i%9==0?2:1, rgb);
+            double speed=(i%2==0?1:-1)*(.0014+r.nextDouble()*.0036);
+            OVERLAY[i] = new Star(r.nextDouble(), r.nextDouble(), r.nextDouble()*Math.PI*2, i%9==0?2:1, rgb, speed);
         }
     }
 
@@ -38,20 +45,66 @@ public final class StarBackground {
             c.fillGradient(0,0,width,height,0xFF05020E,0xFF120629);
         }
 
-        // Very cheap twinkle overlay so the cached background still feels alive.
         MinecraftClient client=MinecraftClient.getInstance();
         int tier=StarPerformance.animationTier(client);
         if (tier<=0) return;
         double sec=System.nanoTime()/1_000_000_000.0;
-        int cap=tier==1?12:OVERLAY.length;
+
+        // Very low-cost breathing nebula glows. These sit behind the glass and move slowly.
+        int breathe=(int)(13+9*(.5+.5*Math.sin(sec*.20)));
+        int nebulaSize=Math.max(80,Math.min(width,height)/3);
+        int nx=(int)(width*(.42+.055*Math.sin(sec*.055)));
+        int ny=(int)(height*(.28+.045*Math.cos(sec*.047)));
+        CincoDraw.rounded(c,nx-nebulaSize/2,ny-nebulaSize/2,nx+nebulaSize/2,ny+nebulaSize/2,
+                nebulaSize/2,(breathe<<24)|0x00B54CFF);
+        if(tier>1){
+            int n2=(int)(nebulaSize*.72);
+            int nx2=(int)(width*(.67+.04*Math.cos(sec*.041)));
+            int ny2=(int)(height*(.68+.05*Math.sin(sec*.049)));
+            CincoDraw.rounded(c,nx2-n2/2,ny2-n2/2,nx2+n2/2,ny2+n2/2,n2/2,
+                    ((breathe+3)<<24)|0x00FF45CB);
+        }
+
+        // Actual parallax movement, not only twinkling.
+        int cap=tier==1?16:OVERLAY.length;
         for(int i=0;i<cap;i++) {
             Star s=OVERLAY[i];
             double tw=.55+.45*Math.sin(sec*1.6+s.phase);
             int a=(int)(45+145*tw);
-            int x=(int)(s.x*width), y=(int)(s.y*height);
+            double px=s.x+sec*s.speed;
+            px=px-Math.floor(px);
+            double py=s.y+Math.sin(sec*.11+s.phase)*.008;
+            py=py-Math.floor(py);
+            int x=(int)(px*width), y=(int)(py*height);
             int col=(a<<24)|s.rgb;
             c.fill(x,y,x+s.size,y+s.size,col);
-            if(s.size>1){c.fill(x-2,y,x+4,y+1,(a/2<<24)|s.rgb);c.fill(x,y-2,x+1,y+4,(a/2<<24)|s.rgb);}
+            if(s.size>1){
+                c.fill(x-2,y,x+4,y+1,(Math.max(1,a/2)<<24)|s.rgb);
+                c.fill(x,y-2,x+1,y+4,(Math.max(1,a/2)<<24)|s.rgb);
+            }
+        }
+
+        // Slow edge-orbiting planets. Kept subtle so they never obscure controls.
+        if(tier>1){
+            for(Orbiter o:ORBITERS){
+                double phase=sec*o.speed+o.phase;
+                int size=Math.max(22,(int)(Math.min(width,height)*o.size));
+                int x=(int)((o.x+.018*Math.sin(phase))*width);
+                int y=(int)((o.y+.025*Math.cos(phase*.81))*height);
+                int glow=Math.max(3,size/10);
+                CincoDraw.rounded(c,x-size/2-glow,y-size/2-glow,x+size/2+glow,y+size/2+glow,
+                        size/2+glow,0x213E1A72|(o.rgb&0x00FFFFFF));
+                CincoDraw.rounded(c,x-size/2,y-size/2,x+size/2,y+size/2,size/2,
+                        0xB0000000|(o.rgb&0x00FFFFFF));
+                int inner=Math.max(8,(int)(size*.78));
+                CincoDraw.rounded(c,x-inner/2,y-inner/2,x+inner/2,y+inner/2,inner/2,
+                        0xB2080614);
+                int rim=Math.max(1,size/22);
+                CincoDraw.rounded(c,x-size/2-rim,y-size/2-rim,x+size/2+rim,y+size/2+rim,size/2+rim,
+                        0x46FFFFFF);
+                CincoDraw.rounded(c,x-size/2,y-size/2,x+size/2,y+size/2,size/2,
+                        0x9A000000|(o.rgb&0x00FFFFFF));
+            }
         }
     }
 
@@ -61,7 +114,7 @@ public final class StarBackground {
         if(client==null||client.getTextureManager()==null)return;
 
         NativeImage image=generateGalaxy();
-        Identifier id=Identifier.of("cinco_client","dynamic/reference_galaxy_v1");
+        Identifier id=Identifier.of("cinco_client","dynamic/reference_galaxy_v2");
         NativeImageBackedTexture texture=new NativeImageBackedTexture(() -> "Star Reference Galaxy",image);
         client.getTextureManager().registerTexture(id,texture);
         texture.upload();
@@ -81,7 +134,6 @@ public final class StarBackground {
 
                 int r=3,g=2,b=12;
 
-                // Diagonal Milky-Way-like purple/blue nebula.
                 double center=.12+.68*nx + .055*Math.sin(nx*8.0);
                 double d=Math.abs(ny-center);
                 double band=Math.exp(-(d*d)/.018)*(0.55+0.45*noise);
@@ -89,7 +141,6 @@ public final class StarBackground {
                 g += (int)(23*band);
                 b += (int)(115*band);
 
-                // Hot magenta knots and cool blue clouds like the approved mockup.
                 double mag = cloud(nx,ny,.55,.22,.18,.13)+cloud(nx,ny,.79,.54,.23,.20)+cloud(nx,ny,.36,.64,.22,.16);
                 double blue= cloud(nx,ny,.31,.37,.28,.22)+cloud(nx,ny,.67,.18,.24,.17);
                 r += (int)(96*mag + 24*blue);
@@ -99,7 +150,6 @@ public final class StarBackground {
                 double dust=Math.max(0,(fine-.56))*55.0*band;
                 r+=(int)dust; g+=(int)(dust*.35); b+=(int)(dust*.9);
 
-                // Vignette keeps the panel area deep and premium.
                 double vx=(nx-.5)*2.0, vy=(ny-.5)*2.0;
                 double vign=Math.max(0,Math.min(1,(vx*vx+vy*vy)*.33));
                 r=(int)(r*(1-.42*vign));g=(int)(g*(1-.42*vign));b=(int)(b*(1-.30*vign));
@@ -108,7 +158,6 @@ public final class StarBackground {
             }
         }
 
-        // Stars baked into the texture.
         for(int i=0;i<420;i++) {
             int x=rand.nextInt(TEX_W),y=rand.nextInt(TEX_H);
             int a=120+rand.nextInt(136);
@@ -117,11 +166,8 @@ public final class StarBackground {
             if(i%27==0){put(img,x-1,y,0x80FFFFFF);put(img,x+1,y,0x80FFFFFF);put(img,x,y-1,0x80FFFFFF);put(img,x,y+1,0x80FFFFFF);}
         }
 
-        // Large upper-left planet, partially off-canvas.
         planet(img,-18,10,105,0xFF421A72,0xFF10061E,0xFFFF4FE1);
-        // Right-edge planet/rim from the reference.
         planet(img,TEX_W+17,95,88,0xFF291052,0xFF070411,0xFFB94FFF);
-        // Lower-right smaller planet behind the settings pane.
         planet(img,TEX_W-74,TEX_H-38,58,0xFF30104B,0xFF090412,0xFFFF4FCB);
 
         return img;

@@ -12,6 +12,7 @@
     "ClickGuiSearchFixMixin",
     "LockerClearMixin",
     "GtaCjPolishMixin",
+    "GtaCjTextureFixMixin",
     "PlayerChangerAliasMixin",
     "ModuleSettingsMixin",
     "ClientModuleTuningMixin",

@@ -44,7 +44,12 @@ public final class StarPlayerModelWorldRenderer {
         float limbSwing=(client.player.age+tick)*1.45f;
         float relativeHead=MathHelper.wrapDegrees(smoothHeadYaw-smoothBodyYaw);
         StarPlayerModels.Pose pose=new StarPlayerModels.Pose(limbSwing,smoothMove,relativeHead,smoothPitch,client.player.age+tick);
-        StarPlayerModels.render(character,matrices,context.consumers(),pose,skin.setting3>=.5);
+        if(character==1){
+            // CJ is now the real GTASA-derived rig/texture, not Star's old procedural lookalike.
+            GtaCjImportedModel.render(matrices,context.consumers(),pose);
+        }else{
+            StarPlayerModels.render(character,matrices,context.consumers(),pose,skin.setting3>=.5);
+        }
     }
 
     private static void smooth(int id,float body,float head,float pitch,float move){

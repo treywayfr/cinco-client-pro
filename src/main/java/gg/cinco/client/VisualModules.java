@@ -1,6 +1,7 @@
 package gg.cinco.client;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.util.math.Vec3d;
 
 /** Client-only render options which can be safely toggled from the GUI. */
@@ -11,6 +12,8 @@ public final class VisualModules {
     private static boolean fovCaptured;
     private static int originalFov = 70;
     private static double currentFov = 70.0;
+    private static boolean cloudCaptured;
+    private static CloudRenderMode originalCloudMode;
 
     private VisualModules() {}
 
@@ -24,9 +27,6 @@ public final class VisualModules {
                 gammaCaptured = true;
                 appliedGamma = Double.NaN;
             }
-            // 1.21.11 validates gamma through SimpleOption. Only touch it when the requested
-            // value actually changes; repeatedly calling setValue every client tick can cause
-            // unnecessary option churn and visible stutter on lower-end systems.
             double gamma = Math.max(0.0, Math.min(1.0, bright.setting));
             double current = client.options.getGamma().getValue();
             if (Double.isNaN(appliedGamma) || Math.abs(appliedGamma - gamma) > 0.0001 || Math.abs(current - gamma) > 0.0001) {
@@ -56,6 +56,22 @@ public final class VisualModules {
             currentFov = originalFov;
             fovCaptured = false;
         }
+
+        // Deep-space presets intentionally hide vanilla clouds. Restore the player's exact option
+        // as soon as Sky Changer is disabled.
+        if (skyEnabled()) {
+            if (!cloudCaptured) {
+                originalCloudMode = client.options.getCloudRenderMode().getValue();
+                cloudCaptured = true;
+            }
+            if (client.options.getCloudRenderMode().getValue() != CloudRenderMode.OFF) {
+                client.options.getCloudRenderMode().setValue(CloudRenderMode.OFF);
+            }
+        } else if (cloudCaptured) {
+            if (originalCloudMode != null) client.options.getCloudRenderMode().setValue(originalCloudMode);
+            cloudCaptured = false;
+            originalCloudMode = null;
+        }
     }
 
     public static boolean skyEnabled() {
@@ -78,10 +94,19 @@ public final class VisualModules {
         return sky == null ? 0.90 : Math.max(0.25, Math.min(1.0, sky.setting3));
     }
 
-    /**
-     * Deep-space base colors. Animation is deliberately subtle: movement comes from the filled
-     * nebula/star renderer rather than visible lines across the sky.
-     */
+    public static String skyStyleName() {
+        return switch (skyStyle()) {
+            case 2 -> "Blue Expanse";
+            case 3 -> "Violet Rift";
+            case 4 -> "Crimson Eclipse";
+            case 5 -> "Ice Cosmos";
+            case 6 -> "Emerald Void";
+            case 7 -> "Event Horizon";
+            case 8 -> "Galactic Spectrum";
+            default -> "Nebula Abyss";
+        };
+    }
+
     public static Vec3d skyColor() {
         if (!skyEnabled()) return new Vec3d(0.35, 0.20, 0.55);
         int style = skyStyle();
@@ -103,7 +128,6 @@ public final class VisualModules {
         return new Vec3d(clamp(r * lift), clamp(g * lift), clamp(b * lift));
     }
 
-    /** Keep vanilla clouds almost invisible so the custom sky reads as space rather than daytime. */
     public static Vec3d cloudColor() {
         Vec3d sky = skyColor();
         return new Vec3d(clamp(sky.x * 0.30), clamp(sky.y * 0.30), clamp(sky.z * 0.36));

@@ -29,6 +29,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: star-client-2.5.0-mc1.21.11-LOCKER-EXPANSION
-          path: build/libs/star-client-2.5.0.jar
+          name: star-client-2.6.0-mc1.21.11-STAR-STORE-PREVIEW
+          path: build/libs/star-client-2.6.0.jar
           if-no-files-found: error

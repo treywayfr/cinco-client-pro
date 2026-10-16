@@ -7,15 +7,20 @@ public final class CincoDraw {
     private CincoDraw() {}
 
     /**
-     * Smooth low-cost rounded rectangle. Uses a handful of horizontal bands instead of per-pixel
-     * supersampling, keeping the performance gain while producing much softer pill/oval corners.
+     * Smooth low-cost rounded rectangle. Small controls automatically become true capsules/circles,
+     * while large panels keep a softer fixed radius so the whole client feels consistent without
+     * turning giant windows into bubbles.
      */
     public static void rounded(DrawContext c,int left,int top,int right,int bottom,int radius,int color){
         int w=right-left,h=bottom-top;if(w<=0||h<=0)return;
         color=accentPink(color);
-        int r=Math.max(0,Math.min(radius,Math.min(w,h)/2));
+        int requested=Math.max(0,Math.min(radius,Math.min(w,h)/2));
+        int r=h<=64?Math.max(requested,Math.min(w,h)/2):requested;
+        r=Math.max(0,Math.min(r,Math.min(w,h)/2));
         if(r<=2){c.fill(left,top,right,bottom,color);return;}
-        int bands=Math.min(6,Math.max(4,r));
+
+        // Eight bands is still cheap, but much smoother than the older stepped 4-6 band shape.
+        int bands=Math.min(8,Math.max(5,r));
         c.fill(left,top+r,right,bottom-r,color);
         for(int i=0;i<bands;i++){
             double y0=i/(double)bands,y1=(i+1)/(double)bands;

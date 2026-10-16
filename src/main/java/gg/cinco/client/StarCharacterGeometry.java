@@ -49,6 +49,26 @@ public final class StarCharacterGeometry {
             }
         }
 
+        /** Faceted ellipsoid: enough curvature for faces/hands while keeping the GTA-SA low-poly feel. */
+        public void ellipsoid(float cx,float cy,float cz,float rx,float ry,float rz,int rings,int segments,int color) {
+            rings=Math.max(4,Math.min(14,rings));segments=Math.max(8,Math.min(24,segments));
+            for(int r=0;r<rings;r++){
+                double v0=-Math.PI/2.0+r*Math.PI/rings,v1=-Math.PI/2.0+(r+1)*Math.PI/rings;
+                float y0=cy+(float)Math.sin(v0)*ry,y1=cy+(float)Math.sin(v1)*ry;
+                float rr0=(float)Math.cos(v0),rr1=(float)Math.cos(v1);
+                for(int s=0;s<segments;s++){
+                    double a0=s*Math.PI*2.0/segments,a1=(s+1)*Math.PI*2.0/segments;
+                    float x00=cx+(float)Math.cos(a0)*rx*rr0,z00=cz+(float)Math.sin(a0)*rz*rr0;
+                    float x01=cx+(float)Math.cos(a1)*rx*rr0,z01=cz+(float)Math.sin(a1)*rz*rr0;
+                    float x10=cx+(float)Math.cos(a0)*rx*rr1,z10=cz+(float)Math.sin(a0)*rz*rr1;
+                    float x11=cx+(float)Math.cos(a1)*rx*rr1,z11=cz+(float)Math.sin(a1)*rz*rr1;
+                    float light=.78f+.22f*(float)Math.max(0,Math.cos((a0+a1)*.5));
+                    int face=light> .95f?lighten(color,.08f):shade(color,light);
+                    quad(x00,y0,z00,x01,y0,z01,x11,y1,z11,x10,y1,z10,face);
+                }
+            }
+        }
+
         public void quad(float ax,float ay,float az,float bx,float by,float bz,float cx,float cy,float cz,float dx,float dy,float dz,int color) {
             vertex(ax,ay,az,color); vertex(bx,by,bz,color); vertex(cx,cy,cz,color); vertex(dx,dy,dz,color);
         }

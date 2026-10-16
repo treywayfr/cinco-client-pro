@@ -29,6 +29,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: star-client-3.5.6-mc1.21.11-CJ-F5-MOTION-FIX
-          path: build/libs/star-client-3.5.6.jar
+          name: star-client-3.5.7-mc1.21.11-CJ-FINAL-POLISH
+          path: build/libs/star-client-3.5.7.jar
           if-no-files-found: error

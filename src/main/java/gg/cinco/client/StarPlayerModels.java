@@ -15,147 +15,176 @@ public final class StarPlayerModels {
         else renderCj(m,consumers,pose,detailed);
     }
 
-    /** Default GTA: San Andreas CJ silhouette: slim build, white tank, loose jeans, black shoes. */
+    /**
+     * CJ reference rebuild: GTA: San Andreas default outfit/silhouette.
+     * The model intentionally uses rounded/faceted low-poly geometry instead of Minecraft cuboids.
+     */
     private static void renderCj(MatrixStack m,VertexConsumerProvider consumers,Pose p,boolean detailed){
         StarCharacterGeometry.Drawer d=StarCharacterGeometry.begin(m,consumers);
-        final int skin=0xFF70432F,skinLight=0xFF87563D,skinShade=0xFF4B2C21,skinDeep=0xFF322018;
-        final int hair=0xFF0F1011,brow=0xFF171214,eyeWhite=0xFFF0ECE7,iris=0xFF3B281C,pupil=0xFF090708;
-        final int white=0xFFF2F0E9,whiteShade=0xFFD8D6CF;
-        final int denim=0xFF2C4160,denimHi=0xFF3C5878,denimDark=0xFF1A2A40;
-        final int shoe=0xFF111216,shoeHi=0xFF28292D,sole=0xFFD8D7D2,belt=0xFF2A1B17,buckle=0xFFB99554;
+
+        final int skin=0xFF74442E, skinHi=0xFF8D5A3D, skinMid=0xFF6A3A29, skinShade=0xFF4B291E, skinDeep=0xFF2E1A15;
+        final int hair=0xFF0B0D0E, brow=0xFF17100F, eyeWhite=0xFFF4EFE8, iris=0xFF39251A, pupil=0xFF080707;
+        final int tank=0xFFF3F1EB, tankShade=0xFFDAD8D1, tankHi=0xFFFBFAF5;
+        final int denim=0xFF294260, denimHi=0xFF3B5A7C, denimMid=0xFF263B56, denimDark=0xFF18283D;
+        final int belt=0xFF2A1C17, beltHi=0xFF5B4337, buckle=0xFFB79250;
+        final int shoe=0xFF111216, shoeHi=0xFF292A2E, sole=0xFFDAD9D5, lace=0xFFA8A7A2;
 
         float amount=clamp(p.limbAmount,0,1);
         float walk=(float)Math.sin(p.limbSwing*.6662f);
-        float leftLeg=walk*.76f*amount,rightLeg=-leftLeg;
-        float leftArm=-leftLeg*.74f,rightArm=-rightLeg*.74f;
-        float leftKnee=Math.max(0f,-walk)*.46f*amount;
-        float rightKnee=Math.max(0f,walk)*.46f*amount;
+        float leftLeg=walk*.72f*amount, rightLeg=-leftLeg;
+        float leftArm=-leftLeg*.70f, rightArm=-rightLeg*.70f;
+        float leftKnee=Math.max(0f,-walk)*.42f*amount;
+        float rightKnee=Math.max(0f,walk)*.42f*amount;
 
-        // Hips and belt. Only the buckle/loops remain hard-edged details.
-        d.taperedPrismY(0,.865f,.975f,0,.225f,.138f,.248f,.148f,detailed?14:10,denimDark);
-        d.taperedPrismY(0,.942f,.985f,0,.255f,.159f,.255f,.159f,12,belt);
-        d.box(-.042f,.944f,-.174f,.042f,.986f,-.158f,buckle);
-        for(int side:new int[]{-1,1}){float x=.185f*side;d.box(x-.014f,.944f,-.171f,x+.014f,.984f,-.158f,0xFF5B4337);}
+        // Hips / waist. Keep CJ slim through the middle with slightly looser jeans at the top.
+        d.taperedPrismY(0,.855f,.978f,0,.210f,.130f,.252f,.150f,detailed?16:12,denimDark);
+        d.taperedPrismY(0,.945f,.988f,0,.255f,.158f,.255f,.158f,14,belt);
+        d.ellipsoid(0,.967f,-.163f,.046f,.027f,.018f,4,10,buckle);
+        for(int side:new int[]{-1,1}){
+            float lx=.186f*side;
+            d.taperedPrismY(lx,.944f,.990f,-.001f,.012f,.160f,.012f,.160f,8,beltHi);
+        }
 
-        cjLeg(m,d,-.13f,.94f,leftLeg,leftKnee,denim,denimHi,denimDark,shoe,shoeHi,sole,detailed);
-        cjLeg(m,d,.13f,.94f,rightLeg,rightKnee,denim,denimHi,denimDark,shoe,shoeHi,sole,detailed);
+        // Legs are separate articulated upper/lower meshes so they walk naturally.
+        cjLeg(m,d,-.132f,.945f,leftLeg,leftKnee,denim,denimHi,denimMid,denimDark,shoe,shoeHi,sole,lace,detailed);
+        cjLeg(m,d,.132f,.945f,rightLeg,rightKnee,denim,denimHi,denimMid,denimDark,shoe,shoeHi,sole,lace,detailed);
 
-        // Human torso uses a tapered mesh rather than a Steve-like box.
-        d.taperedPrismY(0,.97f,1.385f,0,.215f,.132f,.286f,.150f,detailed?16:12,skin);
-        d.ellipsoid(-.276f,1.355f,0,.105f,.105f,.105f,6,12,skinLight);
-        d.ellipsoid(.276f,1.355f,0,.105f,.105f,.105f,6,12,skinLight);
+        // Human body under the tank: narrow waist, broader shoulders/chest.
+        d.taperedPrismY(0,.980f,1.350f,0,.207f,.125f,.285f,.152f,detailed?18:14,skin);
+        d.ellipsoid(-.279f,1.352f,0,.107f,.103f,.106f,6,14,skinHi);
+        d.ellipsoid(.279f,1.352f,0,.107f,.103f,.106f,6,14,skinHi);
 
-        // Tank top follows the torso taper and keeps the characteristic low scoop neck.
-        d.taperedPrismY(0,.985f,1.325f,.003f,.206f,.137f,.253f,.145f,detailed?16:12,white);
-        d.taperedPrismY(-.167f,1.305f,1.405f,0,.047f,.140f,.055f,.142f,10,white);
-        d.taperedPrismY(.167f,1.305f,1.405f,0,.047f,.140f,.055f,.142f,10,white);
-        d.surfaceOval(0,1.356f,-.148f,.105f,.067f,.012f,14,skin);
-        d.surfaceOval(0,1.010f,-.145f,.215f,.026f,.010f,14,whiteShade);
+        // White tank top from the reference: tight at waist, wider across chest, curved scoop neck.
+        d.taperedPrismY(0,.991f,1.326f,.004f,.202f,.132f,.253f,.144f,detailed?18:14,tank);
+        d.taperedPrismY(-.170f,1.300f,1.407f,0,.047f,.138f,.057f,.142f,12,tank);
+        d.taperedPrismY(.170f,1.300f,1.407f,0,.047f,.138f,.057f,.142f,12,tank);
+        d.surfaceOval(0,1.358f,-.149f,.107f,.066f,.012f,16,skin);
+        d.surfaceOval(0,1.012f,-.144f,.213f,.025f,.010f,16,tankShade);
         if(detailed){
             for(int i=-4;i<=4;i++){
-                float xx=i*.043f;
-                d.surfaceOval(xx,1.16f,-.149f,.006f,.132f,.006f,8,(i&1)==0?whiteShade:0xFFF9F7F1);
+                float xx=i*.042f;
+                d.surfaceOval(xx,1.158f,-.150f,.0045f,.137f,.004f,8,(i&1)==0?tankShade:tankHi);
             }
+            d.surfaceOval(-.170f,1.318f,-.148f,.047f,.061f,.005f,10,tankHi);
+            d.surfaceOval(.170f,1.318f,-.148f,.047f,.061f,.005f,10,tankHi);
         }
 
-        cjArm(m,d,-.315f,1.385f,leftArm,skin,skinLight,skinShade,detailed);
-        cjArm(m,d,.315f,1.385f,rightArm,skin,skinLight,skinShade,detailed);
+        // Long articulated arms.
+        cjArm(m,d,-.318f,1.390f,leftArm,skin,skinHi,skinMid,skinShade,detailed);
+        cjArm(m,d,.318f,1.390f,rightArm,skin,skinHi,skinMid,skinShade,detailed);
 
-        d.taperedPrismY(0,1.385f,1.525f,0,.083f,.075f,.076f,.069f,12,skinShade);
+        // Neck and clavicle transition.
+        d.taperedPrismY(0,1.382f,1.520f,0,.084f,.074f,.074f,.066f,12,skinShade);
+        d.ellipsoid(0,1.405f,-.070f,.095f,.048f,.044f,5,12,skinMid);
 
-        // Head follows look direction and is built from layered ellipsoids instead of a cuboid skull.
+        // Head follows camera look direction independently from body.
         m.push();
-        m.translate(0,1.505f,0);
+        m.translate(0,1.500f,0);
         m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(clamp(p.headYaw,-62,62)));
-        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(clamp(p.pitch,-36,36)*.68f));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(clamp(p.pitch,-36,36)*.66f));
 
-        d.ellipsoid(0,.205f,.006f,.184f,.207f,.159f,detailed?10:7,detailed?18:12,skin);
-        d.ellipsoid(0,.078f,-.018f,.157f,.133f,.151f,detailed?8:6,detailed?16:12,skinShade);
-        d.ellipsoid(0,.010f,-.026f,.121f,.073f,.126f,6,12,skinShade);
-        d.ellipsoid(-.188f,.181f,-.002f,.030f,.061f,.040f,5,10,skinShade);
-        d.ellipsoid(.188f,.181f,-.002f,.030f,.061f,.040f,5,10,skinShade);
+        // GTA-SA-style head silhouette: elongated cranium, defined cheek/jaw, smaller chin.
+        d.ellipsoid(0,.215f,.008f,.177f,.213f,.153f,detailed?11:8,detailed?20:14,skin);
+        d.ellipsoid(0,.112f,-.019f,.161f,.146f,.151f,detailed?9:7,detailed?18:14,skinMid);
+        d.ellipsoid(0,.018f,-.027f,.126f,.080f,.129f,7,14,skinShade);
+        d.ellipsoid(-.185f,.184f,-.003f,.029f,.060f,.039f,5,10,skinShade);
+        d.ellipsoid(.185f,.184f,-.003f,.029f,.060f,.039f,5,10,skinShade);
 
-        // Caesar haircut: rounded cap plus a deliberately straighter front hairline.
-        d.ellipsoid(0,.350f,.012f,.177f,.074f,.149f,6,16,hair);
-        d.surfaceOval(0,.309f,-.151f,.164f,.028f,.011f,16,hair);
+        // Caesar cut: close cap with a crisp low front hairline.
+        d.ellipsoid(0,.356f,.010f,.174f,.071f,.146f,6,18,hair);
+        d.surfaceOval(0,.313f,-.149f,.160f,.026f,.009f,18,hair);
+        d.surfaceOval(-.078f,.301f,-.156f,.069f,.012f,.005f,12,StarCharacterGeometry.lighten(hair,.07f));
+        d.surfaceOval(.078f,.301f,-.156f,.069f,.012f,.005f,12,StarCharacterGeometry.lighten(hair,.07f));
+
+        // Brow ridge and eyes.
+        d.surfaceOval(-.080f,.255f,-.166f,.061f,.014f,.008f,14,brow);
+        d.surfaceOval(.080f,.255f,-.166f,.061f,.014f,.008f,14,brow);
+        d.surfaceOval(-.073f,.207f,-.178f,.054f,.021f,.008f,16,eyeWhite);
+        d.surfaceOval(.073f,.207f,-.178f,.054f,.021f,.008f,16,eyeWhite);
+        float eyeShift=clamp(p.headYaw,-30,30)/30f*.011f;
+        float eyeLift=-clamp(p.pitch,-25,25)/25f*.004f;
+        d.surfaceOval(-.060f+eyeShift,.207f+eyeLift,-.189f,.016f,.017f,.006f,10,iris);
+        d.surfaceOval(.060f+eyeShift,.207f+eyeLift,-.189f,.016f,.017f,.006f,10,iris);
+        d.surfaceOval(-.060f+eyeShift,.207f+eyeLift,-.195f,.0065f,.008f,.003f,8,pupil);
+        d.surfaceOval(.060f+eyeShift,.207f+eyeLift,-.195f,.0065f,.008f,.003f,8,pupil);
+
+        // CJ's wider nose and nostrils.
+        d.ellipsoid(0,.145f,-.186f,.040f,.060f,.047f,6,12,skinShade);
+        d.ellipsoid(0,.108f,-.205f,.058f,.026f,.030f,5,12,skinHi);
+        d.surfaceOval(-.034f,.105f,-.212f,.014f,.007f,.003f,8,skinDeep);
+        d.surfaceOval(.034f,.105f,-.212f,.014f,.007f,.003f,8,skinDeep);
+
+        // Lips + subtle mustache/goatee from the default San Andreas look.
+        d.surfaceOval(0,.061f,-.195f,.084f,.012f,.008f,14,0xFF6A3933);
+        d.surfaceOval(0,.043f,-.192f,.073f,.011f,.007f,14,0xFF4B2927);
+        d.surfaceOval(0,.013f,-.178f,.058f,.022f,.007f,12,0xFF251A19);
+        d.surfaceOval(0,.081f,-.189f,.022f,.006f,.004f,8,0xFF2C1D1B);
+
         if(detailed){
-            d.surfaceOval(-.072f,.297f,-.158f,.068f,.014f,.006f,10,StarCharacterGeometry.lighten(hair,.08f));
-            d.surfaceOval(.072f,.297f,-.158f,.068f,.014f,.006f,10,StarCharacterGeometry.lighten(hair,.08f));
-        }
-
-        // Rounded facial features keep CJ recognizable without Minecraft-pixel anatomy.
-        d.surfaceOval(-.080f,.252f,-.166f,.060f,.015f,.009f,12,brow);
-        d.surfaceOval(.080f,.252f,-.166f,.060f,.015f,.009f,12,brow);
-        d.surfaceOval(-.073f,.207f,-.177f,.055f,.022f,.009f,14,eyeWhite);
-        d.surfaceOval(.073f,.207f,-.177f,.055f,.022f,.009f,14,eyeWhite);
-        float eyeShift=clamp(p.headYaw,-30,30)/30f*.012f;
-        d.surfaceOval(-.061f+eyeShift,.207f,-.188f,.017f,.018f,.007f,10,iris);
-        d.surfaceOval(.061f+eyeShift,.207f,-.188f,.017f,.018f,.007f,10,iris);
-        d.surfaceOval(-.061f+eyeShift,.207f,-.195f,.007f,.009f,.004f,8,pupil);
-        d.surfaceOval(.061f+eyeShift,.207f,-.195f,.007f,.009f,.004f,8,pupil);
-
-        d.ellipsoid(0,.139f,-.184f,.043f,.061f,.050f,5,10,skinShade);
-        d.ellipsoid(0,.106f,-.205f,.059f,.026f,.031f,5,10,skinLight);
-        d.surfaceOval(-.034f,.105f,-.211f,.015f,.008f,.004f,8,skinDeep);
-        d.surfaceOval(.034f,.105f,-.211f,.015f,.008f,.004f,8,skinDeep);
-
-        d.surfaceOval(0,.059f,-.194f,.086f,.013f,.009f,12,0xFF6A3933);
-        d.surfaceOval(0,.040f,-.191f,.075f,.012f,.008f,12,0xFF4D2928);
-        d.surfaceOval(0,.010f,-.178f,.060f,.023f,.008f,12,0xFF251A19);
-        d.surfaceOval(0,.078f,-.188f,.022f,.007f,.005f,8,0xFF2C1D1B);
-
-        if(detailed){
-            d.surfaceOval(-.139f,.128f,-.158f,.027f,.050f,.006f,10,skinLight);
-            d.surfaceOval(.139f,.128f,-.158f,.027f,.050f,.006f,10,skinLight);
-            d.surfaceOval(-.098f,.034f,-.151f,.034f,.012f,.005f,8,0xFF4E3028);
-            d.surfaceOval(.098f,.034f,-.151f,.034f,.012f,.005f,8,0xFF4E3028);
+            // Cheek planes, under-eye shadows, ear detail and jaw stubble keep the face recognizably CJ-like.
+            d.surfaceOval(-.139f,.134f,-.159f,.026f,.049f,.005f,10,skinHi);
+            d.surfaceOval(.139f,.134f,-.159f,.026f,.049f,.005f,10,skinHi);
+            d.surfaceOval(-.091f,.181f,-.170f,.044f,.010f,.004f,10,StarCharacterGeometry.shade(skin,.90f));
+            d.surfaceOval(.091f,.181f,-.170f,.044f,.010f,.004f,10,StarCharacterGeometry.shade(skin,.90f));
+            d.surfaceOval(-.100f,.035f,-.151f,.034f,.011f,.004f,8,0xFF4E3028);
+            d.surfaceOval(.100f,.035f,-.151f,.034f,.011f,.004f,8,0xFF4E3028);
+            d.surfaceOval(-.188f,.184f,-.026f,.010f,.026f,.004f,8,skinDeep);
+            d.surfaceOval(.188f,.184f,-.026f,.010f,.026f,.004f,8,skinDeep);
         }
         m.pop();
     }
 
     private static void cjLeg(MatrixStack m,StarCharacterGeometry.Drawer d,float x,float y,float hip,float knee,
-                              int denim,int denimHi,int denimDark,int shoe,int shoeHi,int sole,boolean detailed){
+                              int denim,int denimHi,int denimMid,int denimDark,int shoe,int shoeHi,int sole,int lace,boolean detailed){
         m.push();
         m.translate(x,y,0);
         m.multiply(RotationAxis.POSITIVE_X.rotation(hip));
-        d.taperedPrismY(0,-.405f,0,.005f,.118f,.122f,.132f,.135f,detailed?14:10,denim);
-        if(detailed){
-            d.surfaceOval(0,-.220f,-.134f,.011f,.160f,.006f,8,denimHi);
-            d.surfaceOval(-.070f,-.125f,-.136f,.040f,.016f,.005f,8,denimHi);
-            d.surfaceOval(.070f,-.125f,-.136f,.040f,.016f,.005f,8,denimHi);
-        }
-        m.translate(0,-.395f,0);
-        m.multiply(RotationAxis.POSITIVE_X.rotation(knee));
-        d.taperedPrismY(0,-.365f,.015f,.003f,.105f,.110f,.119f,.122f,detailed?14:10,denimDark);
-        if(detailed)d.surfaceOval(0,-.175f,-.122f,.009f,.145f,.005f,8,denimHi);
 
-        // Rounded low tennis shoe rather than a rectangular foot block.
-        d.ellipsoid(0,-.395f,-.045f,.116f,.067f,.192f,6,detailed?14:10,shoe);
-        d.ellipsoid(0,-.440f,-.055f,.121f,.026f,.205f,4,detailed?14:10,sole);
-        d.surfaceOval(0,-.377f,-.220f,.089f,.022f,.010f,12,shoeHi);
+        // Baggy upper jeans narrowing toward the knee.
+        d.taperedPrismY(0,-.405f,0,.006f,.116f,.120f,.136f,.138f,detailed?16:12,denim);
         if(detailed){
-            for(int i=-2;i<=2;i++)d.surfaceOval(i*.034f,-.382f,-.229f,.012f,.006f,.004f,8,0xFF9B9A96);
+            d.surfaceOval(0,-.215f,-.136f,.009f,.165f,.005f,8,denimHi);
+            d.surfaceOval(-.071f,-.124f,-.137f,.041f,.015f,.004f,8,denimHi);
+            d.surfaceOval(.071f,-.124f,-.137f,.041f,.015f,.004f,8,denimHi);
+        }
+
+        m.translate(0,-.397f,0);
+        m.multiply(RotationAxis.POSITIVE_X.rotation(knee));
+        d.taperedPrismY(0,-.365f,.016f,.004f,.102f,.108f,.119f,.122f,detailed?16:12,denimDark);
+        d.surfaceOval(0,-.172f,-.122f,.008f,.145f,.004f,8,denimMid);
+
+        // Rounded black low-top tennis shoe with white/gray sole and lace rows.
+        d.ellipsoid(0,-.397f,-.052f,.116f,.066f,.194f,6,detailed?16:12,shoe);
+        d.ellipsoid(0,-.442f,-.058f,.122f,.027f,.207f,4,detailed?16:12,sole);
+        d.surfaceOval(0,-.375f,-.222f,.090f,.020f,.009f,14,shoeHi);
+        if(detailed){
+            for(int i=-2;i<=2;i++)d.surfaceOval(i*.033f,-.380f,-.231f,.011f,.005f,.003f,8,lace);
+            d.surfaceOval(0,-.412f,.128f,.086f,.012f,.004f,10,shoeHi);
         }
         m.pop();
     }
 
     private static void cjArm(MatrixStack m,StarCharacterGeometry.Drawer d,float x,float y,float swing,
-                              int skin,int skinLight,int skinShade,boolean detailed){
+                              int skin,int skinHi,int skinMid,int skinShade,boolean detailed){
         m.push();
         m.translate(x,y,0);
         m.multiply(RotationAxis.POSITIVE_X.rotation(swing));
-        d.taperedPrismY(0,-.315f,0,0,.061f,.068f,.079f,.084f,detailed?14:10,skin);
-        d.ellipsoid(0,-.315f,0,.071f,.067f,.075f,5,10,skinLight);
+
+        d.taperedPrismY(0,-.315f,0,0,.061f,.067f,.081f,.085f,detailed?16:12,skin);
+        d.ellipsoid(0,-.315f,0,.070f,.068f,.074f,5,12,skinHi);
+
         m.translate(0,-.310f,0);
-        float elbow=-.055f-Math.max(0,swing)*.12f;
+        float elbow=-.045f-Math.max(0,swing)*.10f;
         m.multiply(RotationAxis.POSITIVE_X.rotation(elbow));
-        d.taperedPrismY(0,-.300f,.010f,0,.055f,.061f,.066f,.070f,detailed?14:10,skinLight);
-        d.ellipsoid(0,-.347f,-.010f,.077f,.090f,.073f,6,detailed?14:10,skin);
+        d.taperedPrismY(0,-.300f,.010f,0,.053f,.058f,.065f,.069f,detailed?16:12,skinMid);
+
+        // Human-shaped palm + thumb + subtle finger segmentation.
+        d.ellipsoid(0,-.347f,-.010f,.075f,.088f,.071f,6,detailed?16:12,skin);
+        d.ellipsoid(-.060f,-.327f,-.027f,.020f,.043f,.028f,4,8,skinShade);
         if(detailed){
-            d.surfaceOval(-.036f,-.374f,-.078f,.015f,.038f,.005f,8,skinShade);
-            d.surfaceOval(0,-.380f,-.081f,.015f,.041f,.005f,8,skinShade);
-            d.surfaceOval(.036f,-.374f,-.078f,.015f,.038f,.005f,8,skinShade);
-            d.ellipsoid(-.063f,-.330f,-.030f,.021f,.045f,.030f,4,8,skinShade);
+            d.surfaceOval(-.036f,-.374f,-.076f,.014f,.037f,.004f,8,skinShade);
+            d.surfaceOval(0,-.380f,-.079f,.014f,.040f,.004f,8,skinShade);
+            d.surfaceOval(.036f,-.374f,-.076f,.014f,.037f,.004f,8,skinShade);
         }
         m.pop();
     }
@@ -167,14 +196,16 @@ public final class StarPlayerModels {
         float amp=clamp(p.limbAmount,0,1);
         float step=(float)Math.sin(p.limbSwing*.6662f);
         float leftLeg=-step*.90f*amp,rightLeg=step*.90f*amp;
-        float leftArm=-rightLeg*.74f,rightArm=-leftLeg*.74f;
+        float leftArm=-rightLeg*.74f;
+        // Bat hand still animates, just with a slightly reduced swing so the bat does not clip through the body.
+        float rightArm=-leftLeg*.48f;
 
         tungLeg(m,d,-.14f,.58f,leftLeg,woodDark,woodMid,woodLight,detailed);
         tungLeg(m,d,.14f,.58f,rightLeg,woodDark,woodMid,woodLight,detailed);
-        tungArm(m,d,-.37f,1.45f,leftArm,woodDark,woodMid,woodLight,detailed);
-        tungArm(m,d,.37f,1.45f,rightArm,woodDark,woodMid,woodLight,detailed);
+        tungArm(m,d,-.37f,1.45f,leftArm,woodDark,woodMid,woodLight,detailed,false);
+        tungArm(m,d,.37f,1.45f,rightArm,woodDark,woodMid,woodLight,detailed,true);
 
-        // Rounded tapered log body, closer to the reference model than a straight Minecraft cylinder.
+        // Rounded tapered log body.
         m.push();
         m.translate(0,.55f,0);
         m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(clamp(p.headYaw,-42,42)*.14f));
@@ -183,7 +214,6 @@ public final class StarPlayerModels {
         d.ellipsoid(0,1.475f,0,.337f,.078f,.288f,5,detailed?24:16,woodLight);
         d.ellipsoid(0,.045f,0,.299f,.065f,.257f,5,detailed?22:14,woodDark);
 
-        // Wood grain is laid onto the curved front as thin rounded streaks/knots, not square strips.
         if(detailed){
             for(int i=-3;i<=3;i++){
                 float xx=i*.071f;
@@ -228,7 +258,7 @@ public final class StarPlayerModels {
     }
 
     private static void tungArm(MatrixStack m,StarCharacterGeometry.Drawer d,float x,float y,float swing,
-                                int woodDark,int woodMid,int woodLight,boolean detailed){
+                                int woodDark,int woodMid,int woodLight,boolean detailed,boolean batHand){
         m.push();
         m.translate(x,y,0);
         m.multiply(RotationAxis.POSITIVE_X.rotation(swing));
@@ -239,6 +269,30 @@ public final class StarPlayerModels {
             d.surfaceOval(-.025f,-.688f,-.068f,.013f,.032f,.004f,8,woodMid);
             d.surfaceOval(.010f,-.694f,-.069f,.013f,.035f,.004f,8,woodMid);
             d.surfaceOval(.044f,-.682f,-.064f,.012f,.030f,.004f,8,woodMid);
+        }
+        if(batHand)renderTungBat(m,d,detailed);
+        m.pop();
+    }
+
+    /** Detailed wooden bat parented to Tung's right hand, so every arm animation carries it correctly. */
+    private static void renderTungBat(MatrixStack m,StarCharacterGeometry.Drawer d,boolean detailed){
+        final int batDark=0xFF55331C, bat=0xFF9B6333, batLight=0xFFD19A5A, batGrain=0xFF6D4527;
+        m.push();
+        m.translate(.010f,-.680f,-.010f);
+        m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(-10f));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(7f));
+
+        // Handle passes through the palm, then widens into the barrel toward the ground.
+        d.taperedPrismY(0,-.190f,.045f,0,.027f,.027f,.030f,.030f,detailed?14:10,batDark);
+        d.ellipsoid(0,.055f,0,.043f,.030f,.043f,4,10,batDark); // knob
+        d.taperedPrismY(0,-.780f,-.175f,0,.080f,.078f,.034f,.034f,detailed?18:12,bat);
+        d.ellipsoid(0,-.790f,0,.080f,.050f,.078f,5,detailed?16:12,batLight);
+
+        if(detailed){
+            d.surfaceOval(-.020f,-.465f,-.079f,.010f,.235f,.004f,8,batLight);
+            d.surfaceOval(.028f,-.515f,-.078f,.008f,.190f,.004f,8,batGrain);
+            d.surfaceOval(0,-.315f,-.081f,.035f,.015f,.004f,10,batGrain);
+            d.surfaceOval(0,-.650f,-.081f,.041f,.018f,.004f,10,batGrain);
         }
         m.pop();
     }

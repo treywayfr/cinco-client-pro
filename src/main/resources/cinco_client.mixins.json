@@ -13,7 +13,6 @@
     "ClientModuleTuningMixin",
     "PatchModuleCleanupMixin",
     "StarGuiBackgroundMixin",
-    "StarClientNavigationMixin",
     "SusChunkSettingsRedirectMixin"
   ],
   "injectors": {

@@ -9,6 +9,7 @@
     "CincoClientMixin",
     "GuiLaunchGuardMixin",
     "LivingEntityRendererSkinMixin",
+    "ClickGuiSearchFixMixin",
     "PlayerChangerAliasMixin",
     "ModuleSettingsMixin",
     "ClientModuleTuningMixin",

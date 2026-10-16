@@ -33,10 +33,11 @@ public abstract class ClientModuleTuningMixin {
                            String originalSettingLabel, double setting, double min, double originalMax, double step,
                            CallbackInfo ci) {
         if ("GTA Skin Changer".equals(moduleName) || "Player Changer".equals(moduleName)) {
-            settingLabel = "Character"; max = 5.0;
-            setting2Label = "Outfit"; min2 = 1.0; max2 = 6.0; step2 = 1.0;
+            settingLabel = "Character"; max = 2.0;
+            setting2Label = "Model scale"; min2 = 0.80; max2 = 1.25; step2 = 0.05;
             if (setting2 < min2 || setting2 > max2) setting2 = 1.0; defaultSetting2 = 1.0;
-            setting3Label = "Model detail"; min3 = 0.0; max3 = 1.0; step3 = 1.0; setting3 = 1.0; defaultSetting3 = 1.0;
+            setting3Label = "Model detail"; min3 = 0.0; max3 = 1.0; step3 = 1.0;
+            if (setting3 < 0 || setting3 > 1) setting3 = 1.0; defaultSetting3 = 1.0;
         } else if ("FOV Changer".equals(moduleName)) {
             setting2Label = "Show hand"; min2 = 0.0; max2 = 1.0; step2 = 1.0; setting2 = 1.0; defaultSetting2 = 1.0;
             setting3Label = "Hand / item rotation"; min3 = -90.0; max3 = 90.0; step3 = 5.0; setting3 = 0.0; defaultSetting3 = 0.0;
@@ -53,13 +54,13 @@ public abstract class ClientModuleTuningMixin {
             setting3Label = "Space intensity"; min3 = 0.25; max3 = 1.0; step3 = 0.05;
             if (setting3 < min3 || setting3 > max3) setting3 = 0.90; defaultSetting3 = 0.90;
         } else if ("Animations".equals(moduleName)) {
-            settingLabel = "Effect"; max = 14.0;
+            settingLabel = "Effect"; max = 20.0;
             setting2Label = "Animation speed"; min2 = 0.15; max2 = 3.0; step2 = 0.10;
             if (setting2 < min2 || setting2 > max2) setting2 = 1.0; defaultSetting2 = 1.0;
             setting3Label = "Effect intensity"; min3 = 0.15; max3 = 1.0; step3 = 0.05;
             if (setting3 < min3 || setting3 > max3) setting3 = 0.80; defaultSetting3 = 0.80;
         } else if ("Custom Accessory".equals(moduleName)) {
-            settingLabel = "Accessory"; max = 14.0;
+            settingLabel = "Accessory"; max = 20.0;
             setting2Label = "Accessory size"; min2 = 0.60; max2 = 1.80; step2 = 0.05;
             if (setting2 < min2 || setting2 > max2) setting2 = 1.0; defaultSetting2 = 1.0;
             setting3Label = "Smooth motion"; min3 = 0.0; max3 = 2.50; step3 = 0.10;

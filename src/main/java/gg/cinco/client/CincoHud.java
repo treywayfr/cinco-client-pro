@@ -15,10 +15,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Compact draggable Star HUD pills. Open chat to drag, resize, or disable. */
+/** Reference-style compact draggable Star HUD pills. */
 public final class CincoHud {
     private static final long STARTED=System.currentTimeMillis();
-    private static final int PINK=0xFFFF55C8;
+    private static final int PINK=0xFFFF4FD1;
     private static String dragging;
     private static double dragOffsetX,dragOffsetY;
     private static boolean lastLeft;
@@ -41,7 +41,7 @@ public final class CincoHud {
         index=widget(ctx,client,edit,index,"keys","Keystrokes",keystrokes(client),"KEY",Items.TRIPWIRE_HOOK,false);
         index=widget(ctx,client,edit,index,"ping","Ping Display",ping(client)+" ms","PING",Items.ECHO_SHARD,false);
         index=widget(ctx,client,edit,index,"target","Target HUD",target(client),"TGT",Items.NETHERITE_SWORD,false);
-        index=widget(ctx,client,edit,index,"inventory","Inventory Checklist",inventory(client),"KIT",Items.TOTEM_OF_UNDYING,false);
+        index=widget(ctx,client,edit,index,"inventory","Inventory Checklist",inventory(client),"BOX",Items.ENDER_CHEST,false);
         index=widget(ctx,client,edit,index,"radar","Container Radar HUD",Integer.toString(EnhancedWorldScan.storage().size()),"BOX",Items.ENDER_CHEST,false);
         widget(ctx,client,edit,index,"players","Nearby Player List",Integer.toString(Math.max(0,client.world.getPlayers().size()-1)),"PPL",Items.PLAYER_HEAD,false);
         if(edit)handleEditor(client);else if(dragging!=null){dragging=null;StarHudLayoutStore.save();}
@@ -50,44 +50,35 @@ public final class CincoHud {
     private static int widget(DrawContext ctx,MinecraftClient client,boolean edit,int index,String id,String moduleName,String value,String tag,Item item,boolean brand){
         ClientModule module=CincoClient.findModule(moduleName);if(module==null||!module.enabled)return index;
         int sw=client.getWindow().getScaledWidth(),sh=client.getWindow().getScaledHeight();
-        int defaultX=12+(index%5)*128,defaultY=Math.max(12,sh-58-(index/5)*27);
-        if(brand){defaultX=12;defaultY=12;}
-        if(id.equals("coords")){defaultX=12;defaultY=43;}
+        int defaultX=12+(index%5)*118,defaultY=Math.max(12,sh-54-(index/5)*30);
+        if(brand){defaultX=12;defaultY=12;}if(id.equals("coords")){defaultX=12;defaultY=55;}
         StarHudLayoutStore.State state=StarHudLayoutStore.get(id,defaultX,defaultY);state.scale=Math.max(.5f,Math.min(2.5f,state.scale));
-        int textW=client.textRenderer.getWidth(value),baseW=brand?138:Math.max(82,Math.min(164,textW+54)),baseH=22;
+        int textW=client.textRenderer.getWidth(value),baseW=brand?145:Math.max(96,Math.min(166,textW+57)),baseH=brand?34:29;
         int realW=Math.round(baseW*state.scale),realH=Math.round(baseH*state.scale);
         state.x=Math.max(0,Math.min(Math.max(0,sw-realW),state.x));state.y=Math.max(0,Math.min(Math.max(0,sh-realH),state.y));
         ctx.getMatrices().pushMatrix();ctx.getMatrices().translate(state.x,state.y);ctx.getMatrices().scale(state.scale,state.scale);
 
-        int border=edit?0xA8FF55C8:0x366B4B85;
-        CincoDraw.rounded(ctx,-2,-2,baseW+2,baseH+2,baseH/2,0x123E0B52);
-        CincoDraw.bubble(ctx,0,0,baseW,baseH,baseH/2,border,0x5207050D);
-        CincoDraw.rounded(ctx,3,3,7,baseH-3,2,PINK);
+        int radius=baseH/2;
+        CincoDraw.rounded(ctx,-4,-4,baseW+4,baseH+4,radius+4,0x17350064);
+        CincoDraw.rounded(ctx,-2,-2,baseW+2,baseH+2,radius+2,edit?0xBFFF55D5:0x75C77CFF);
+        CincoDraw.rounded(ctx,-1,-1,baseW+1,baseH+1,radius+1,0x76FF55D5);
+        CincoDraw.rounded(ctx,0,0,baseW,baseH,radius,0x650A0712);
 
-        // Circular icon badge keeps every widget visually symmetric.
-        CincoDraw.rounded(ctx,8,3,24,19,8,0x46351A4A);
-        if(item!=null){ctx.getMatrices().pushMatrix();ctx.getMatrices().translate(8,3);ctx.getMatrices().scale(.75f,.75f);ctx.drawItem(new ItemStack(item),0,0);ctx.getMatrices().popMatrix();}
-        else ctx.drawCenteredTextWithShadow(client.textRenderer,StarFonts.text(tag,true),16,7,PINK);
+        int iconSize=brand?23:19,iy=(baseH-iconSize)/2,ix=7;
+        CincoDraw.rounded(ctx,ix,iy,ix+iconSize,iy+iconSize,iconSize/2,0x553B244A);
+        if(item!=null){ctx.getMatrices().pushMatrix();float sc=brand?.9f:.72f;ctx.getMatrices().translate(ix+(brand?3:4),iy+(brand?3:4));ctx.getMatrices().scale(sc,sc);ctx.drawItem(new ItemStack(item),0,0);ctx.getMatrices().popMatrix();}
+        else ctx.drawCenteredTextWithShadow(client.textRenderer,StarFonts.text(tag,true),ix+iconSize/2,iy+iconSize/2-4,PINK);
 
-        if(brand){ctx.drawText(client.textRenderer,StarFonts.text(value,true),31,7,0xFFF8F4FF,false);}
+        if(brand){ctx.drawText(client.textRenderer,StarFonts.text("STAR",true),36,12,0xFFFFFFFF,false);ctx.drawText(client.textRenderer,StarFonts.text("CLIENT",true),72,12,0xFFFF75D9,false);ctx.drawText(client.textRenderer,StarFonts.text("✦",true),baseW-18,12,0xFFFFB0EF,false);}
         else{
-            int valueX=30;
-            ctx.drawText(client.textRenderer,StarFonts.text(tag,false),valueX,7,0xFF9E91A8,false);
-            int vx=baseW-10-client.textRenderer.getWidth(value);
-            ctx.drawText(client.textRenderer,StarFonts.text(value,true),Math.max(valueX+26,vx),7,0xFFF5F1F8,false);
+            int valueX=34;ctx.drawText(client.textRenderer,StarFonts.text(tag,true),valueX,10,PINK,false);
+            int vx=baseW-11-client.textRenderer.getWidth(value);ctx.drawText(client.textRenderer,StarFonts.text(value,true),Math.max(valueX+28,vx),10,0xFFF8F4FA,false);
         }
         if(edit){CincoDraw.rounded(ctx,baseW-17,3,baseW-3,17,7,0xA8FF4B8D);ctx.drawCenteredTextWithShadow(client.textRenderer,Text.literal("×"),baseW-10,5,0xFFFFFFFF);}
         ctx.getMatrices().popMatrix();hits.add(new Hit(id,module,state,state.x,state.y,realW,realH));return index+1;
     }
 
-    private static void handleEditor(MinecraftClient client){
-        int sw=client.getWindow().getScaledWidth(),sh=client.getWindow().getScaledHeight();double mx=client.mouse.getX()*sw/Math.max(1.0,client.getWindow().getWidth()),my=client.mouse.getY()*sh/Math.max(1.0,client.getWindow().getHeight());
-        boolean left=GLFW.glfwGetMouseButton(client.getWindow().getHandle(),GLFW.GLFW_MOUSE_BUTTON_LEFT)==GLFW.GLFW_PRESS;
-        if(left&&!lastLeft)for(int i=hits.size()-1;i>=0;i--){Hit hit=hits.get(i);if(!inside(mx,my,hit))continue;int closeSize=Math.max(10,Math.round(17*hit.state.scale));if(mx>=hit.x+hit.w-closeSize&&my<=hit.y+closeSize){hit.module.enabled=false;ConfigStore.save();lastLeft=left;return;}dragging=hit.id;dragOffsetX=mx-hit.x;dragOffsetY=my-hit.y;break;}
-        if(left&&dragging!=null)for(Hit hit:hits)if(hit.id.equals(dragging)){hit.state.x=(int)Math.round(mx-dragOffsetX);hit.state.y=(int)Math.round(my-dragOffsetY);break;}
-        if(!left&&lastLeft&&dragging!=null){dragging=null;StarHudLayoutStore.save();}lastLeft=left;
-    }
-
+    private static void handleEditor(MinecraftClient client){int sw=client.getWindow().getScaledWidth(),sh=client.getWindow().getScaledHeight();double mx=client.mouse.getX()*sw/Math.max(1.0,client.getWindow().getWidth()),my=client.mouse.getY()*sh/Math.max(1.0,client.getWindow().getHeight());boolean left=GLFW.glfwGetMouseButton(client.getWindow().getHandle(),GLFW.GLFW_MOUSE_BUTTON_LEFT)==GLFW.GLFW_PRESS;if(left&&!lastLeft)for(int i=hits.size()-1;i>=0;i--){Hit hit=hits.get(i);if(!inside(mx,my,hit))continue;int closeSize=Math.max(10,Math.round(17*hit.state.scale));if(mx>=hit.x+hit.w-closeSize&&my<=hit.y+closeSize){hit.module.enabled=false;ConfigStore.save();lastLeft=left;return;}dragging=hit.id;dragOffsetX=mx-hit.x;dragOffsetY=my-hit.y;break;}if(left&&dragging!=null)for(Hit hit:hits)if(hit.id.equals(dragging)){hit.state.x=(int)Math.round(mx-dragOffsetX);hit.state.y=(int)Math.round(my-dragOffsetY);break;}if(!left&&lastLeft&&dragging!=null){dragging=null;StarHudLayoutStore.save();}lastLeft=left;}
     public static boolean onScroll(MinecraftClient client,double mouseX,double mouseY,double vertical){if(!(client.currentScreen instanceof ChatScreen))return false;int sw=client.getWindow().getScaledWidth(),sh=client.getWindow().getScaledHeight();double mx=mouseX*sw/Math.max(1.0,client.getWindow().getWidth()),my=mouseY*sh/Math.max(1.0,client.getWindow().getHeight());for(int i=hits.size()-1;i>=0;i--){Hit hit=hits.get(i);if(!inside(mx,my,hit))continue;hit.state.scale=Math.max(.5f,Math.min(2.5f,hit.state.scale+(vertical>0?.1f:-.1f)));StarHudLayoutStore.save();return true;}return false;}
     private static boolean inside(double mx,double my,Hit h){return mx>=h.x&&mx<=h.x+h.w&&my>=h.y&&my<=h.y+h.h;}
     private static int armorCount(PlayerEntity player){int count=0;for(int i=0;i<4;i++){ItemStack stack=player.getInventory().getStack(36+i);if(!stack.isEmpty())count++;}return count;}

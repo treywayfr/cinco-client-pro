@@ -15,9 +15,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Compact draggable Star HUD widgets. Open chat to drag, resize, or disable. */
+/** Compact draggable Star HUD pills. Open chat to drag, resize, or disable. */
 public final class CincoHud {
     private static final long STARTED=System.currentTimeMillis();
+    private static final int PINK=0xFFFF55C8;
+    private static final int PURPLE=0xFFB66CFF;
     private static String dragging;
     private static double dragOffsetX,dragOffsetY;
     private static boolean lastLeft;
@@ -27,6 +29,7 @@ public final class CincoHud {
 
     public static void render(DrawContext ctx,MinecraftClient client){
         if(client==null||client.player==null||client.world==null||!CincoClient.hudEnabled)return;
+        StarHudLayoutStore.applyPolishedDefaults(client.getWindow().getScaledWidth(),client.getWindow().getScaledHeight());
         boolean edit=client.currentScreen instanceof ChatScreen;hits.clear();int index=0;
         index=widget(ctx,client,edit,index,"brand","Client HUD","STAR CLIENT","✦",null,true);
         index=widget(ctx,client,edit,index,"fps","FPS Counter",Integer.toString(client.getCurrentFps()),"FPS",null,false);
@@ -47,33 +50,32 @@ public final class CincoHud {
 
     private static int widget(DrawContext ctx,MinecraftClient client,boolean edit,int index,String id,String moduleName,String value,String tag,Item item,boolean brand){
         ClientModule module=CincoClient.findModule(moduleName);if(module==null||!module.enabled)return index;
-        int sw=client.getWindow().getScaledWidth();
-        int defaultX=10,defaultY=10+index*25;
-        if(index>=7){defaultX=Math.max(10,sw-150);defaultY=10+(index-7)*25;}
+        int sw=client.getWindow().getScaledWidth(),sh=client.getWindow().getScaledHeight();
+        int defaultX=12+(index%5)*128,defaultY=Math.max(12,sh-58-(index/5)*27);
+        if(brand){defaultX=12;defaultY=12;}
+        if(id.equals("coords")){defaultX=12;defaultY=43;}
         StarHudLayoutStore.State state=StarHudLayoutStore.get(id,defaultX,defaultY);state.scale=Math.max(.5f,Math.min(2.5f,state.scale));
-        int textW=client.textRenderer.getWidth(value),baseW=brand?132:Math.max(82,Math.min(170,textW+52)),baseH=20;
+        int textW=client.textRenderer.getWidth(value),baseW=brand?132:Math.max(78,Math.min(158,textW+49)),baseH=20;
         int realW=Math.round(baseW*state.scale),realH=Math.round(baseH*state.scale);
-        state.x=Math.max(0,Math.min(Math.max(0,sw-realW),state.x));state.y=Math.max(0,Math.min(Math.max(0,client.getWindow().getScaledHeight()-realH),state.y));
+        state.x=Math.max(0,Math.min(Math.max(0,sw-realW),state.x));state.y=Math.max(0,Math.min(Math.max(0,sh-realH),state.y));
         ctx.getMatrices().pushMatrix();ctx.getMatrices().translate(state.x,state.y);ctx.getMatrices().scale(state.scale,state.scale);
 
-        int border=edit?0xD0B449FF:0x5C9D42D8;
-        CincoDraw.rounded(ctx,-1,-1,baseW+1,baseH+1,7,0x222F0A4E);
-        CincoDraw.bubble(ctx,0,0,baseW,baseH,7,border,0xC4080710);
-        cAccent(ctx,2,3,4,baseH-3);
-        if(item!=null){ctx.getMatrices().pushMatrix();ctx.getMatrices().translate(8,2);ctx.getMatrices().scale(.88f,.88f);ctx.drawItem(new ItemStack(item),0,0);ctx.getMatrices().popMatrix();}
-        else ctx.drawCenteredTextWithShadow(client.textRenderer,StarFonts.text(tag,true),brand?15:18,6,brand?0xFFFFB05A:0xFFC98DFF);
-        if(brand){ctx.drawText(client.textRenderer,StarFonts.text(value,true),30,6,0xFFF7F0FF,false);}
+        int border=edit?0xB8FF55C8:0x486B4B85;
+        CincoDraw.rounded(ctx,-1,-1,baseW+1,baseH+1,10,0x173E0B52);
+        CincoDraw.bubble(ctx,0,0,baseW,baseH,10,border,0x6507050D);
+        CincoDraw.rounded(ctx,4,4,7,baseH-4,2,PINK);
+        if(item!=null){ctx.getMatrices().pushMatrix();ctx.getMatrices().translate(9,2);ctx.getMatrices().scale(.86f,.86f);ctx.drawItem(new ItemStack(item),0,0);ctx.getMatrices().popMatrix();}
+        else ctx.drawCenteredTextWithShadow(client.textRenderer,StarFonts.text(tag,true),brand?16:18,6,brand?PINK:PURPLE);
+        if(brand){ctx.drawText(client.textRenderer,StarFonts.text(value,true),31,6,0xFFF8F4FF,false);}
         else{
             int valueX=item!=null?29:34;
-            ctx.drawText(client.textRenderer,StarFonts.text(tag,false),valueX,6,0xFF9C8EAA,false);
-            int vx=baseW-8-client.textRenderer.getWidth(value);
-            ctx.drawText(client.textRenderer,StarFonts.text(value,true),Math.max(valueX+24,vx),6,0xFFF4EFF8,false);
+            ctx.drawText(client.textRenderer,StarFonts.text(tag,false),valueX,6,0xFF9E91A8,false);
+            int vx=baseW-9-client.textRenderer.getWidth(value);
+            ctx.drawText(client.textRenderer,StarFonts.text(value,true),Math.max(valueX+24,vx),6,0xFFF5F1F8,false);
         }
-        if(edit){CincoDraw.rounded(ctx,baseW-14,3,baseW-3,14,6,0xD0A5314D);ctx.drawCenteredTextWithShadow(client.textRenderer,Text.literal("×"),baseW-8,4,0xFFFFFFFF);}
+        if(edit){CincoDraw.rounded(ctx,baseW-14,3,baseW-3,14,6,0xB8FF4B8D);ctx.drawCenteredTextWithShadow(client.textRenderer,Text.literal("×"),baseW-8,4,0xFFFFFFFF);}
         ctx.getMatrices().popMatrix();hits.add(new Hit(id,module,state,state.x,state.y,realW,realH));return index+1;
     }
-
-    private static void cAccent(DrawContext c,int x1,int y1,int x2,int y2){c.fill(x1,y1,x2,y2,0xFFFF8A25);}
 
     private static void handleEditor(MinecraftClient client){
         int sw=client.getWindow().getScaledWidth(),sh=client.getWindow().getScaledHeight();double mx=client.mouse.getX()*sw/Math.max(1.0,client.getWindow().getWidth()),my=client.mouse.getY()*sh/Math.max(1.0,client.getWindow().getHeight());

@@ -29,6 +29,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: star-client-3.5.4-mc1.21.11-LIT-CJ-FORWARD-BAT
-          path: build/libs/star-client-3.5.4.jar
+          name: star-client-3.5.5-mc1.21.11-REAL-GTA-CJ
+          path: build/libs/star-client-3.5.5.jar
           if-no-files-found: error

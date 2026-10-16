@@ -36,7 +36,11 @@ public final class StarPlayerModelWorldRenderer {
 
         MatrixStack matrices=new MatrixStack();
         matrices.translate(px,py,pz);
-        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-smoothBodyYaw));
+        // Tung's procedural model was authored facing the legacy Star direction. The imported GTA
+        // mesh already uses the opposite forward axis after Z-up -> Y-up conversion, so applying
+        // the old extra 180 degrees made CJ face backward in F5.
+        float rootYaw=(character==1 ? -smoothBodyYaw : 180f-smoothBodyYaw);
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(rootYaw));
         float modelScale=(float)Math.max(.80,Math.min(1.25,skin.setting2));
         matrices.scale(modelScale,modelScale,modelScale);
         if(client.player.isSneaking())matrices.translate(0,-.08,.08);
@@ -45,7 +49,7 @@ public final class StarPlayerModelWorldRenderer {
         float relativeHead=MathHelper.wrapDegrees(smoothHeadYaw-smoothBodyYaw);
         StarPlayerModels.Pose pose=new StarPlayerModels.Pose(limbSwing,smoothMove,relativeHead,smoothPitch,client.player.age+tick);
         if(character==1){
-            // CJ is now the real GTASA-derived rig/texture, not Star's old procedural lookalike.
+            // CJ is the imported GTASA-derived rig/texture, not Star's old procedural lookalike.
             GtaCjImportedModel.render(matrices,context.consumers(),pose);
         }else{
             StarPlayerModels.render(character,matrices,context.consumers(),pose,skin.setting3>=.5);

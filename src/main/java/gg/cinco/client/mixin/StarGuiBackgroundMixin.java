@@ -1,6 +1,5 @@
 package gg.cinco.client.mixin;
 
-import gg.cinco.client.CincoClickGuiScreen;
 import gg.cinco.client.CincoColorWheelScreen;
 import gg.cinco.client.ModuleSettingsScreen;
 import gg.cinco.client.StarBackground;
@@ -13,10 +12,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Draws the same persistent starfield immediately after each Star screen paints its black backdrop.
- * This prevents stars from resetting/disappearing when switching into settings/color pages.
+ * Draws the persistent starfield on secondary Star settings screens.
+ * CincoClickGuiScreen already renders StarBackground directly, so deliberately
+ * do not mix into the Right Shift screen. Keeping that class mixin-free avoids
+ * runtime transformation failures when the GUI is opened.
  */
-@Mixin({CincoClickGuiScreen.class, ModuleSettingsScreen.class, CincoColorWheelScreen.class, StorageEspSettingsScreen.class})
+@Mixin({ModuleSettingsScreen.class, CincoColorWheelScreen.class, StorageEspSettingsScreen.class})
 public abstract class StarGuiBackgroundMixin {
     @Inject(
             method = "render",

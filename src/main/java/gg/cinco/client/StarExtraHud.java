@@ -41,11 +41,12 @@ public final class StarExtraHud {
     }
 
     private static void panel(DrawContext c,int w,int h,boolean edit){
-        int alpha=(int)Math.max(38,Math.min(92,StarHudConfig.opacity*96));
+        int alpha=(int)Math.max(34,Math.min(82,StarHudConfig.opacity*88));
         int bg=(alpha<<24)|0x07050D;
-        CincoDraw.rounded(c,-1,-1,w+1,h+1,Math.min(15,h/2),0x15320A48);
-        CincoDraw.bubble(c,0,0,w,h,Math.min(14,h/2),edit?0xA8FF55C8:0x3E8D5BB2,bg);
-        CincoDraw.rounded(c,9,3,w-9,4,2,0x58FF55C8);
+        int radius=Math.min(18,Math.max(12,h/5));
+        CincoDraw.rounded(c,-2,-2,w+2,h+2,radius+2,0x11320A48);
+        CincoDraw.bubble(c,0,0,w,h,radius,edit?0xA8FF55C8:0x348D5BB2,bg);
+        CincoDraw.rounded(c,12,3,w-12,5,2,0x45FF55C8);
     }
     private static void transform(DrawContext c,StarHudLayoutStore.State s){c.getMatrices().pushMatrix();c.getMatrices().translate(s.x,s.y);c.getMatrices().scale(s.scale,s.scale);}
 
@@ -83,24 +84,24 @@ public final class StarExtraHud {
 
     private static void potionHud(DrawContext c,MinecraftClient client,boolean edit){
         List<StatusEffectInstance> list=new ArrayList<>(client.player.getStatusEffects());list.sort(Comparator.comparingInt(StatusEffectInstance::getDuration));
-        int count=Math.min(StarHudConfig.potionMax,list.size()),bh=Math.max(28,22+count*16),bw=142;
+        int count=Math.min(StarHudConfig.potionMax,list.size()),bh=Math.max(30,24+count*17),bw=146;
         StarHudLayoutStore.State s=StarHudLayoutStore.get("potion_hud",12,205);s.scale=clampScale(s.scale);int rw=Math.round(bw*s.scale),rh=Math.round(bh*s.scale);clampPosition(client,s,rw,rh);
-        transform(c,s);panel(c,bw,bh,edit);c.drawText(client.textRenderer,StarFonts.text("EFFECTS",true),10,7,0xFFF3ECF8,false);
-        for(int i=0;i<count;i++){StatusEffectInstance e=list.get(i);int yy=22+i*16;String name=e.getEffectType().value().getName().getString(),dur=time(e.getDuration()/20);c.drawText(client.textRenderer,StarFonts.text(trim(name,16),false),10,yy,0xFFEDE7F0,false);c.drawText(client.textRenderer,StarFonts.text(dur,true),bw-10-client.textRenderer.getWidth(dur),yy,PURPLE,false);}
+        transform(c,s);panel(c,bw,bh,edit);c.drawText(client.textRenderer,StarFonts.text("✦  EFFECTS",true),10,8,0xFFF3ECF8,false);
+        for(int i=0;i<count;i++){StatusEffectInstance e=list.get(i);int yy=24+i*17;String name=e.getEffectType().value().getName().getString(),dur=time(e.getDuration()/20);CincoDraw.rounded(c,7,yy-2,bw-7,yy+13,8,0x2407050D);c.drawText(client.textRenderer,StarFonts.text(trim(name,16),false),13,yy+1,0xFFEDE7F0,false);c.drawText(client.textRenderer,StarFonts.text(dur,true),bw-13-client.textRenderer.getWidth(dur),yy+1,PURPLE,false);}
         if(edit)closeButton(c,client,bw);c.getMatrices().popMatrix();hits.add(new Hit("potion_hud",CincoClient.findModule("HUD"),s,s.x,s.y,rw,rh));
     }
 
     private static void moduleList(DrawContext c,MinecraftClient client,boolean edit){
         List<ClientModule> list=new ArrayList<>();for(ClientModule m:CincoClient.MODULES)if(m.enabled&&!hiddenHudModule(m))list.add(m);
         list.sort(Comparator.comparingInt((ClientModule m)->client.textRenderer.getWidth(m.name)).reversed());int count=Math.min(StarHudConfig.moduleMax,list.size());
-        int bw=178,bh=Math.max(28,18+count*15);StarHudLayoutStore.State s=StarHudLayoutStore.get("module_list",Math.max(12,client.getWindow().getScaledWidth()-196),142);s.scale=clampScale(s.scale);int rw=Math.round(bw*s.scale),rh=Math.round(bh*s.scale);clampPosition(client,s,rw,rh);
+        int bw=184,bh=Math.max(30,18+count*16);StarHudLayoutStore.State s=StarHudLayoutStore.get("module_list",Math.max(12,client.getWindow().getScaledWidth()-202),142);s.scale=clampScale(s.scale);int rw=Math.round(bw*s.scale),rh=Math.round(bh*s.scale);clampPosition(client,s,rw,rh);
         transform(c,s);
         if(edit)panel(c,bw,bh,true);
         for(int i=0;i<count;i++){
-            ClientModule m=list.get(i);int yy=3+i*15,col=gradient(i,count);int tw=client.textRenderer.getWidth(m.name),x=bw-10-tw;
-            CincoDraw.rounded(c,x-10,yy-1,bw-4,yy+13,7,0x4207050C);
-            CincoDraw.rounded(c,bw-6,yy+2,bw-3,yy+10,2,col);
-            c.drawText(client.textRenderer,StarFonts.text(m.name,true),x,yy+1,col,false);
+            ClientModule m=list.get(i);int yy=3+i*16,col=gradient(i,count);int tw=client.textRenderer.getWidth(m.name),x=bw-12-tw;
+            CincoDraw.rounded(c,x-12,yy-1,bw-4,yy+14,8,0x3007050C);
+            CincoDraw.rounded(c,bw-10,yy+3,bw-4,yy+9,3,col);
+            c.drawText(client.textRenderer,StarFonts.text(m.name,true),x,yy+2,col,false);
         }
         if(edit)closeButton(c,client,bw);c.getMatrices().popMatrix();hits.add(new Hit("module_list",CincoClient.findModule("HUD"),s,s.x,s.y,rw,rh));
     }
@@ -110,19 +111,19 @@ public final class StarExtraHud {
     private static void spotify(DrawContext c,MinecraftClient client,boolean edit){
         ClientModule m=CincoClient.findModule("Spotify HUD");if(m==null||!m.enabled)return;
         StarHudLayoutStore.State s=StarHudLayoutStore.get("spotify_hud",Math.max(12,client.getWindow().getScaledWidth()-300),12);s.scale=clampScale(s.scale);
-        int bw=286,bh=92+Math.max(0,SpotifyHudConfig.lyrics?SpotifyHudConfig.lyricLines:0)*11,rw=Math.round(bw*s.scale),rh=Math.round(bh*s.scale);clampPosition(client,s,rw,rh);transform(c,s);panel(c,bw,bh,edit);
+        int bw=286,bh=94+Math.max(0,SpotifyHudConfig.lyrics?SpotifyHudConfig.lyricLines:0)*11,rw=Math.round(bw*s.scale),rh=Math.round(bh*s.scale);clampPosition(client,s,rw,rh);transform(c,s);panel(c,bw,bh,edit);
         int tx=12;
-        if(SpotifyHudConfig.albumCover){CincoDraw.rounded(c,9,9,69,69,14,0x7D25123A);for(int i=0;i<7;i++)CincoDraw.rounded(c,16+i*7,18+(i%3)*8,20+i*7,60-(i%2)*7,3,0x8A7456E8);c.drawCenteredTextWithShadow(client.textRenderer,StarFonts.text("✦",true),39,35,PINK);tx=81;}
+        if(SpotifyHudConfig.albumCover){CincoDraw.rounded(c,9,9,69,69,30,0x6225123A);for(int i=0;i<7;i++)CincoDraw.rounded(c,18+i*6,20+(i%3)*7,21+i*6,58-(i%2)*6,2,0x7A7456E8);c.drawCenteredTextWithShadow(client.textRenderer,StarFonts.text("✦",true),39,35,PINK);tx=81;}
         if(SpotifyHudConfig.song)c.drawText(client.textRenderer,StarFonts.text(trim(SpotifyHudController.title(),27),true),tx,13,0xFFF8F4FA,false);
         if(SpotifyHudConfig.artist)c.drawText(client.textRenderer,StarFonts.text(trim(SpotifyHudController.artist(),30),false),tx,29,0xFFB1A7B7,false);
         if(SpotifyHudConfig.controls){String pp=SpotifyHudController.playing()?"Ⅱ":"▶";controlPill(c,client,tx,46,"◀");controlPill(c,client,tx+31,46,pp);controlPill(c,client,tx+62,46,"▶");}
-        if(SpotifyHudConfig.progress){double dur=SpotifyHudController.durationSeconds(),pos=SpotifyHudController.positionSeconds(),f=dur<=0?0:Math.max(0,Math.min(1,pos/dur));int py=74;CincoDraw.rounded(c,10,py,bw-10,py+4,2,0x60352A3E);CincoDraw.rounded(c,10,py,10+(int)((bw-20)*f),py+4,2,PINK);}
-        if(SpotifyHudConfig.lyrics){String lyr=SpotifyHudController.lyrics();if(lyr==null||lyr.isBlank())lyr="Lyrics unavailable";int yy=83;for(int i=0;i<SpotifyHudConfig.lyricLines;i++)c.drawText(client.textRenderer,StarFonts.text(i==0?trim(lyr,43):"",false),10,yy+i*11,i==0?0xFFE7C9FF:0xFF9D91A5,false);}
+        if(SpotifyHudConfig.progress){double dur=SpotifyHudController.durationSeconds(),pos=SpotifyHudController.positionSeconds(),f=dur<=0?0:Math.max(0,Math.min(1,pos/dur));int py=75;CincoDraw.rounded(c,10,py,bw-10,py+5,3,0x4D352A3E);CincoDraw.rounded(c,10,py,10+(int)((bw-20)*f),py+5,3,PINK);}
+        if(SpotifyHudConfig.lyrics){String lyr=SpotifyHudController.lyrics();if(lyr==null||lyr.isBlank())lyr="Lyrics unavailable";int yy=84;for(int i=0;i<SpotifyHudConfig.lyricLines;i++)c.drawText(client.textRenderer,StarFonts.text(i==0?trim(lyr,43):"",false),10,yy+i*11,i==0?0xFFE7C9FF:0xFF9D91A5,false);}
         if(edit)closeButton(c,client,bw);c.getMatrices().popMatrix();hits.add(new Hit("spotify_hud",m,s,s.x,s.y,rw,rh));
     }
-    private static void controlPill(DrawContext c,MinecraftClient mc,int x,int y,String text){CincoDraw.rounded(c,x,y,x+24,y+17,9,0x552C173A);c.drawCenteredTextWithShadow(mc.textRenderer,StarFonts.text(text,true),x+12,y+5,0xFFF6EFF9);}
+    private static void controlPill(DrawContext c,MinecraftClient mc,int x,int y,String text){CincoDraw.rounded(c,x,y,x+24,y+18,9,0x452C173A);c.drawCenteredTextWithShadow(mc.textRenderer,StarFonts.text(text,true),x+12,y+5,0xFFF6EFF9);}
 
-    private static void closeButton(DrawContext c,MinecraftClient client,int bw){CincoDraw.rounded(c,bw-15,3,bw-3,15,6,0xB8FF4B8D);c.drawCenteredTextWithShadow(client.textRenderer,Text.literal("×"),bw-9,5,0xFFFFFFFF);}
+    private static void closeButton(DrawContext c,MinecraftClient client,int bw){CincoDraw.rounded(c,bw-17,3,bw-3,17,7,0xA8FF4B8D);c.drawCenteredTextWithShadow(client.textRenderer,Text.literal("×"),bw-10,5,0xFFFFFFFF);}
 
     private static void handleEditor(MinecraftClient client){
         int sw=client.getWindow().getScaledWidth(),sh=client.getWindow().getScaledHeight();double mx=client.mouse.getX()*sw/Math.max(1.0,client.getWindow().getWidth()),my=client.mouse.getY()*sh/Math.max(1.0,client.getWindow().getHeight());boolean left=GLFW.glfwGetMouseButton(client.getWindow().getHandle(),GLFW.GLFW_MOUSE_BUTTON_LEFT)==GLFW.GLFW_PRESS;
@@ -133,7 +134,7 @@ public final class StarExtraHud {
     private static boolean spotifyClick(double lx,double ly){
         int tx=SpotifyHudConfig.albumCover?81:12;
         if(SpotifyHudConfig.controls&&ly>=44&&ly<=66){if(lx>=tx&&lx<tx+28){SpotifyHudController.control(SpotifyHudController.Control.PREVIOUS);return true;}if(lx>=tx+28&&lx<tx+59){SpotifyHudController.control(SpotifyHudController.Control.PLAY_PAUSE);return true;}if(lx>=tx+59&&lx<tx+90){SpotifyHudController.control(SpotifyHudController.Control.NEXT);return true;}}
-        if(SpotifyHudConfig.progress&&ly>=70&&ly<=82){SpotifyHudController.seek(Math.max(0,Math.min(1,(lx-10)/266.0)));return true;}
+        if(SpotifyHudConfig.progress&&ly>=70&&ly<=83){SpotifyHudController.seek(Math.max(0,Math.min(1,(lx-10)/266.0)));return true;}
         return false;
     }
 

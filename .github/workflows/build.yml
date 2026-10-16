@@ -29,6 +29,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: star-client-2.4.3-mc1.21.11-LOCKER-NAV-SUSCHUNK
-          path: build/libs/star-client-2.4.3.jar
+          name: star-client-2.4.4-mc1.21.11-CLEAN-STABLE
+          path: build/libs/star-client-2.4.4.jar
           if-no-files-found: error

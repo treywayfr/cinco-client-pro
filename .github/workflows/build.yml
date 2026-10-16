@@ -29,6 +29,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: star-client-3.1.0-mc1.21.11-GALAXY-UI-MATCH
-          path: build/libs/star-client-3.1.0.jar
+          name: star-client-3.2.0-mc1.21.11-REFERENCE-REBUILD
+          path: build/libs/star-client-3.2.0.jar
           if-no-files-found: error

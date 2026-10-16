@@ -8,7 +8,7 @@ import java.util.Map;
 /** Shared Star Client UI primitives with cached 8x supersampled rounded profiles. */
 public final class CincoDraw {
     private static final int AA_SCALE = 8;
-    private static final int PROFILE_BANDS = 5;
+    private static final int PROFILE_BANDS = 12;
     private static final Map<Integer, byte[]> ROUNDED_TEXTURE_CACHE = new HashMap<>();
     private static final Map<Integer, RoundedProfile> PROFILE_CACHE = new HashMap<>();
 
@@ -17,9 +17,9 @@ public final class CincoDraw {
     private CincoDraw() {}
 
     /**
-     * High-performance rounded rectangle. The exact 8x supersampled mask is generated once per
-     * radius, then collapsed into five cached horizontal bands. Runtime cost is fixed and tiny
-     * instead of issuing hundreds of 1-pixel draw calls for every card, every frame.
+     * Smooth high-performance rounded rectangle. The exact 8x supersampled mask is generated once
+     * per radius and converted to a denser cached profile. Runtime stays bounded while preserving
+     * the visibly round/pill-shaped corners used by the polished Star UI.
      */
     public static void rounded(DrawContext context, int left, int top, int right, int bottom, int radius, int color) {
         int width = right - left, height = bottom - top;
@@ -27,6 +27,7 @@ public final class CincoDraw {
         color = accentPink(color);
 
         int requested = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+        // Small controls are true capsules/circles regardless of a too-small caller radius.
         int r = height <= 64 ? Math.max(requested, Math.min(width, height) / 2) : requested;
         r = Math.max(0, Math.min(r, Math.min(width, height) / 2));
         if (r <= 2) {
@@ -36,11 +37,11 @@ public final class CincoDraw {
 
         RoundedProfile p = roundedProfile(r);
 
-        // Main body: two fills total.
-        if (right - left > r * 2) context.fill(left + r, top, right - r, bottom, color);
-        if (bottom - top > r * 2) context.fill(left, top + r, right, bottom - r, color);
+        // Solid center/body: two large batch-friendly fills.
+        if (width > r * 2) context.fill(left + r, top, right - r, bottom, color);
+        if (height > r * 2) context.fill(left, top + r, right, bottom - r, color);
 
-        // Corner extensions: only 4 fills per cached band (20 max), regardless of radius.
+        // Denser AA-derived corner spans. Still fixed/bounded work instead of per-pixel rendering.
         for (int i = 0; i < p.inset.length; i++) {
             int y0 = p.y0[i], y1 = p.y1[i], inset = p.inset[i];
             if (y1 <= y0 || inset >= r) continue;
@@ -56,27 +57,30 @@ public final class CincoDraw {
         }
     }
 
-    /** Convert the cached 8x AA coverage texture into a tiny reusable draw profile. */
+    /** Convert the cached 8x AA coverage texture into a smooth reusable draw profile. */
     private static RoundedProfile roundedProfile(int radius) {
         RoundedProfile cached = PROFILE_CACHE.get(radius);
         if (cached != null) return cached;
 
         byte[] mask = generateRoundedTexture(radius);
-        int bands = Math.min(PROFILE_BANDS, Math.max(2, radius));
+        int bands = Math.min(PROFILE_BANDS, Math.max(3, radius));
         int[] y0 = new int[bands], y1 = new int[bands], inset = new int[bands];
 
         for (int b = 0; b < bands; b++) {
-            int from = (b * radius) / bands;
-            int to = ((b + 1) * radius) / bands;
-            if (to <= from) to = Math.min(radius, from + 1);
+            // Slight easing gives more profile detail near the top/bottom where curvature is obvious.
+            double t0 = b / (double) bands;
+            double t1 = (b + 1) / (double) bands;
+            int from = (int) Math.floor(radius * (1.0 - Math.cos(t0 * Math.PI / 2.0)));
+            int to = (int) Math.ceil(radius * (1.0 - Math.cos(t1 * Math.PI / 2.0)));
+            from = Math.max(0, Math.min(radius - 1, from));
+            to = Math.max(from + 1, Math.min(radius, to));
             y0[b] = from;
             y1[b] = to;
 
-            // Average the 50% AA boundary over this band. This keeps the supersampled curve while
-            // turning many pixel rows into one batch-friendly rectangle span.
             int sum = 0, rows = 0;
             for (int py = from; py < to; py++) {
                 int boundary = radius;
+                // Use the 50% AA boundary from the real 8x supersampled mask.
                 for (int px = 0; px < radius; px++) {
                     if ((mask[py * radius + px] & 0xFF) >= 128) {
                         boundary = px;

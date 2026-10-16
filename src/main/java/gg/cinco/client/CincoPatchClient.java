@@ -17,7 +17,6 @@ public final class CincoPatchClient implements ClientModInitializer {
         if(legacyPlayerChanger!=null){legacyPlayerChanger.name="Player Changer";changedModules=true;}
         if(CincoClient.MODULES.removeIf(m->m.name.equals("Hand View")))changedModules=true;
 
-        // Base Finding cleanup: remove dead/old chunk modules and replace them with focused tools.
         if(CincoClient.MODULES.removeIf(m->m.name.equals("Base Finder")||m.name.equals("Sus Chunk Finder")||m.name.equals("Chunk Density")||m.name.equals("Spawner Finder")))changedModules=true;
         if(CincoClient.findModule("Sus Chunk")==null){CincoClient.MODULES.add(new ClientModule("Sus Chunk","Detect player-activity signals in already-loaded chunks: rotated deepslate, cobbled deepslate, mature crops, cactus, kelp and amethyst",ClientModule.Category.WORLD,false,"Chunk radius",3,1,6,1));changedModules=true;}
         if(CincoClient.findModule("Spawner Notifier")==null){CincoClient.MODULES.add(new ClientModule("Spawner Notifier","Show a SPAWNERS! popup with coordinates when a monster spawner enters loaded render data",ClientModule.Category.WORLD,false,"Chunk radius",3,1,6,1));changedModules=true;}
@@ -25,14 +24,17 @@ public final class CincoPatchClient implements ClientModInitializer {
         if(CincoClient.findModule("Light Finder")==null){CincoClient.MODULES.add(new ClientModule("Light Finder","Highlight underground block-lit areas through walls using loaded chunk light data",ClientModule.Category.WORLD,false,"Range",48,16,96,8));changedModules=true;}
         if(CincoClient.findModule("Free Cam")==null){ClientModule freeCam=new ClientModule("Free Cam","Move only your local camera around loaded render-distance terrain",ClientModule.Category.MOVEMENT,false,"Camera speed",1.0,0.2,3.0,0.2);freeCam.keyCode=GLFW.GLFW_KEY_C;CincoClient.MODULES.add(freeCam);changedModules=true;}
 
-        // Locker backing modules stay internal; StarClientNavigationMixin hides them from normal module lists.
-        if(CincoClient.findModule("Animations")==null){CincoClient.MODULES.add(new ClientModule("Animations","Locker cosmetic effects",ClientModule.Category.RENDER,false,"Effect",1,1,14,1));changedModules=true;}
-        if(CincoClient.findModule("Custom Accessory")==null){CincoClient.MODULES.add(new ClientModule("Custom Accessory","Locker accessories",ClientModule.Category.RENDER,false,"Accessory",1,1,14,1));changedModules=true;}
+        ClientModule animations=CincoClient.findModule("Animations");
+        if(animations==null){CincoClient.MODULES.add(new ClientModule("Animations","Locker cosmetic effects",ClientModule.Category.RENDER,false,"Effect",1,1,20,1));changedModules=true;}
+        else if(animations.max<20){int i=CincoClient.MODULES.indexOf(animations);ClientModule upgraded=new ClientModule("Animations","Locker cosmetic effects",ClientModule.Category.RENDER,animations.enabled,"Effect",Math.min(20,animations.setting),1,20,1);upgraded.keyCode=animations.keyCode;upgraded.setting2=animations.setting2;upgraded.setting3=animations.setting3;CincoClient.MODULES.set(i,upgraded);changedModules=true;}
+        ClientModule accessory=CincoClient.findModule("Custom Accessory");
+        if(accessory==null){CincoClient.MODULES.add(new ClientModule("Custom Accessory","Locker accessories",ClientModule.Category.RENDER,false,"Accessory",1,1,20,1));changedModules=true;}
+        else if(accessory.max<20){int i=CincoClient.MODULES.indexOf(accessory);ClientModule upgraded=new ClientModule("Custom Accessory","Locker accessories",ClientModule.Category.RENDER,accessory.enabled,"Accessory",Math.min(20,accessory.setting),1,20,1);upgraded.keyCode=accessory.keyCode;upgraded.setting2=accessory.setting2;upgraded.setting3=accessory.setting3;CincoClient.MODULES.set(i,upgraded);changedModules=true;}
+
         if(CincoClient.findModule("Spotify HUD")==null){CincoClient.MODULES.add(new ClientModule("Spotify HUD","Show the current Spotify desktop track as a draggable Star HUD widget",ClientModule.Category.RENDER,false,"Refresh seconds",2.5,1.0,10.0,0.5));changedModules=true;}
         if(CincoClient.findModule("Interactive Spotify")==null){CincoClient.MODULES.add(new ClientModule("Interactive Spotify","Add compact playback controls and interaction state to the Spotify HUD",ClientModule.Category.UTILITY,false,"Control size",1.0,0.7,2.0,0.1));changedModules=true;}
         if(CincoClient.findModule("Region Map")==null){CincoClient.MODULES.add(new ClientModule("Region Map","Top-down loaded-chunk region map with storage and nearby-player markers",ClientModule.Category.WORLD,false,"Chunk radius",4,2,8,1));changedModules=true;}
 
-        // Combat / mace helpers remain flat individual modules in Combat.
         if(CincoClient.findModule("Aim Assist")==null){CincoClient.MODULES.add(new ClientModule("Aim Assist","Smoothly guide your view toward the closest player inside your configured FOV",ClientModule.Category.COMBAT,false,"Range",4.5,2.0,8.0,0.5));changedModules=true;}
         if(CincoClient.findModule("Silent Aim")==null){CincoClient.MODULES.add(new ClientModule("Silent Aim","Redirect attack interactions to the best nearby target without visibly snapping the camera",ClientModule.Category.COMBAT,false,"Range",4.5,2.0,8.0,0.5));changedModules=true;}
         if(CincoClient.findModule("Auto Sprint")==null){CincoClient.MODULES.add(new ClientModule("Auto Sprint","Automatically sprint while moving forward",ClientModule.Category.MOVEMENT,false,"Mode",1,1,1,1));changedModules=true;}
@@ -53,7 +55,7 @@ public final class CincoPatchClient implements ClientModInitializer {
         if(oldFullbright!=null&&oldFullbright.max<20.0){int index=CincoClient.MODULES.indexOf(oldFullbright);ClientModule strong=new ClientModule("Fullbright","Force a bright lightmap and choose an extended client gamma level",ClientModule.Category.RENDER,oldFullbright.enabled,"Gamma",8.0,1.0,20.0,0.5);strong.keyCode=oldFullbright.keyCode;CincoClient.MODULES.set(index,strong);changedModules=true;}
 
         if(changedModules)ConfigStore.load();
-        StarSettingsMigration.apply();applyNebulaLuxeDefaults();StorageEspConfig.load();CosmeticColorStore.load();SusChunkConfig.load();
+        StarSettingsMigration.apply();applyNebulaLuxeDefaults();StorageEspConfig.load();CosmeticColorStore.load();LockerCosmeticStore.load();SusChunkConfig.load();
 
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             EnhancedWorldScan.tick(client);FreeCamController.tick(client);FastXpController.tick(client);SpotifyHudController.tick(client);AdvancedModulesController.tick(client);StarWorldFeatures.tick(client);

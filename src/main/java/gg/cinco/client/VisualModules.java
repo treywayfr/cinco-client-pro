@@ -7,6 +7,7 @@ import net.minecraft.util.math.Vec3d;
 public final class VisualModules {
     private static boolean gammaCaptured;
     private static double originalGamma = 0.5;
+    private static double appliedGamma = Double.NaN;
     private static boolean fovCaptured;
     private static int originalFov = 70;
     private static double currentFov = 70.0;
@@ -21,14 +22,22 @@ public final class VisualModules {
             if (!gammaCaptured) {
                 originalGamma = client.options.getGamma().getValue();
                 gammaCaptured = true;
+                appliedGamma = Double.NaN;
             }
-            // 1.21.11: use SimpleOption's supported setter instead of loading an accessor mixin.
-            // Vanilla validates gamma to its supported range, which is preferable to crashing the client.
+            // 1.21.11 validates gamma through SimpleOption. Only touch it when the requested
+            // value actually changes; repeatedly calling setValue every client tick can cause
+            // unnecessary option churn and visible stutter on lower-end systems.
             double gamma = Math.max(0.0, Math.min(1.0, bright.setting));
-            client.options.getGamma().setValue(gamma);
+            double current = client.options.getGamma().getValue();
+            if (Double.isNaN(appliedGamma) || Math.abs(appliedGamma - gamma) > 0.0001 || Math.abs(current - gamma) > 0.0001) {
+                client.options.getGamma().setValue(gamma);
+                appliedGamma = gamma;
+            }
         } else if (gammaCaptured) {
-            client.options.getGamma().setValue(Math.max(0.0, Math.min(1.0, originalGamma)));
+            double restore = Math.max(0.0, Math.min(1.0, originalGamma));
+            if (Math.abs(client.options.getGamma().getValue() - restore) > 0.0001) client.options.getGamma().setValue(restore);
             gammaCaptured = false;
+            appliedGamma = Double.NaN;
         }
 
         ClientModule fov = CincoClient.findModule("FOV Changer");

@@ -23,9 +23,7 @@ public final class CincoClickGuiScreen extends StarLegacyScreen {
     @Override public void render(DrawContext c,int mx,int my,float delta){
         c.fill(0,0,width,height,0xFF03040A);StarBackground.render(c,width,height,delta);
         gw=Math.min(1080,width-18);gh=Math.min(650,height-18);gx=(width-gw)/2;gy=(height-gh)/2;leftW=Math.max(150,(int)(gw*.225));midW=Math.max(220,(int)(gw*.34));
-        // outer glass shell + neon frame
         CincoDraw.rounded(c,gx,gy,gx+gw,gy+gh,14,0xFF9A45FF);CincoDraw.rounded(c,gx+2,gy+2,gx+gw-2,gy+gh-2,13,0xF0060711);
-        // nebula corner glows
         c.fill(gx+2,gy+2,gx+gw-2,gy+4,0xFF8E39FF);c.fill(gx+gw-4,gy+2,gx+gw-2,gy+gh-2,0xFFB22EFF);
         drawSidebar(c,mx,my);drawModules(c,mx,my);drawSettings(c,mx,my);
         c.drawText(textRenderer,StarFonts.text("×",true),gx+gw-24,gy+14,0xFFD9C6F7,false);
@@ -33,7 +31,6 @@ public final class CincoClickGuiScreen extends StarLegacyScreen {
 
     private void drawSidebar(DrawContext c,int mx,int my){
         int x=gx+14,y=gy+18,w=leftW-26;
-        // logo area modeled after provided Star logo: large STAR with CLIENT under it.
         c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("✦ STAR ✦",true),x+w/2,y+12,0xFFE7D4FF);
         c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("CLIENT",true),x+w/2,y+30,0xFFFFFFFF);
         c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("NEBULA EDITION",false),x+w/2,y+44,0xFF9F77D7);
@@ -64,7 +61,7 @@ public final class CincoClickGuiScreen extends StarLegacyScreen {
     private void slider(DrawContext c,int x,int y,int w,ClientModule m,int idx,String label,double value,double min,double max){c.drawText(textRenderer,StarFonts.text(label,false),x,y,0xFFD9CFE3,false);String v=fmt(value);c.drawText(textRenderer,StarFonts.text(v,true),x+w-textRenderer.getWidth(v),y,0xFFFFB15E,false);int sx=x+8,sy=y+24,sw=w-16;c.fill(sx,sy,sx+sw,sy+3,0xFF2B203B);double t=max<=min?0:(value-min)/(max-min);c.fill(sx,sy,sx+(int)(sw*t),sy+3,0xFFB92EFF);CincoDraw.rounded(c,sx+(int)(sw*t)-4,sy-3,sx+(int)(sw*t)+5,sy+7,5,0xFFCE48FF);if(sliderModule==m&&sliderIndex==idx){sliderX=sx;sliderW=sw;}}
 
     @Override public boolean mouseClicked(double mx,double my,int button){if(button!=0)return false;if(inside(mx,my,gx+gw-30,gy+8,26,26)){if(client!=null)client.setScreen(null);return true;}int sx=gx+14,sy=gy+86,sw=leftW-26;for(int i=0;i<CATS.length;i++){if(inside(mx,my,sx,sy+i*38,sw,32)){category=i;search="";moduleScroll=0;return true;}}int by=gy+gh-112;if(inside(mx,my,sx,by,sw,29)){client.setScreen(new LockerScreen());return true;}if(inside(mx,my,sx,by+34,sw,29)){client.setScreen(new KeybindsScreen());return true;}if(inside(mx,my,sx,by+68,sw,29)){client.setScreen(new ClientSettingsScreen());return true;}
-        int mx0=gx+leftW+12,my0=gy+42,mw=midW-22;if(inside(mx,my,mx0,my0,mw,28)){searchFocused=true;return true;}searchFocused=false;List<ClientModule> mods=visibleModules();int start=gy+80,rowH=42,visible=Math.max(1,(gh-92)/rowH);for(int j=0;j<visible&&j+moduleScroll<mods.size();j++){ClientModule m=mods.get(j+moduleScroll),yy=start+j*rowH;if(!inside(mx,my,mx0,yy,mw,36))continue;if(mx>=mx0+mw-68){m.enabled=!m.enabled;ConfigStore.save();}else selected=m;return true;}
+        int mx0=gx+leftW+12,my0=gy+42,mw=midW-22;if(inside(mx,my,mx0,my0,mw,28)){searchFocused=true;return true;}searchFocused=false;List<ClientModule> mods=visibleModules();int start=gy+80,rowH=42,visible=Math.max(1,(gh-92)/rowH);for(int j=0;j<visible&&j+moduleScroll<mods.size();j++){ClientModule m=mods.get(j+moduleScroll);int yy=start+j*rowH;if(!inside(mx,my,mx0,yy,mw,36))continue;if(mx>=mx0+mw-68){m.enabled=!m.enabled;ConfigStore.save();}else selected=m;return true;}
         if(selected!=null){int rx=gx+leftW+midW,ry=gy+102,rw=gx+gw-14-rx;if(inside(mx,my,rx+rw-58,gy+34,44,26)){selected.enabled=!selected.enabled;ConfigStore.save();return true;}if(selected.name.equals("HUD"))return clickHud(mx,my,rx+10,ry,rw-20);if(selected.name.equals("Spotify HUD"))return clickSpotify(mx,my,rx+10,ry,rw-20);if(clickSlider(mx,my,rx+12,ry+4,rw-24,selected))return true;}
         return false;}
     private boolean clickHud(double mx,double my,int x,int y,int w){String[] ids={"region","status","potions","modules","players","storage","legend","clock","fps","ping","coords"};int[] gaps={0,0,0,8,0,0,8,0,0,0,0};int yy=y+4;for(int i=0;i<ids.length;i++){yy+=gaps[i];if(inside(mx,my,x,yy,w,24)){StarHudConfig.toggle(ids[i]);return true;}yy+=27;}return false;}

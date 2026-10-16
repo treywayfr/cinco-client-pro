@@ -1,278 +1,80 @@
 package gg.cinco.client;
 
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
-
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
-/**
- * Star Client's two-mode interface.
- * Orbit HUD = compact floating draggable/resizable windows with movement passthrough.
- * Nebula ClickGUI = black/purple sidebar, module list and detailed settings workspace.
- */
+/** Star Client dashboard: category rail + module list + live settings pane. */
 public final class CincoClickGuiScreen extends StarLegacyScreen {
-    private static final long SESSION_START = System.currentTimeMillis();
-    private static final int MODE_W = 286;
-    private static final int MODE_H = 32;
+    private static final String[] CATS={"Combat","Movement","Player","Visuals","World","Exploit","Render","Misc"};
+    private int category=0,moduleScroll=0;
+    private ClientModule selected;
+    private String search=""; private boolean searchFocused;
+    private ClientModule sliderModule; private int sliderIndex=-1,sliderX,sliderW;
+    private String captureSpotifyKey;
+    private int gx,gy,gw,gh,leftW,midW;
 
-    private StarGuiModeStore.Mode mode = StarGuiModeStore.get();
-    private ClientModule.Category selectedCategory = CincoClient.selectedCategory;
-    private ClientModule selectedModule;
-    private String search = "";
-    private boolean searchFocused;
-    private int nebulaScroll;
+    public CincoClickGuiScreen(){super(Text.literal("Star Client"));}
+    @Override public boolean shouldPause(){return false;}
 
-    private String draggingPanel;
-    private String resizingPanel;
-    private double dragOffX;
-    private double dragOffY;
-    private double resizeStartX;
-    private double resizeStartY;
-    private int resizeStartW;
-    private int resizeStartH;
-
-    private ClientModule draggingSlider;
-    private int draggingSetting = -1;
-    private int sliderX;
-    private int sliderW;
-
-    private final Map<String, Integer> orbitScroll = new HashMap<>();
-    private final Map<String, StarAnimations.Track> hover = new HashMap<>();
-    private final Map<String, StarAnimations.Track> toggle = new HashMap<>();
-
-    private record OrbitPanel(String id, String title, String icon, int x, int y, int w, int h) {}
-
-    public CincoClickGuiScreen() {
-        super(Text.literal("Star Client"));
+    @Override public void render(DrawContext c,int mx,int my,float delta){
+        c.fill(0,0,width,height,0xFF03040A);StarBackground.render(c,width,height,delta);
+        gw=Math.min(1080,width-18);gh=Math.min(650,height-18);gx=(width-gw)/2;gy=(height-gh)/2;leftW=Math.max(150,(int)(gw*.225));midW=Math.max(220,(int)(gw*.34));
+        // outer glass shell + neon frame
+        CincoDraw.rounded(c,gx,gy,gx+gw,gy+gh,14,0xFF9A45FF);CincoDraw.rounded(c,gx+2,gy+2,gx+gw-2,gy+gh-2,13,0xF0060711);
+        // nebula corner glows
+        c.fill(gx+2,gy+2,gx+gw-2,gy+4,0xFF8E39FF);c.fill(gx+gw-4,gy+2,gx+gw-2,gy+gh-2,0xFFB22EFF);
+        drawSidebar(c,mx,my);drawModules(c,mx,my);drawSettings(c,mx,my);
+        c.drawText(textRenderer,StarFonts.text("×",true),gx+gw-24,gy+14,0xFFD9C6F7,false);
     }
 
-    @Override
-    public boolean shouldPause() { return false; }
-
-    @Override
-    public void tick() {
-        super.tick();
-        if (mode == StarGuiModeStore.Mode.ORBIT && !searchFocused) updateOrbitMovement();
-        else releaseOrbitMovement();
+    private void drawSidebar(DrawContext c,int mx,int my){
+        int x=gx+14,y=gy+18,w=leftW-26;
+        // logo area modeled after provided Star logo: large STAR with CLIENT under it.
+        c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("✦ STAR ✦",true),x+w/2,y+12,0xFFE7D4FF);
+        c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("CLIENT",true),x+w/2,y+30,0xFFFFFFFF);
+        c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("NEBULA EDITION",false),x+w/2,y+44,0xFF9F77D7);
+        int yy=y+68;
+        for(int i=0;i<CATS.length;i++){boolean sel=i==category,hov=inside(mx,my,x,yy,w,32);int fill=sel?0xCC2B1520:(hov?0xAA161020:0x99100C1A);int border=sel?0xFFFF841F:(hov?0xAA9C5EFF:0x664C2A69);CincoDraw.bubble(c,x,yy,x+w,yy+32,8,border,fill);String icon=switch(i){case 0->"⚔";case 1->"✦";case 2->"☻";case 3->"◉";case 4->"◆";case 5->"⚙";case 6->"▣";default->"•••";};c.drawText(textRenderer,StarFonts.text(icon,true),x+12,yy+11,sel?0xFFFF9B36:0xFFB383F4,false);c.drawText(textRenderer,StarFonts.text(CATS[i],sel),x+34,yy+11,sel?0xFFFFBC68:0xFFD8C7EF,false);yy+=38;}
+        int by=gy+gh-112;nav(c,mx,my,x,by,w,"✦  Locker",0);nav(c,mx,my,x,by+34,w,"▣  Configs",1);nav(c,mx,my,x,by+68,w,"⚙  Settings",2);
     }
+    private void nav(DrawContext c,int mx,int my,int x,int y,int w,String label,int id){boolean hov=inside(mx,my,x,y,w,29);CincoDraw.bubble(c,x,y,x+w,y+29,7,hov?0xAA9C5EFF:0x554B2C64,hov?0xA51A1027:0x8A0D0B15);c.drawText(textRenderer,StarFonts.text(label,hov),x+12,y+10,hov?0xFFFFFFFF:0xFFC9B4E3,false);}
 
-    private void updateOrbitMovement() {
-        MinecraftClient c = MinecraftClient.getInstance();
-        if (c.player == null || c.getWindow() == null) return;
-        long window = c.getWindow().getHandle();
-        c.options.forwardKey.setPressed(key(window, GLFW.GLFW_KEY_W));
-        c.options.backKey.setPressed(key(window, GLFW.GLFW_KEY_S));
-        c.options.leftKey.setPressed(key(window, GLFW.GLFW_KEY_A));
-        c.options.rightKey.setPressed(key(window, GLFW.GLFW_KEY_D));
-        c.options.jumpKey.setPressed(key(window, GLFW.GLFW_KEY_SPACE));
-        c.options.sneakKey.setPressed(key(window, GLFW.GLFW_KEY_LEFT_SHIFT) || key(window, GLFW.GLFW_KEY_RIGHT_SHIFT));
-        c.options.sprintKey.setPressed(key(window, GLFW.GLFW_KEY_LEFT_CONTROL) || key(window, GLFW.GLFW_KEY_RIGHT_CONTROL));
+    private List<ClientModule> visibleModules(){List<ClientModule> out=new ArrayList<>();for(ClientModule m:CincoClient.MODULES){if(hidden(m))continue;if(!search.isBlank()&&!((m.name+" "+m.description).toLowerCase(Locale.ROOT).contains(search.toLowerCase(Locale.ROOT))))continue;if(search.isBlank()&&!matchesCategory(m))continue;out.add(m);}return out;}
+    private boolean hidden(ClientModule m){return m.name.equals("Animations")||m.name.equals("Custom Accessory")||m.name.equals("Player Changer")||m.name.equals("GTA Skin Changer")||m.name.equals("Interactive Spotify")||m.name.equals("Region Map")||m.name.equals("Crystal")||m.name.equals("Mace");}
+    private boolean matchesCategory(ClientModule m){return switch(category){case 0->m.category==ClientModule.Category.COMBAT;case 1->m.category==ClientModule.Category.MOVEMENT;case 2->m.name.contains("Player")||m.name.contains("Skin")||m.name.contains("Totem");case 3->m.category==ClientModule.Category.RENDER&&!m.name.equals("HUD")&&!m.name.equals("Spotify HUD");case 4->m.category==ClientModule.Category.WORLD;case 5->m.category==ClientModule.Category.UTILITY&&isExploitish(m.name);case 6->m.category==ClientModule.Category.RENDER&&(m.name.equals("HUD")||m.name.equals("Spotify HUD")||m.name.contains("ESP")||m.name.contains("Visual"));default->m.category==ClientModule.Category.UTILITY||m.category==ClientModule.Category.PRACTICE||m.category==ClientModule.Category.SETTINGS;};}
+    private boolean isExploitish(String n){String s=n.toLowerCase(Locale.ROOT);return s.contains("velocity")||s.contains("reach")||s.contains("flight")||s.contains("speed")||s.contains("free cam")||s.contains("fast");}
+
+    private void drawModules(DrawContext c,int mx,int my){int x=gx+leftW+12,y=gy+18,w=midW-22;c.drawText(textRenderer,StarFonts.text("Modules",true),x,y+2,0xFFF5EEFF,false);CincoDraw.bubble(c,x,y+24,x+w,y+52,7,0x885B3380,0xA20D0B18);c.drawText(textRenderer,StarFonts.text("⌕",true),x+10,y+34,0xFFC38CFF,false);c.drawText(textRenderer,StarFonts.text(search.isEmpty()?"Search modules...":search+(searchFocused?" _":""),false),x+30,y+34,search.isEmpty()?0xFF8F80A3:0xFFE8DEEF,false);
+        List<ClientModule> mods=visibleModules();int rowH=42,start=y+62,avail=gh-92,visible=Math.max(1,avail/rowH),max=Math.max(0,mods.size()-visible);moduleScroll=Math.max(0,Math.min(max,moduleScroll));for(int j=0;j<visible&&j+moduleScroll<mods.size();j++){ClientModule m=mods.get(j+moduleScroll);int yy=start+j*rowH;boolean sel=m==selected,hov=inside(mx,my,x,yy,w,36);int border=sel?0xFFD04BFF:(hov?0xAA8E4FC1:0x55462A63),fill=m.enabled?0xA51D101E:(sel?0xB0171023:0x990A0912);CincoDraw.bubble(c,x,yy,x+w,yy+36,7,border,fill);if(sel)c.fill(x,yy+5,x+2,yy+31,0xFFFF7E18);c.drawText(textRenderer,StarFonts.text(trim(m.name,25),m.enabled||sel),x+12,yy+9,m.enabled?0xFFFFB15E:0xFFF1EAF6,false);c.drawText(textRenderer,StarFonts.text(trim(m.description,34),false),x+12,yy+23,0xFF958A9F,false);toggle(c,x+w-58,yy+9,m.enabled);c.drawText(textRenderer,StarFonts.text("⚙",false),x+w-22,yy+11,0xFFAF8DCF,false);}if(max>0){int barY=start+(int)((avail-8)*(moduleScroll/(double)Math.max(1,max)));c.fill(x+w-3,start,x+w-1,start+avail,0x223F2A55);c.fill(x+w-3,barY,x+w-1,Math.min(start+avail,barY+26),0xFFFF8431);}
     }
+    private void toggle(DrawContext c,int x,int y,boolean on){CincoDraw.rounded(c,x,y,x+30,y+17,9,on?0xFFFF861A:0xFF3A304D);CincoDraw.rounded(c,on?x+16:x+2,y+2,on?x+28:x+14,y+15,7,0xFFFFFFFF);}
 
-    private boolean key(long window, int code) { return GLFW.glfwGetKey(window, code) == GLFW.GLFW_PRESS; }
-
-    private void releaseOrbitMovement() {
-        MinecraftClient c = MinecraftClient.getInstance();
-        if (c == null) return;
-        c.options.forwardKey.setPressed(false); c.options.backKey.setPressed(false);
-        c.options.leftKey.setPressed(false); c.options.rightKey.setPressed(false);
-        c.options.jumpKey.setPressed(false); c.options.sneakKey.setPressed(false); c.options.sprintKey.setPressed(false);
+    private void drawSettings(DrawContext c,int mx,int my){int x=gx+leftW+midW,y=gy+18,w=gx+gw-14-x;if(selected==null){c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("Select a module",true),x+w/2,gy+gh/2-8,0xFF9A7CB9);return;}CincoDraw.bubble(c,x,y,x+w,y+72,9,0x775A357D,0x9A0B0915);c.drawText(textRenderer,StarFonts.text(selected.name,true),x+18,y+14,0xFFF8F1FF,false);c.drawText(textRenderer,StarFonts.text(trim(selected.description,56),false),x+18,y+34,0xFFB9AAC7,false);toggle(c,x+w-48,y+16,selected.enabled);
+        if(selected.name.equals("HUD")){drawHudSettings(c,x,y+84,w,mx,my);return;}if(selected.name.equals("Spotify HUD")){drawSpotifySettings(c,x,y+84,w,mx,my);return;}
+        int yy=y+88;c.drawText(textRenderer,StarFonts.text("General",true),x+10,yy-13,0xFFFFA046,false);slider(c,x+12,yy,w-24,selected,0,selected.settingLabel,selected.setting,selected.min,selected.max);yy+=52;slider(c,x+12,yy,w-24,selected,1,selected.setting2Label,selected.setting2,selected.min2,selected.max2);yy+=52;slider(c,x+12,yy,w-24,selected,2,selected.setting3Label,selected.setting3,selected.min3,selected.max3);yy+=56;row(c,x+12,yy,w-24,"Keybind",selected.keyCode<0?"NONE":GLFW.glfwGetKeyName(selected.keyCode,0)==null?Integer.toString(selected.keyCode):GLFW.glfwGetKeyName(selected.keyCode,0).toUpperCase(Locale.ROOT),false);
     }
+    private void drawHudSettings(DrawContext c,int x,int y,int w,int mx,int my){c.drawText(textRenderer,StarFonts.text("HUD Widgets",true),x+10,y,0xFFFFA046,false);int yy=y+22;yy=boolRow(c,x+10,yy,w-20,"Region Map",StarHudConfig.regionMap);yy=boolRow(c,x+10,yy,w-20,"Status Bar",StarHudConfig.statusBar);yy=boolRow(c,x+10,yy,w-20,"Potion HUD",StarHudConfig.potionHud);yy=boolRow(c,x+10,yy,w-20,"Module List",StarHudConfig.moduleList);yy+=8;c.drawText(textRenderer,StarFonts.text("Region Map",true),x+10,yy,0xFFC895FF,false);yy+=19;yy=boolRow(c,x+10,yy,w-20,"Show Players",StarHudConfig.regionPlayers);yy=boolRow(c,x+10,yy,w-20,"Show Storage",StarHudConfig.regionStorage);yy=boolRow(c,x+10,yy,w-20,"Show Legend",StarHudConfig.regionLegend);yy+=8;c.drawText(textRenderer,StarFonts.text("Status Bar",true),x+10,yy,0xFFC895FF,false);yy+=19;yy=boolRow(c,x+10,yy,w-20,"Clock",StarHudConfig.statusClock);yy=boolRow(c,x+10,yy,w-20,"FPS",StarHudConfig.statusFps);yy=boolRow(c,x+10,yy,w-20,"Ping",StarHudConfig.statusPing);yy=boolRow(c,x+10,yy,w-20,"Coordinates",StarHudConfig.statusCoords);}
+    private void drawSpotifySettings(DrawContext c,int x,int y,int w,int mx,int my){c.drawText(textRenderer,StarFonts.text("Spotify HUD",true),x+10,y,0xFFFFA046,false);int yy=y+22;yy=boolRow(c,x+10,yy,w-20,"Album Cover",SpotifyHudConfig.albumCover);yy=boolRow(c,x+10,yy,w-20,"Song Name",SpotifyHudConfig.song);yy=boolRow(c,x+10,yy,w-20,"Artist",SpotifyHudConfig.artist);yy=boolRow(c,x+10,yy,w-20,"Lyrics",SpotifyHudConfig.lyrics);yy=boolRow(c,x+10,yy,w-20,"Playback Controls",SpotifyHudConfig.controls);yy=boolRow(c,x+10,yy,w-20,"Progress / Seek",SpotifyHudConfig.progress);yy+=8;row(c,x+10,yy,w-20,"Lyric Lines",Integer.toString(SpotifyHudConfig.lyricLines),false);yy+=28;row(c,x+10,yy,w-20,"Previous Key",keyName(SpotifyHudConfig.previousKey),captureSpotifyKey!=null&&captureSpotifyKey.equals("prev"));yy+=28;row(c,x+10,yy,w-20,"Play/Pause Key",keyName(SpotifyHudConfig.playPauseKey),captureSpotifyKey!=null&&captureSpotifyKey.equals("play"));yy+=28;row(c,x+10,yy,w-20,"Next Key",keyName(SpotifyHudConfig.nextKey),captureSpotifyKey!=null&&captureSpotifyKey.equals("next"));}
+    private int boolRow(DrawContext c,int x,int y,int w,String label,boolean on){row(c,x,y,w,label,on?"ON":"OFF",on);return y+27;}
+    private void row(DrawContext c,int x,int y,int w,String label,String value,boolean on){CincoDraw.bubble(c,x,y,x+w,y+24,6,on?0x99FF7C19:0x5547285F,0x7F0D0B15);c.drawText(textRenderer,StarFonts.text(label,false),x+9,y+8,0xFFE7DEEF,false);int tw=textRenderer.getWidth(value);c.drawText(textRenderer,StarFonts.text(value,true),x+w-tw-10,y+8,on?0xFFFFAE55:0xFFB89FCF,false);}
+    private void slider(DrawContext c,int x,int y,int w,ClientModule m,int idx,String label,double value,double min,double max){c.drawText(textRenderer,StarFonts.text(label,false),x,y,0xFFD9CFE3,false);String v=fmt(value);c.drawText(textRenderer,StarFonts.text(v,true),x+w-textRenderer.getWidth(v),y,0xFFFFB15E,false);int sx=x+8,sy=y+24,sw=w-16;c.fill(sx,sy,sx+sw,sy+3,0xFF2B203B);double t=max<=min?0:(value-min)/(max-min);c.fill(sx,sy,sx+(int)(sw*t),sy+3,0xFFB92EFF);CincoDraw.rounded(c,sx+(int)(sw*t)-4,sy-3,sx+(int)(sw*t)+5,sy+7,5,0xFFCE48FF);if(sliderModule==m&&sliderIndex==idx){sliderX=sx;sliderW=sw;}}
 
-    @Override
-    public void render(DrawContext c, int mx, int my, float delta) {
-        super.render(c, mx, my, delta);
-        drawBackdrop(c, delta);
-        if (mode == StarGuiModeStore.Mode.ORBIT) renderOrbit(c, mx, my);
-        else renderNebula(c, mx, my);
-        renderModeSelector(c);
-    }
-
-    private void drawBackdrop(DrawContext c, float delta) {
-        c.fill(0, 0, width, height, 0xFF020204);
-        StarBackground.render(c, width, height, delta);
-        int cx = width / 2, cy = height / 2;
-        CincoDraw.rounded(c, cx - Math.min(430, width / 3), cy - 2, cx + Math.min(430, width / 3), cy + 2, 2, 0x182D1240);
-    }
-
-    private void renderOrbit(DrawContext c, int mx, int my) {
-        for (OrbitPanel panel : orbitPanels()) renderOrbitPanel(c, panel, mx, my);
-        c.drawText(textRenderer, StarFonts.text("ORBIT HUD   drag headers  •  resize corners  •  RMB settings  •  WASD movement", false), 12, height - 15, 0xCCFFFFFF, false);
-    }
-
-    private List<OrbitPanel> orbitPanels() {
-        int gap = 8, x0 = 18, y0 = 20, w = 158;
-        List<OrbitPanel> out = new ArrayList<>();
-        out.add(new OrbitPanel("render", "Render", "◉", x0, y0, w, 190));
-        out.add(new OrbitPanel("combat", "Combat", "⚔", x0 + w + gap, y0 + 7, w, 196));
-        out.add(new OrbitPanel("search", "Search", "⌕", x0 + (w + gap) * 2, y0 + 2, 170, 106));
-        out.add(new OrbitPanel("visuals", "Visuals", "◈", x0 + (w + gap) * 3 + 4, y0 + 10, w, 196));
-        out.add(new OrbitPanel("macro", "Macro", "M", x0 + (w + gap) * 4 + 4, y0 + 24, w, 166));
-        out.add(new OrbitPanel("misc", "Misc", "⋯", x0 + (w + gap) * 5 + 4, y0 + 14, w, 172));
-        out.add(new OrbitPanel("keys", "Keybinds", "⌨", x0, y0 + 208, 172, 126));
-        out.add(new OrbitPanel("session", "Session Info", "▥", x0 + 180, y0 + 214, 168, 126));
-        out.add(new OrbitPanel("hud", "HUD Elements", "▦", x0 + 356, y0 + 132, 158, 184));
-        out.add(new OrbitPanel("movement", "Movement", "↗", x0 + 522, y0 + 216, 158, 160));
-        out.add(new OrbitPanel("base", "Base Finding", "⌖", x0 + 688, y0 + 210, 158, 170));
-        out.add(new OrbitPanel("active", "Active Modules", "✦", 18, Math.max(350, height - 122), 304, 84));
-        out.add(new OrbitPanel("coords", "Coordinates", "⌖", 334, Math.max(350, height - 116), 226, 78));
-        return out;
-    }
-
-    private void renderOrbitPanel(DrawContext c, OrbitPanel p, int mx, int my) {
-        OrbitLayoutStore.State s = OrbitLayoutStore.get(p.id(), p.x(), p.y(), p.w(), p.h());
-        int header = 24, renderH = s.collapsed ? header : s.h;
-        s.x = clamp(s.x, 2, Math.max(2, width - s.w - 2));
-        s.y = clamp(s.y, 2, Math.max(2, height - renderH - 2));
-        boolean selected = p.id().equals(draggingPanel) || p.id().equals(resizingPanel);
-        StarCrispUi.panel(c, s.x, s.y, s.w, renderH, 9, selected);
-        StarCrispUi.divider(c, s.x + 1, s.y + header - 1, s.x + s.w - 1);
-        int stateColor = selected ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT;
-        c.drawText(textRenderer, StarFonts.text(p.icon(), true), s.x + 8, s.y + 8, stateColor, false);
-        c.drawText(textRenderer, StarFonts.text(p.title(), true), s.x + 24, s.y + 8, stateColor, false);
-        c.drawText(textRenderer, Text.literal("⋮"), s.x + s.w - 25, s.y + 6, StarCrispUi.TEXT, false);
-        c.drawText(textRenderer, Text.literal(s.collapsed ? "⌄" : "⌃"), s.x + s.w - 13, s.y + 7, s.collapsed ? StarCrispUi.PURPLE_HI : StarCrispUi.TEXT, false);
-        if (s.collapsed) return;
-        switch (p.id()) {
-            case "search" -> renderOrbitSearch(c, s, mx, my);
-            case "session" -> renderOrbitSession(c, s);
-            case "keys" -> renderOrbitKeys(c, s);
-            case "active" -> renderOrbitActive(c, s);
-            case "coords" -> renderOrbitCoords(c, s);
-            default -> renderOrbitModules(c, p.id(), s, mx, my);
-        }
-        c.fill(s.x + s.w - 9, s.y + s.h - 3, s.x + s.w - 3, s.y + s.h - 2, 0xC6FFFFFF);
-        c.fill(s.x + s.w - 6, s.y + s.h - 6, s.x + s.w - 3, s.y + s.h - 5, 0xC6B58AFF);
-    }
-
-    private void renderOrbitSearch(DrawContext c, OrbitLayoutStore.State s, int mx, int my) {
-        int x = s.x + 7, y = s.y + 31, w = s.w - 14;
-        StarCrispUi.searchBox(c, textRenderer, x, y, w, search.isEmpty() ? "Search modules..." : search + (searchFocused ? " _" : ""), searchFocused);
-        if (search.isBlank()) return;
-        int yy = y + 31, shown = 0;
-        for (ClientModule m : CincoClient.MODULES) {
-            if (!matches(m, search)) continue;
-            if (yy + 17 > s.y + s.h - 6 || shown++ >= 3) break;
-            drawOrbitModuleRow(c, m, x, yy, w, mx, my); yy += 19;
-        }
-    }
-
-    private void renderOrbitModules(DrawContext c, String id, OrbitLayoutStore.State s, int mx, int my) {
-        List<ClientModule> modules = orbitModules(id);
-        int rowPitch = 19, visible = Math.max(1, (s.h - 31) / rowPitch), maxScroll = Math.max(0, modules.size() - visible);
-        int scroll = clamp(orbitScroll.getOrDefault(id, 0), 0, maxScroll); orbitScroll.put(id, scroll);
-        int y = s.y + 29;
-        for (int i = scroll; i < modules.size() && i < scroll + visible; i++) { drawOrbitModuleRow(c, modules.get(i), s.x + 6, y, s.w - 12, mx, my); y += rowPitch; }
-        if (maxScroll > 0) { String count = (scroll + 1) + "/" + (maxScroll + 1); c.drawText(textRenderer, Text.literal(count), s.x + s.w - textRenderer.getWidth(count) - 6, s.y + s.h - 10, 0xBFFFFFFF, false); }
-    }
-
-    private void drawOrbitModuleRow(DrawContext c, ClientModule m, int x, int y, int w, int mx, int my) {
-        boolean hov = inside(mx, my, x, y, w, 16); float en = track(toggle, "orbit-toggle:" + m.name, m.enabled ? 1f : 0f, 140);
-        int fill = m.enabled ? 0xE77945E8 : (hov ? 0xD315111A : 0xB808080C); int border = m.enabled ? 0xE6A77BFF : (hov ? 0x8AFFFFFF : 0x384A3E50);
-        CincoDraw.bubble(c, x, y, x + w, y + 16, 5, border, fill); if (m.enabled) StarCrispUi.accentRail(c, x + 1, y + 3, 10);
-        c.drawText(textRenderer, StarFonts.text(trim(m.name, 18), false), x + 6, y + 5, m.enabled ? 0xFFFFFFFF : StarCrispUi.TEXT, false);
-        StarCrispUi.miniToggle(c, x + w - 25, y + 3, m.enabled, en);
-    }
-
-    private List<ClientModule> orbitModules(String id) {
-        List<ClientModule> list = new ArrayList<>();
-        for (ClientModule m : CincoClient.MODULES) {
-            boolean include = switch (id) {
-                case "combat" -> m.category == ClientModule.Category.COMBAT;
-                case "movement" -> m.category == ClientModule.Category.MOVEMENT;
-                case "base" -> m.category == ClientModule.Category.WORLD;
-                case "macro" -> m.category == ClientModule.Category.PRACTICE;
-                case "misc" -> m.category == ClientModule.Category.UTILITY;
-                case "hud" -> m.category == ClientModule.Category.RENDER && isHudish(m.name);
-                case "render" -> m.category == ClientModule.Category.SETTINGS;
-                case "visuals" -> m.category == ClientModule.Category.RENDER && !isHudish(m.name);
-                default -> false;
-            };
-            if (include) list.add(m);
-        }
-        list.sort(Comparator.comparing(m -> m.name.toLowerCase(Locale.ROOT))); return list;
-    }
-
-    private boolean isHudish(String name) {
-        return name.contains("HUD") || name.contains("Display") || name.equals("FPS Counter") || name.equals("Coordinates") || name.equals("Direction") || name.equals("Potion Status") || name.equals("Purple Stars") || name.equals("Compact HUD") || name.equals("Crosshair Guide") || name.equals("Spotify HUD") || name.equals("Region Map") || name.equals("Target HUD") || name.equals("Ping Display");
-    }
-
-    private void renderOrbitSession(DrawContext c, OrbitLayoutStore.State s) {
-        MinecraftClient mc = MinecraftClient.getInstance(); long sec = Math.max(0, (System.currentTimeMillis() - SESSION_START) / 1000); int y = s.y + 33;
-        orbitValueLine(c, s, y, "◷  Play Time", String.format(Locale.ROOT, "%02d:%02d", sec / 60, sec % 60)); y += 18;
-        orbitValueLine(c, s, y, "▥  FPS", Integer.toString(mc.getCurrentFps())); y += 18;
-        orbitValueLine(c, s, y, "⌁  Ping", ping(mc) + " ms"); y += 18;
-        orbitValueLine(c, s, y, "✦  Active", Integer.toString((int)CincoClient.MODULES.stream().filter(m -> m.enabled).count()));
-    }
-    private void orbitValueLine(DrawContext c, OrbitLayoutStore.State s, int y, String left, String right) { c.drawText(textRenderer, StarFonts.text(left, false), s.x + 9, y, StarCrispUi.TEXT, false); int tw = textRenderer.getWidth(right); c.drawText(textRenderer, StarFonts.text(right, true), s.x + s.w - 9 - tw, y, StarCrispUi.PURPLE_HI, false); }
-    private void renderOrbitCoords(DrawContext c, OrbitLayoutStore.State s) { MinecraftClient mc=MinecraftClient.getInstance(); if(mc.player==null)return; int y=s.y+34;String xyz="X: "+(int)mc.player.getX()+"   Y: "+(int)mc.player.getY()+"   Z: "+(int)mc.player.getZ();c.drawText(textRenderer,StarFonts.text(xyz,false),s.x+10,y,StarCrispUi.TEXT,false);c.drawText(textRenderer,StarFonts.text("Facing  "+mc.player.getHorizontalFacing().asString().toUpperCase(Locale.ROOT),false),s.x+10,y+18,StarCrispUi.TEXT,false); }
-
-    private void renderOrbitKeys(DrawContext c, OrbitLayoutStore.State s) {
-        int y=s.y+33,shown=0;for(ClientModule m:CincoClient.MODULES){if(m.keyCode<0)continue;if(shown++>=5||y+17>s.y+s.h-6)break;c.drawText(textRenderer,StarFonts.text(trim(m.name,15),false),s.x+9,y,StarCrispUi.TEXT,false);String key=ModuleSettingsScreen.keyName(m.keyCode);int kw=Math.max(18,textRenderer.getWidth(key)+8);CincoDraw.bubble(c,s.x+s.w-kw-8,y-3,s.x+s.w-8,y+12,5,0xBFFFFFFF,0xD608080D);c.drawCenteredTextWithShadow(textRenderer,StarFonts.text(key,true),s.x+s.w-kw/2-8,y,StarCrispUi.TEXT);y+=18;}
-    }
-    private void renderOrbitActive(DrawContext c, OrbitLayoutStore.State s) { int startX=s.x+9,x=startX,y=s.y+33;for(ClientModule m:CincoClient.MODULES){if(!m.enabled)continue;String name=trim(m.name,12);int w=textRenderer.getWidth(name)+14;if(x+w>s.x+s.w-8){x=startX;y+=20;}if(y+17>s.y+s.h-5)break;CincoDraw.rounded(c,x,y,x+w,y+17,5,0xE67945E8);c.drawText(textRenderer,StarFonts.text(name,false),x+7,y+5,0xFFFFFFFF,false);x+=w+5;} }
-
-    private void renderNebula(DrawContext c, int mx, int my) {
-        int w=Math.min(950,Math.max(750,width-82)),h=Math.min(580,Math.max(440,height-84)),x=(width-w)/2,y=(height-h)/2,side=170,top=68;
-        StarCrispUi.panel(c,x,y,w,h,13,false);CincoDraw.rounded(c,x+7,y+7,x+side,y+h-7,10,0xF6040408);StarCrispUi.divider(c,x+side,y+8,x+side+1);
-        c.drawCenteredTextWithShadow(textRenderer,Text.literal("✦"),x+29,y+24,StarCrispUi.PURPLE_HI);c.drawText(textRenderer,StarFonts.text("STAR CLIENT",true),x+48,y+17,StarCrispUi.TEXT,false);c.drawText(textRenderer,StarFonts.text("Cinco",false),x+48,y+33,StarCrispUi.PURPLE_HI,false);c.drawText(textRenderer,StarFonts.text("MODULES",true),x+17,y+65,0xFFCFC7D5,false);
-        int catY=y+80;for(ClientModule.Category cat:ClientModule.Category.values()){int rowY=catY+cat.ordinal()*33;boolean active=cat==selectedCategory,hov=inside(mx,my,x+11,rowY,side-22,26);int fill=active?0xD1261239:hov?0xB70C0A10:0;if(fill!=0)CincoDraw.rounded(c,x+11,rowY,x+side-11,rowY+26,7,fill);if(active)StarCrispUi.accentRail(c,x+14,rowY+6,14);int stateColor=active?StarCrispUi.PURPLE_HI:StarCrispUi.TEXT;c.drawText(textRenderer,StarFonts.text(categoryIcon(cat),true),x+24,rowY+8,stateColor,false);c.drawText(textRenderer,StarFonts.text(nebulaCategoryName(cat),active),x+42,rowY+8,stateColor,false);String count=Integer.toString(categoryCount(cat));c.drawText(textRenderer,Text.literal(count),x+side-19-textRenderer.getWidth(count),rowY+8,stateColor,false);}
-        StarCrispUi.divider(c,x+17,y+h-100,x+side-17);c.drawText(textRenderer,StarFonts.text("GENERAL",true),x+17,y+h-84,0xFFCFC7D5,false);c.drawText(textRenderer,StarFonts.text("⚙  Settings",false),x+19,y+h-61,StarCrispUi.TEXT,false);c.drawText(textRenderer,StarFonts.text("⌨  Keybinds",false),x+19,y+h-39,StarCrispUi.TEXT,false);
-        int contentX=x+side+16,contentRight=x+w-16;c.drawText(textRenderer,StarFonts.text(nebulaCategoryName(selectedCategory)+" Modules",true),contentX,y+19,StarCrispUi.TEXT,false);c.drawText(textRenderer,StarFonts.text(categoryCount(selectedCategory)+" modules  •  "+enabledCount(selectedCategory)+" enabled",false),contentX,y+38,StarCrispUi.TEXT,false);
-        int searchW=220,searchX=contentRight-searchW,searchY=y+16;StarCrispUi.searchBox(c,textRenderer,searchX,searchY,searchW,search.isEmpty()?"Search modules...":search+(searchFocused?" _":""),searchFocused);
-        int listY=y+top,bodyH=h-top-15,listW=Math.min(254,Math.max(218,(contentRight-contentX)/3)),detailX=contentX+listW+11,detailW=contentRight-detailX;
-        StarCrispUi.panel(c,contentX,listY,listW,bodyH,9,false);renderNebulaList(c,contentX,listY,listW,bodyH,mx,my);StarCrispUi.panel(c,detailX,listY,detailW,bodyH,9,false);renderNebulaDetails(c,detailX,listY,detailW,bodyH);
-    }
-
-    private void renderNebulaList(DrawContext c,int x,int y,int w,int h,int mx,int my){List<ClientModule> modules=nebulaModules();int rowPitch=44,visible=Math.max(1,(h-10)/rowPitch),maxScroll=Math.max(0,modules.size()-visible);nebulaScroll=clamp(nebulaScroll,0,maxScroll);int yy=y+5;for(int i=nebulaScroll;i<modules.size()&&i<nebulaScroll+visible;i++){ClientModule m=modules.get(i);boolean selected=m==selectedModule,hov=inside(mx,my,x+5,yy,w-10,37);StarCrispUi.card(c,x+5,yy,w-10,37,selected,hov);if(selected)StarCrispUi.accentRail(c,x+7,yy+7,23);int nameColor=selected?StarCrispUi.PURPLE_HI:StarCrispUi.TEXT;c.drawText(textRenderer,StarFonts.text(trim(m.name,21),true),x+14,yy+7,nameColor,false);c.drawText(textRenderer,StarFonts.text(trim(m.description,27),false),x+14,yy+22,selected?0xFFE6D7F2:0xFFD2CBD8,false);float en=track(toggle,"neb-toggle:"+m.name,m.enabled?1f:0f,140);StarCrispUi.toggle(c,x+w-34,yy+6,m.enabled,en);yy+=rowPitch;}}
-
-    private void renderNebulaDetails(DrawContext c,int x,int y,int w,int h){ClientModule m=selectedModule;if(m==null||m.category!=selectedCategory||(!search.isBlank()&&!matches(m,search))){List<ClientModule> list=nebulaModules();if(!list.isEmpty()){m=list.get(0);selectedModule=m;}}if(m==null){c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("No matching modules",true),x+w/2,y+h/2,StarCrispUi.TEXT);return;}c.drawText(textRenderer,StarFonts.text(m.name,true),x+15,y+14,StarCrispUi.PURPLE_HI,false);c.drawText(textRenderer,StarFonts.text(trim(m.description,Math.max(28,(w-84)/6)),false),x+15,y+31,StarCrispUi.TEXT,false);float en=track(toggle,"neb-detail-toggle:"+m.name,m.enabled?1f:0f,140);StarCrispUi.toggle(c,x+w-43,y+13,m.enabled,en);int tabsY=y+54;CincoDraw.rounded(c,x+13,tabsY,x+w-13,tabsY+28,7,0xDC08080D);String[] tabs={"General","Render","Keybind"};int tabW=(w-34)/3;for(int i=0;i<tabs.length;i++){int bx=x+17+i*tabW;if(i==0)CincoDraw.rounded(c,bx,tabsY+4,bx+tabW-5,tabsY+24,6,0xBE32184F);c.drawCenteredTextWithShadow(textRenderer,StarFonts.text(tabs[i],i==0),bx+(tabW-5)/2,tabsY+9,i==0?StarCrispUi.PURPLE_HI:StarCrispUi.TEXT);}int rowY=tabsY+42;drawSettingRow(c,m,0,x+15,rowY,w-30);rowY+=61;drawSettingRow(c,m,1,x+15,rowY,w-30);rowY+=61;drawSettingRow(c,m,2,x+15,rowY,w-30);int keyY=y+h-41;StarCrispUi.divider(c,x+15,keyY-8,x+w-15);c.drawText(textRenderer,StarFonts.text("KEYBIND",true),x+15,keyY+4,StarCrispUi.TEXT,false);String key=ModuleSettingsScreen.keyName(m.keyCode);int kw=Math.max(58,textRenderer.getWidth(key)+18);CincoDraw.bubble(c,x+w-kw-15,keyY-2,x+w-15,keyY+24,6,0xBFFFFFFF,0xE308080D);c.drawCenteredTextWithShadow(textRenderer,StarFonts.text(key,true),x+w-kw/2-15,keyY+7,StarCrispUi.TEXT);}
-
-    private void drawSettingRow(DrawContext c,ClientModule m,int which,int x,int y,int w){String label=settingLabel(m,which);double value=settingValue(m,which),min=settingMin(m,which),max=settingMax(m,which);c.drawText(textRenderer,StarFonts.text(label,true),x,y,StarCrispUi.TEXT,false);c.drawText(textRenderer,StarFonts.text("Adjust "+label.toLowerCase(Locale.ROOT),false),x,y+14,0xFFCFC8D5,false);String valueText=format(value);int boxW=Math.max(48,textRenderer.getWidth(valueText)+16),trackW=Math.max(40,w-boxW-14);StarCrispUi.slider(c,x,y+36,trackW,(value-min)/Math.max(0.000001,max-min));CincoDraw.bubble(c,x+w-boxW,y+25,x+w,y+49,6,0x98FFFFFF,0xE308080D);c.drawCenteredTextWithShadow(textRenderer,StarFonts.text(valueText,false),x+w-boxW/2,y+33,StarCrispUi.TEXT);}
-
-    @Override
-    public boolean mouseClicked(double mx,double my,int button){if(handleModeSelector(mx,my,button))return true;if(mode==StarGuiModeStore.Mode.ORBIT)return orbitClick(mx,my,button);return nebulaClick(mx,my,button);}
-
-    private boolean orbitClick(double mx,double my,int button){List<OrbitPanel> panels=orbitPanels();for(int i=panels.size()-1;i>=0;i--){OrbitPanel p=panels.get(i);OrbitLayoutStore.State s=OrbitLayoutStore.get(p.id(),p.x(),p.y(),p.w(),p.h());int renderH=s.collapsed?24:s.h;if(!inside(mx,my,s.x,s.y,s.w,renderH))continue;if(button==0&&inside(mx,my,s.x+s.w-17,s.y+2,16,20)){s.collapsed=!s.collapsed;OrbitLayoutStore.save();return true;}if(button==0&&inside(mx,my,s.x+s.w-31,s.y+2,13,20)){s.w=p.w();s.h=p.h();OrbitLayoutStore.save();return true;}if(!s.collapsed&&button==0&&inside(mx,my,s.x+s.w-13,s.y+s.h-13,13,13)){resizingPanel=p.id();resizeStartX=mx;resizeStartY=my;resizeStartW=s.w;resizeStartH=s.h;return true;}if(button==0&&inside(mx,my,s.x,s.y,s.w-32,24)){draggingPanel=p.id();dragOffX=mx-s.x;dragOffY=my-s.y;return true;}if(s.collapsed)return true;if(p.id().equals("search")){if(button==0&&inside(mx,my,s.x+7,s.y+31,s.w-14,26)){searchFocused=true;releaseOrbitMovement();return true;}if(!search.isBlank()){int yy=s.y+62,shown=0;for(ClientModule m:CincoClient.MODULES){if(!matches(m,search))continue;if(yy+16>s.y+s.h-6||shown++>=3)break;if(inside(mx,my,s.x+7,yy,s.w-14,16)){if(button==0)toggle(m);else if(button==1)MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(m));return true;}yy+=19;}}return true;}List<ClientModule> modules=orbitModules(p.id());if(!modules.isEmpty()){int visible=Math.max(1,(s.h-31)/19),scroll=clamp(orbitScroll.getOrDefault(p.id(),0),0,Math.max(0,modules.size()-visible)),yy=s.y+29;for(int idx=scroll;idx<modules.size()&&idx<scroll+visible;idx++){ClientModule m=modules.get(idx);if(inside(mx,my,s.x+6,yy,s.w-12,16)){if(button==0)toggle(m);else if(button==1)MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(m));return true;}yy+=19;}}return true;}searchFocused=false;return super.mouseClicked(mx,my,button);}
-
-    private boolean nebulaClick(double mx,double my,int button){int w=Math.min(950,Math.max(750,width-82)),h=Math.min(580,Math.max(440,height-84)),x=(width-w)/2,y=(height-h)/2,side=170,top=68,contentX=x+side+16,contentRight=x+w-16;int catY=y+80;for(ClientModule.Category cat:ClientModule.Category.values()){int rowY=catY+cat.ordinal()*33;if(button==0&&inside(mx,my,x+11,rowY,side-22,26)){selectedCategory=cat;CincoClient.selectedCategory=cat;selectedModule=null;nebulaScroll=0;searchFocused=false;return true;}}int searchW=220,searchX=contentRight-searchW,searchY=y+16;if(button==0&&inside(mx,my,searchX,searchY,searchW,26)){searchFocused=true;return true;}int listY=y+top,bodyH=h-top-15,listW=Math.min(254,Math.max(218,(contentRight-contentX)/3)),detailX=contentX+listW+11,detailW=contentRight-detailX;List<ClientModule> modules=nebulaModules();int visible=Math.max(1,(bodyH-10)/44);nebulaScroll=clamp(nebulaScroll,0,Math.max(0,modules.size()-visible));int yy=listY+5;for(int i=nebulaScroll;i<modules.size()&&i<nebulaScroll+visible;i++){ClientModule m=modules.get(i);if(inside(mx,my,contentX+5,yy,listW-10,37)){if(button==0&&mx>=contentX+listW-40)toggle(m);else if(button==0)selectedModule=m;else if(button==1)MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(m));searchFocused=false;return true;}yy+=44;}ClientModule m=selectedModule;if(m==null||m.category!=selectedCategory){if(!modules.isEmpty()){m=modules.get(0);selectedModule=m;}}if(m!=null){if(button==0&&inside(mx,my,detailX+detailW-43,listY+13,24,12)){toggle(m);return true;}int rowY=listY+54+42;for(int which=0;which<3;which++,rowY+=61){int rowW=detailW-30;double value=settingValue(m,which),min=settingMin(m,which),max=settingMax(m,which);String valueText=format(value);int boxW=Math.max(48,textRenderer.getWidth(valueText)+16),sw=Math.max(40,rowW-boxW-14),sx=detailX+15,sy=rowY+36;if(button==0&&inside(mx,my,sx-4,sy-8,sw+8,18)){draggingSlider=m;draggingSetting=which;sliderX=sx;sliderW=sw;updateSlider(mx);return true;}}int keyY=listY+bodyH-41;String keyName=ModuleSettingsScreen.keyName(m.keyCode);int kw=Math.max(58,textRenderer.getWidth(keyName)+18);if(button==0&&inside(mx,my,detailX+detailW-kw-15,keyY-2,kw,26)){MinecraftClient.getInstance().setScreen(new ModuleSettingsScreen(m));return true;}}searchFocused=false;return super.mouseClicked(mx,my,button);}
-
-    @Override public boolean mouseDragged(double mx,double my,int button,double dx,double dy){if(mode==StarGuiModeStore.Mode.ORBIT){if(draggingPanel!=null){OrbitPanel p=findOrbitPanel(draggingPanel);if(p!=null){OrbitLayoutStore.State s=OrbitLayoutStore.get(p.id(),p.x(),p.y(),p.w(),p.h());s.x=(int)Math.round(mx-dragOffX);s.y=(int)Math.round(my-dragOffY);}return true;}if(resizingPanel!=null){OrbitPanel p=findOrbitPanel(resizingPanel);if(p!=null){OrbitLayoutStore.State s=OrbitLayoutStore.get(p.id(),p.x(),p.y(),p.w(),p.h());s.w=clamp(resizeStartW+(int)Math.round(mx-resizeStartX),126,340);s.h=clamp(resizeStartH+(int)Math.round(my-resizeStartY),54,500);}return true;}}else if(draggingSlider!=null){updateSlider(mx);return true;}return super.mouseDragged(mx,my,button,dx,dy);}
-    @Override public boolean mouseReleased(double mx,double my,int button){if(draggingPanel!=null||resizingPanel!=null){draggingPanel=null;resizingPanel=null;OrbitLayoutStore.save();return true;}if(draggingSlider!=null){draggingSlider=null;draggingSetting=-1;ConfigStore.save();return true;}return super.mouseReleased(mx,my,button);}
-    @Override public boolean mouseScrolled(double mx,double my,double horizontal,double vertical){if(mode==StarGuiModeStore.Mode.ORBIT){for(OrbitPanel p:orbitPanels()){OrbitLayoutStore.State s=OrbitLayoutStore.get(p.id(),p.x(),p.y(),p.w(),p.h());if(s.collapsed||!inside(mx,my,s.x,s.y,s.w,s.h))continue;List<ClientModule> modules=orbitModules(p.id());if(modules.isEmpty())return true;int visible=Math.max(1,(s.h-31)/19),max=Math.max(0,modules.size()-visible),value=orbitScroll.getOrDefault(p.id(),0)+(vertical<0?1:-1);orbitScroll.put(p.id(),clamp(value,0,max));return true;}}else{List<ClientModule> modules=nebulaModules();int h=Math.min(580,Math.max(440,height-84)),bodyH=h-68-15,visible=Math.max(1,(bodyH-10)/44);nebulaScroll=clamp(nebulaScroll+(vertical<0?1:-1),0,Math.max(0,modules.size()-visible));return true;}return super.mouseScrolled(mx,my,horizontal,vertical);}
-    @Override public boolean charTyped(char chr,int modifiers){if(searchFocused&&!Character.isISOControl(chr)){search+=chr;nebulaScroll=0;return true;}return super.charTyped(chr,modifiers);}
-    @Override public boolean keyPressed(int keyCode,int scanCode,int modifiers){if(searchFocused){if(keyCode==GLFW.GLFW_KEY_BACKSPACE&&!search.isEmpty()){search=search.substring(0,search.length()-1);nebulaScroll=0;return true;}if(keyCode==GLFW.GLFW_KEY_ENTER){searchFocused=false;return true;}if(keyCode==GLFW.GLFW_KEY_ESCAPE){if(!search.isEmpty()){search="";return true;}searchFocused=false;return true;}}return super.keyPressed(keyCode,scanCode,modifiers);}
-
-    private void updateSlider(double mx){if(draggingSlider==null)return;double f=clamp01((mx-sliderX)/Math.max(1.0,sliderW));if(draggingSetting==0)draggingSlider.setSettingFromSlider(f);else if(draggingSetting==1)draggingSlider.setSetting2FromSlider(f);else if(draggingSetting==2)draggingSlider.setSetting3FromSlider(f);ConfigStore.save();}
-
-    private void renderModeSelector(DrawContext c){int x=(width-MODE_W)/2,y=height-45;CincoDraw.bubble(c,x,y,x+MODE_W,y+MODE_H,11,0xAFFFFFFF,0xF208080D);int half=MODE_W/2;if(mode==StarGuiModeStore.Mode.ORBIT)CincoDraw.rounded(c,x+4,y+4,x+half-2,y+MODE_H-4,8,0xD632184F);else CincoDraw.rounded(c,x+half+2,y+4,x+MODE_W-4,y+MODE_H-4,8,0xD632184F);c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("▣  Orbit HUD",mode==StarGuiModeStore.Mode.ORBIT),x+half/2,y+11,mode==StarGuiModeStore.Mode.ORBIT?StarCrispUi.PURPLE_HI:StarCrispUi.TEXT);c.drawCenteredTextWithShadow(textRenderer,StarFonts.text("▤  Nebula ClickGUI",mode==StarGuiModeStore.Mode.NEBULA),x+half+half/2,y+11,mode==StarGuiModeStore.Mode.NEBULA?StarCrispUi.PURPLE_HI:StarCrispUi.TEXT);}
-    private boolean handleModeSelector(double mx,double my,int button){if(button!=0)return false;int x=(width-MODE_W)/2,y=height-45;if(!inside(mx,my,x,y,MODE_W,MODE_H))return false;StarGuiModeStore.Mode next=mx<x+MODE_W/2?StarGuiModeStore.Mode.ORBIT:StarGuiModeStore.Mode.NEBULA;if(next!=mode){releaseOrbitMovement();mode=next;StarGuiModeStore.set(mode);searchFocused=false;}return true;}
-    private List<ClientModule> nebulaModules(){List<ClientModule> list=new ArrayList<>();for(ClientModule m:CincoClient.MODULES){if(m.category!=selectedCategory)continue;if(!search.isBlank()&&!matches(m,search))continue;list.add(m);}list.sort(Comparator.comparing((ClientModule m)->!m.enabled).thenComparing(m->m.name.toLowerCase(Locale.ROOT)));return list;}
-    private int categoryCount(ClientModule.Category category){int n=0;for(ClientModule m:CincoClient.MODULES)if(m.category==category)n++;return n;}
-    private int enabledCount(ClientModule.Category category){int n=0;for(ClientModule m:CincoClient.MODULES)if(m.category==category&&m.enabled)n++;return n;}
-    private String nebulaCategoryName(ClientModule.Category cat){return switch(cat){case COMBAT->"Combat";case MOVEMENT->"Movement";case RENDER->"Visuals";case WORLD->"Base Finding";case UTILITY->"Misc";case PRACTICE->"Macro";case SETTINGS->"Client";};}
-    private String categoryIcon(ClientModule.Category cat){return switch(cat){case COMBAT->"⚔";case MOVEMENT->"↗";case RENDER->"◉";case WORLD->"⌖";case UTILITY->"⋯";case PRACTICE->"M";case SETTINGS->"⚙";};}
-    private String settingLabel(ClientModule m,int which){String label=which==0?m.settingLabel:which==1?m.setting2Label:m.setting3Label;return label==null||label.isBlank()?"Setting":label;}
-    private double settingValue(ClientModule m,int which){return which==0?m.setting:which==1?m.setting2:m.setting3;}
-    private double settingMin(ClientModule m,int which){return which==0?m.min:which==1?m.min2:m.min3;}
-    private double settingMax(ClientModule m,int which){return which==0?m.max:which==1?m.max2:m.max3;}
-    private void toggle(ClientModule m){m.enabled=!m.enabled;if(m.name.equals("Sprint Assist"))CincoClient.sprintAssistEnabled=m.enabled;if(m.name.equals("Client HUD"))CincoClient.hudEnabled=m.enabled;if(m.name.equals("Container Finder")){ClientModule base=CincoClient.findModule("Base Finder");if(base!=null)base.enabled=m.enabled;}if(m.name.equals("Base Finder")){ClientModule containers=CincoClient.findModule("Container Finder");if(containers!=null)containers.enabled=m.enabled;if(!m.enabled)BaseScanner.reset();}ConfigStore.save();}
-    private int ping(MinecraftClient c){if(c==null||c.player==null||c.getNetworkHandler()==null)return 0;var entry=c.getNetworkHandler().getPlayerListEntry(c.player.getUuid());return entry==null?0:entry.getLatency();}
-    private OrbitPanel findOrbitPanel(String id){for(OrbitPanel p:orbitPanels())if(p.id().equals(id))return p;return null;}
-    private boolean matches(ClientModule m,String query){String q=query.toLowerCase(Locale.ROOT).trim();return m.name.toLowerCase(Locale.ROOT).contains(q)||m.description.toLowerCase(Locale.ROOT).contains(q);}
-    private float track(Map<String,StarAnimations.Track> map,String key,float target,int duration){StarAnimations.Track t=map.computeIfAbsent(key,k->new StarAnimations.Track(target));return t.to(target,StarAnimations.duration(MinecraftClient.getInstance(),duration,false),StarAnimations.Curve.CUBIC_OUT,System.currentTimeMillis());}
-    private boolean inside(double mx,double my,int x,int y,int w,int h){return mx>=x&&mx<=x+w&&my>=y&&my<=y+h;}
-    private String trim(String s,int max){if(s==null)return "";return s.length()<=max?s:s.substring(0,Math.max(0,max-1))+"…";}
-    private String format(double v){if(Math.abs(v-Math.round(v))<0.0001)return Integer.toString((int)Math.round(v));return String.format(Locale.ROOT,"%.2f",v).replaceAll("0+$","").replaceAll("\\.$","");}
-    private int clamp(int v,int min,int max){return Math.max(min,Math.min(max,v));}
-    private double clamp01(double v){return Math.max(0.0,Math.min(1.0,v));}
-
-    @Override public void close(){releaseOrbitMovement();OrbitLayoutStore.save();super.close();}
+    @Override public boolean mouseClicked(double mx,double my,int button){if(button!=0)return false;if(inside(mx,my,gx+gw-30,gy+8,26,26)){if(client!=null)client.setScreen(null);return true;}int sx=gx+14,sy=gy+86,sw=leftW-26;for(int i=0;i<CATS.length;i++){if(inside(mx,my,sx,sy+i*38,sw,32)){category=i;search="";moduleScroll=0;return true;}}int by=gy+gh-112;if(inside(mx,my,sx,by,sw,29)){client.setScreen(new LockerScreen());return true;}if(inside(mx,my,sx,by+34,sw,29)){client.setScreen(new KeybindsScreen());return true;}if(inside(mx,my,sx,by+68,sw,29)){client.setScreen(new ClientSettingsScreen());return true;}
+        int mx0=gx+leftW+12,my0=gy+42,mw=midW-22;if(inside(mx,my,mx0,my0,mw,28)){searchFocused=true;return true;}searchFocused=false;List<ClientModule> mods=visibleModules();int start=gy+80,rowH=42,visible=Math.max(1,(gh-92)/rowH);for(int j=0;j<visible&&j+moduleScroll<mods.size();j++){ClientModule m=mods.get(j+moduleScroll),yy=start+j*rowH;if(!inside(mx,my,mx0,yy,mw,36))continue;if(mx>=mx0+mw-68){m.enabled=!m.enabled;ConfigStore.save();}else selected=m;return true;}
+        if(selected!=null){int rx=gx+leftW+midW,ry=gy+102,rw=gx+gw-14-rx;if(inside(mx,my,rx+rw-58,gy+34,44,26)){selected.enabled=!selected.enabled;ConfigStore.save();return true;}if(selected.name.equals("HUD"))return clickHud(mx,my,rx+10,ry,rw-20);if(selected.name.equals("Spotify HUD"))return clickSpotify(mx,my,rx+10,ry,rw-20);if(clickSlider(mx,my,rx+12,ry+4,rw-24,selected))return true;}
+        return false;}
+    private boolean clickHud(double mx,double my,int x,int y,int w){String[] ids={"region","status","potions","modules","players","storage","legend","clock","fps","ping","coords"};int[] gaps={0,0,0,8,0,0,8,0,0,0,0};int yy=y+4;for(int i=0;i<ids.length;i++){yy+=gaps[i];if(inside(mx,my,x,yy,w,24)){StarHudConfig.toggle(ids[i]);return true;}yy+=27;}return false;}
+    private boolean clickSpotify(double mx,double my,int x,int y,int w){String[] ids={"cover","song","artist","lyrics","controls","progress"};int yy=y+4;for(String id:ids){if(inside(mx,my,x,yy,w,24)){SpotifyHudConfig.toggle(id);return true;}yy+=27;}yy+=8;if(inside(mx,my,x,yy,w,24)){SpotifyHudConfig.lyricLines=(SpotifyHudConfig.lyricLines+1)%7;SpotifyHudConfig.save();return true;}yy+=28;if(inside(mx,my,x,yy,w,24)){captureSpotifyKey="prev";return true;}yy+=28;if(inside(mx,my,x,yy,w,24)){captureSpotifyKey="play";return true;}yy+=28;if(inside(mx,my,x,yy,w,24)){captureSpotifyKey="next";return true;}return false;}
+    private boolean clickSlider(double mx,double my,int x,int y,int w,ClientModule m){for(int i=0;i<3;i++){int yy=y+i*52;if(inside(mx,my,x,yy+14,w,26)){sliderModule=m;sliderIndex=i;sliderX=x+8;sliderW=w-16;updateSlider(mx);return true;}}return false;}
+    @Override public boolean mouseDragged(double mx,double my,int button,double dx,double dy){if(button==0&&sliderModule!=null){updateSlider(mx);return true;}return false;}
+    @Override public boolean mouseReleased(double mx,double my,int button){if(sliderModule!=null){sliderModule=null;sliderIndex=-1;ConfigStore.save();return true;}return false;}
+    private void updateSlider(double mx){if(sliderModule==null)return;double min=sliderIndex==0?sliderModule.min:sliderIndex==1?sliderModule.min2:sliderModule.min3,max=sliderIndex==0?sliderModule.max:sliderIndex==1?sliderModule.max2:sliderModule.max3,step=sliderIndex==0?sliderModule.step:sliderIndex==1?sliderModule.step2:sliderModule.step3;double t=Math.max(0,Math.min(1,(mx-sliderX)/Math.max(1.0,sliderW))),v=min+(max-min)*t;if(step>0)v=Math.round(v/step)*step;if(sliderIndex==0)sliderModule.setting=v;else if(sliderIndex==1)sliderModule.setting2=v;else sliderModule.setting3=v;}
+    @Override public boolean mouseScrolled(double mx,double my,double horizontal,double vertical){int x=gx+leftW+12,y=gy+80,w=midW-22;if(inside(mx,my,x,y,w,gh-96)){List<ClientModule> mods=visibleModules();int visible=Math.max(1,(gh-92)/42),max=Math.max(0,mods.size()-visible);moduleScroll=Math.max(0,Math.min(max,moduleScroll+(vertical<0?1:-1)));return true;}return false;}
+    @Override public boolean keyPressed(int keyCode,int scanCode,int modifiers){if(captureSpotifyKey!=null){if(captureSpotifyKey.equals("prev"))SpotifyHudConfig.previousKey=keyCode;else if(captureSpotifyKey.equals("play"))SpotifyHudConfig.playPauseKey=keyCode;else SpotifyHudConfig.nextKey=keyCode;captureSpotifyKey=null;SpotifyHudConfig.save();return true;}if(searchFocused){if(keyCode==GLFW.GLFW_KEY_BACKSPACE&&!search.isEmpty()){search=search.substring(0,search.length()-1);moduleScroll=0;return true;}if(keyCode==GLFW.GLFW_KEY_ESCAPE){searchFocused=false;return true;}}return super.keyPressed(keyCode,scanCode,modifiers);}
+    @Override public boolean charTyped(char chr,int modifiers){if(searchFocused&&chr>=32&&chr<127&&search.length()<32){search+=chr;moduleScroll=0;return true;}return false;}
+    private String keyName(int key){String s=GLFW.glfwGetKeyName(key,0);return s==null?"KEY "+key:s.toUpperCase(Locale.ROOT);}private String fmt(double v){return Math.abs(v-Math.rint(v))<.001?Integer.toString((int)Math.rint(v)):String.format(Locale.ROOT,"%.2f",v);}private String trim(String s,int n){if(s==null)return"";return s.length()<=n?s:s.substring(0,n-1)+"…";}private boolean inside(double mx,double my,int x,int y,int w,int h){return mx>=x&&mx<=x+w&&my>=y&&my<=y+h;}
 }

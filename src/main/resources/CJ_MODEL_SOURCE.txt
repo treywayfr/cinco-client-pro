@@ -1,0 +1,11 @@
+Star Client - CJ runtime model source
+
+Star Client does not embed the external CJ model/texture bytes in its jar.
+When CJ is selected, the client downloads and caches the public converted runtime files from this pinned historical source revision:
+
+Repository: randyadr/Gen1Recomp-Character-Selector
+Revision: 019e10c4be57c98d3b86742bf2be5ba61348fa8b
+Model data: data/cj_model.lua
+Texture atlas: assets/cj_atlas.png
+
+The imported data contains the GTASA-derived weighted CJ mesh/skeleton, texture atlas UVs, and idle/run animation transforms used by Star's runtime renderer.

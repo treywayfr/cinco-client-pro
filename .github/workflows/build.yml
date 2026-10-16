@@ -29,6 +29,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: star-client-3.5.2-mc1.21.11-SMOOTH-MODELS-CLEAR-TABS
-          path: build/libs/star-client-3.5.2.jar
+          name: star-client-3.5.3-mc1.21.11-CJ-REBUILD-TUNG-BAT
+          path: build/libs/star-client-3.5.3.jar
           if-no-files-found: error

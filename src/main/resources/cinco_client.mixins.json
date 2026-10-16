@@ -7,6 +7,7 @@
     "CombatModulesMixin",
     "AutoTotemDoubleHandMixin",
     "CincoClientMixin",
+    "GuiLaunchGuardMixin",
     "PlayerEntityRendererMixin",
     "PlayerChangerAliasMixin",
     "ModuleSettingsMixin",

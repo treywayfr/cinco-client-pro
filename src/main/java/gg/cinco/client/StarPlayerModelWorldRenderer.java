@@ -27,6 +27,8 @@ public final class StarPlayerModelWorldRenderer {
         MatrixStack matrices=new MatrixStack();
         matrices.translate(px,py,pz);
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-client.player.bodyYaw));
+        float modelScale=(float)Math.max(.80,Math.min(1.25,skin.setting2));
+        matrices.scale(modelScale,modelScale,modelScale);
         if(client.player.isSneaking())matrices.translate(0,-.08,.08);
 
         float speed=(float)Math.min(1.0,client.player.getVelocity().horizontalLength()*5.8);
@@ -34,7 +36,7 @@ public final class StarPlayerModelWorldRenderer {
         float headYaw=MathHelper.wrapDegrees(client.player.getYaw()-client.player.bodyYaw);
         float pitch=client.player.getPitch();
         StarPlayerModels.Pose pose=new StarPlayerModels.Pose(limbSwing,speed,headYaw,pitch,client.player.age+tick);
-        StarPlayerModels.render(character,matrices,context.consumers(),pose,true);
+        StarPlayerModels.render(character,matrices,context.consumers(),pose,skin.setting3>=.5);
     }
 
     public static boolean enabled(){ClientModule m=module();return m!=null&&m.enabled;}

@@ -29,12 +29,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Runtime importer for CJ's real GTA: San Andreas-derived mesh/rig data.
+ * Runtime importer for CJ's GTA: San Andreas-derived mesh/rig data.
  *
  * Star intentionally does not embed the third-party GTA asset in its jar. On first use it downloads
  * the public converted mesh + atlas from the historical source revision below, caches them under
- * config/star-client/cj, then renders that mesh directly. This replaces Star's old hand-built
- * approximation while keeping the Tung Tung Sahur model completely separate.
+ * config/star-client/cj, then renders that mesh directly. Tung Tung Sahur remains completely separate.
  */
 public final class GtaCjImportedModel {
     private static final String SOURCE_REV = "019e10c4be57c98d3b86742bf2be5ba61348fa8b";
@@ -92,7 +91,7 @@ public final class GtaCjImportedModel {
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(12)).followRedirects(HttpClient.Redirect.NORMAL).build();
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(35))
-                .header("User-Agent", "Star-Client-CJ-Importer/1.0")
+                .header("User-Agent", "Star-Client-CJ-Importer/1.1")
                 .GET().build();
         HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
         if (response.statusCode() != 200 || response.body().length < minimumBytes) {
@@ -115,7 +114,7 @@ public final class GtaCjImportedModel {
     public static boolean failed() { return FAILED; }
     public static String failureMessage() { return failureMessage; }
 
-    /** Returns true only when the real imported CJ mesh was rendered. */
+    /** Returns true only when the imported CJ mesh was rendered. */
     public static boolean render(MatrixStack matrices, VertexConsumerProvider consumers, StarPlayerModels.Pose pose) {
         if (!ready()) return false;
         Model model = MODEL;
@@ -135,6 +134,7 @@ public final class GtaCjImportedModel {
         final float[][] world;
         final float[][] localScratch;
         final float[] skinned;
+        final float[] smoothNormals;
         final float[] deltaScratch = new float[16];
         final float[] mulScratch = new float[16];
         final float scale, centerX, centerZ, floorY;
@@ -171,6 +171,7 @@ public final class GtaCjImportedModel {
             this.world = new float[boneCount][16];
             this.localScratch = new float[boneCount][16];
             this.skinned = new float[positionCount * 3];
+            this.smoothNormals = new float[positionCount * 3];
             for (int i = 0; i < boneNames.length; i++) boneIndex.put(boneNames[i].toLowerCase(Locale.ROOT), i);
 
             buildPose(null, 0f, false);
@@ -233,25 +234,53 @@ public final class GtaCjImportedModel {
             float seconds=pose.age()/20f;
             buildPose(pose,seconds,moving);
             skinPositions();
+            buildSmoothNormals();
 
-            VertexConsumer out=consumers.getBuffer(RenderLayers.entitySmoothCutout(TEXTURE_ID));
+            // The imported GTA mesh has mixed triangle winding in a few clothing/neck regions.
+            // No-cull keeps those valid faces from disappearing as the camera moves around CJ.
+            VertexConsumer out=consumers.getBuffer(RenderLayers.entityCutoutNoCull(TEXTURE_ID));
             MatrixStack.Entry entry=matrices.peek();
             int corners=Math.min(triangleCount*3,Math.min(cornerPos.length,Math.min(cornerU.length,cornerV.length)));
             for(int c=0;c+2<corners;c+=3){
-                int ia=(cornerPos[c]-1)*3, ib=(cornerPos[c+1]-1)*3, ic=(cornerPos[c+2]-1)*3;
-                if(ia<0||ib<0||ic<0||ia+2>=skinned.length||ib+2>=skinned.length||ic+2>=skinned.length)continue;
+                int pa=cornerPos[c]-1,pb=cornerPos[c+1]-1,pc=cornerPos[c+2]-1;
+                int ia=pa*3,ib=pb*3,ic=pc*3;
+                if(pa<0||pb<0||pc<0||ia+2>=skinned.length||ib+2>=skinned.length||ic+2>=skinned.length)continue;
+                vertex(out,entry,toX(skinned[ia]),toY(skinned[ia+2]),toZ(skinned[ia+1]),cornerU[c],cornerV[c],normalX(pa),normalY(pa),normalZ(pa));
+                vertex(out,entry,toX(skinned[ib]),toY(skinned[ib+2]),toZ(skinned[ib+1]),cornerU[c+1],cornerV[c+1],normalX(pb),normalY(pb),normalZ(pb));
+                vertex(out,entry,toX(skinned[ic]),toY(skinned[ic+2]),toZ(skinned[ic+1]),cornerU[c+2],cornerV[c+2],normalX(pc),normalY(pc),normalZ(pc));
+            }
+        }
+
+        private void buildSmoothNormals(){
+            Arrays.fill(smoothNormals,0f);
+            int corners=Math.min(triangleCount*3,cornerPos.length);
+            for(int c=0;c+2<corners;c+=3){
+                int pa=cornerPos[c]-1,pb=cornerPos[c+1]-1,pc=cornerPos[c+2]-1;
+                if(pa<0||pb<0||pc<0||pa>=positionCount||pb>=positionCount||pc>=positionCount)continue;
+                int ia=pa*3,ib=pb*3,ic=pc*3;
                 float ax=toX(skinned[ia]),ay=toY(skinned[ia+2]),az=toZ(skinned[ia+1]);
                 float bx=toX(skinned[ib]),by=toY(skinned[ib+2]),bz=toZ(skinned[ib+1]);
                 float cx=toX(skinned[ic]),cy=toY(skinned[ic+2]),cz=toZ(skinned[ic+1]);
                 float ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
                 float nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+                float len2=nx*nx+ny*ny+nz*nz;
+                if(len2<1.0e-12f)continue;
+                // Area-weighted accumulation gives the low-poly GTA mesh smooth character lighting
+                // without rounding away the actual silhouette.
+                addNormal(pa,nx,ny,nz);addNormal(pb,nx,ny,nz);addNormal(pc,nx,ny,nz);
+            }
+            for(int p=0;p<positionCount;p++){
+                int i=p*3;float nx=smoothNormals[i],ny=smoothNormals[i+1],nz=smoothNormals[i+2];
                 float len=(float)Math.sqrt(nx*nx+ny*ny+nz*nz);
-                if(len<1.0e-7f){nx=0;ny=1;nz=0;}else{nx/=len;ny/=len;nz/=len;}
-                vertex(out,entry,ax,ay,az,cornerU[c],cornerV[c],nx,ny,nz);
-                vertex(out,entry,bx,by,bz,cornerU[c+1],cornerV[c+1],nx,ny,nz);
-                vertex(out,entry,cx,cy,cz,cornerU[c+2],cornerV[c+2],nx,ny,nz);
+                if(len<1.0e-6f){smoothNormals[i]=0;smoothNormals[i+1]=1;smoothNormals[i+2]=0;}
+                else{smoothNormals[i]=nx/len;smoothNormals[i+1]=ny/len;smoothNormals[i+2]=nz/len;}
             }
         }
+
+        private void addNormal(int p,float x,float y,float z){int i=p*3;smoothNormals[i]+=x;smoothNormals[i+1]+=y;smoothNormals[i+2]+=z;}
+        private float normalX(int p){return smoothNormals[p*3];}
+        private float normalY(int p){return smoothNormals[p*3+1];}
+        private float normalZ(int p){return smoothNormals[p*3+2];}
 
         private void vertex(VertexConsumer out, MatrixStack.Entry entry,float x,float y,float z,float u,float v,float nx,float ny,float nz){
             out.vertex(entry,x,y,z)
@@ -283,6 +312,9 @@ public final class GtaCjImportedModel {
                 }else{
                     int a=(bone*frames+f0)*16,b=(bone*frames+f1)*16;
                     for(int k=0;k<16;k++)deltaScratch[k]=clip[a+k]+(clip[b+k]-clip[a+k])*blend;
+                    // Raw element-by-element matrix interpolation can shear/skew the skeleton between
+                    // GTA animation frames. Re-orthonormalize the rotation basis before skinning.
+                    orthonormalize(deltaScratch);
                     mul(boneLocal,bone*16,deltaScratch,0,local);
                     addLookRotation(bone,local,pose);
                 }
@@ -290,6 +322,26 @@ public final class GtaCjImportedModel {
                 if(parent>=0&&parent<bone)mul(world[parent],0,local,0,world[bone]);
                 else System.arraycopy(local,0,world[bone],0,16);
             }
+        }
+
+        private static void orthonormalize(float[] m){
+            float x0=m[0],x1=m[1],x2=m[2];
+            float y0=m[4],y1=m[5],y2=m[6];
+            float oldZ0=m[8],oldZ1=m[9],oldZ2=m[10];
+            float xl=(float)Math.sqrt(x0*x0+x1*x1+x2*x2);
+            if(xl<1.0e-6f)return;
+            x0/=xl;x1/=xl;x2/=xl;
+            float dot=x0*y0+x1*y1+x2*y2;
+            y0-=x0*dot;y1-=x1*dot;y2-=x2*dot;
+            float yl=(float)Math.sqrt(y0*y0+y1*y1+y2*y2);
+            if(yl<1.0e-6f)return;
+            y0/=yl;y1/=yl;y2/=yl;
+            float z0=x1*y2-x2*y1,z1=x2*y0-x0*y2,z2=x0*y1-x1*y0;
+            if(z0*oldZ0+z1*oldZ1+z2*oldZ2<0f){z0=-z0;z1=-z1;z2=-z2;}
+            m[0]=x0;m[1]=x1;m[2]=x2;
+            m[4]=y0;m[5]=y1;m[6]=y2;
+            m[8]=z0;m[9]=z1;m[10]=z2;
+            m[12]=0f;m[13]=0f;m[14]=0f;m[15]=1f;
         }
 
         private void addLookRotation(int bone,float[] local,StarPlayerModels.Pose pose){

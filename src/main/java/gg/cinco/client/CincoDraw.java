@@ -17,9 +17,9 @@ public final class CincoDraw {
     private CincoDraw() {}
 
     /**
-     * Smooth high-performance rounded rectangle. The exact 8x supersampled mask is generated once
-     * per radius and converted to a denser cached profile. Runtime stays bounded while preserving
-     * the visibly round/pill-shaped corners used by the polished Star UI.
+     * Smooth high-performance rounded rectangle. The 8x mask is generated once per radius and
+     * collapsed to non-overlapping horizontal spans. This keeps translucent glass perfectly even
+     * (no dark scanline/banding artifacts) while retaining the fast 3.0.7 performance model.
      */
     public static void rounded(DrawContext context, int left, int top, int right, int bottom, int radius, int color) {
         int width = right - left, height = bottom - top;
@@ -27,7 +27,6 @@ public final class CincoDraw {
         color = accentPink(color);
 
         int requested = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
-        // Small controls are true capsules/circles regardless of a too-small caller radius.
         int r = height <= 64 ? Math.max(requested, Math.min(width, height) / 2) : requested;
         r = Math.max(0, Math.min(r, Math.min(width, height) / 2));
         if (r <= 2) {
@@ -37,27 +36,21 @@ public final class CincoDraw {
 
         RoundedProfile p = roundedProfile(r);
 
-        // Solid center/body: two large batch-friendly fills.
-        if (width > r * 2) context.fill(left + r, top, right - r, bottom, color);
+        // Middle section is drawn exactly once. No translucent overlap.
         if (height > r * 2) context.fill(left, top + r, right, bottom - r, color);
 
-        // Denser AA-derived corner spans. Still fixed/bounded work instead of per-pixel rendering.
+        // Each AA-derived corner band is one full-width span, mirrored top/bottom. Because bands do
+        // not overlap, alpha stays uniform even for very transparent HUD panels.
         for (int i = 0; i < p.inset.length; i++) {
             int y0 = p.y0[i], y1 = p.y1[i], inset = p.inset[i];
-            if (y1 <= y0 || inset >= r) continue;
+            if (y1 <= y0 || inset >= width / 2) continue;
             int top0 = top + y0, top1 = top + y1;
             int bottom0 = bottom - y1, bottom1 = bottom - y0;
-
-            context.fill(left + inset, top0, left + r, top1, color);
-            context.fill(right - r, top0, right - inset, top1, color);
-            if (bottom0 != top0) {
-                context.fill(left + inset, bottom0, left + r, bottom1, color);
-                context.fill(right - r, bottom0, right - inset, bottom1, color);
-            }
+            context.fill(left + inset, top0, right - inset, top1, color);
+            if (bottom0 != top0) context.fill(left + inset, bottom0, right - inset, bottom1, color);
         }
     }
 
-    /** Convert the cached 8x AA coverage texture into a smooth reusable draw profile. */
     private static RoundedProfile roundedProfile(int radius) {
         RoundedProfile cached = PROFILE_CACHE.get(radius);
         if (cached != null) return cached;
@@ -67,7 +60,6 @@ public final class CincoDraw {
         int[] y0 = new int[bands], y1 = new int[bands], inset = new int[bands];
 
         for (int b = 0; b < bands; b++) {
-            // Slight easing gives more profile detail near the top/bottom where curvature is obvious.
             double t0 = b / (double) bands;
             double t1 = (b + 1) / (double) bands;
             int from = (int) Math.floor(radius * (1.0 - Math.cos(t0 * Math.PI / 2.0)));
@@ -80,12 +72,8 @@ public final class CincoDraw {
             int sum = 0, rows = 0;
             for (int py = from; py < to; py++) {
                 int boundary = radius;
-                // Use the 50% AA boundary from the real 8x supersampled mask.
                 for (int px = 0; px < radius; px++) {
-                    if ((mask[py * radius + px] & 0xFF) >= 128) {
-                        boundary = px;
-                        break;
-                    }
+                    if ((mask[py * radius + px] & 0xFF) >= 128) { boundary = px; break; }
                 }
                 sum += boundary;
                 rows++;
@@ -130,8 +118,7 @@ public final class CincoDraw {
                               int borderColor, int fillColor) {
         rounded(context, left, top, right, bottom, radius, borderColor);
         if (right - left > 2 && bottom - top > 2) {
-            rounded(context, left + 1, top + 1, right - 1, bottom - 1,
-                    Math.max(1, radius - 1), fillColor);
+            rounded(context, left + 1, top + 1, right - 1, bottom - 1, Math.max(1, radius - 1), fillColor);
         }
     }
 

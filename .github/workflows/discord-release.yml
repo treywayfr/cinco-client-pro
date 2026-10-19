@@ -1,0 +1,67 @@
+name: Announce Star Client release on Discord
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    name: Post release announcement
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send release notes to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_STAFF_ROLE_ID: ${{ vars.DISCORD_STAFF_ROLE_ID }}
+          RELEASE_JSON: ${{ toJSON(github.event.release) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          webhook = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+          role_id = os.environ.get("DISCORD_STAFF_ROLE_ID", "").strip()
+          if not webhook:
+              raise SystemExit("Missing DISCORD_WEBHOOK_URL repository secret")
+          if not role_id.isdigit():
+              raise SystemExit("Missing/invalid DISCORD_STAFF_ROLE_ID repository variable")
+
+          release = json.loads(os.environ["RELEASE_JSON"])
+          name = release.get("name") or release.get("tag_name") or "New release"
+          notes = (release.get("body") or "").strip()
+          if not notes:
+              notes = "No release notes were provided. Check the GitHub release for details."
+          # Embed descriptions are limited to 4096 characters.
+          if len(notes) > 3900:
+              notes = notes[:3870] + "\n\n[Full changelog on GitHub](" + release["html_url"] + ")"
+
+          payload = {
+              "username": "Star Client Updates",
+              "content": f"<@&{role_id}>",
+              "allowed_mentions": {"parse": [], "roles": [role_id]},
+              "embeds": [{
+                  "title": f"Star Client Updated: {name}"[:256],
+                  "url": release["html_url"],
+                  "description": notes,
+                  "color": 5793266,
+                  "fields": [
+                      {"name": "Version", "value": release.get("tag_name") or "Unspecified", "inline": True},
+                      {"name": "Release", "value": "Prerelease" if release.get("prerelease") else "Stable", "inline": True}
+                  ],
+                  "footer": {"text": "Star Client release announcements"}
+              }]
+          }
+          req = urllib.request.Request(
+              webhook,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json", "User-Agent": "StarClient-GitHubActions"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              if response.status not in (200, 204):
+                  raise SystemExit(f"Discord webhook returned HTTP {response.status}")
+          PY

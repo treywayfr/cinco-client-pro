@@ -15,7 +15,7 @@ jobs:
       - name: Send release notes to Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          DISCORD_STAFF_ROLE_ID: ${{ vars.DISCORD_STAFF_ROLE_ID }}
+          DISCORD_STAFF_ROLE_ID: '1560656160346869831'
           RELEASE_JSON: ${{ toJSON(github.event.release) }}
         run: |
           python3 - <<'PY'
